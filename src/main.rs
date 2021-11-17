@@ -1,6 +1,8 @@
 use std::collections::HashSet;
+use std::thread;
 use stunclient::Error;
 use tokio::{io};
+use tokio::macros::support::thread_rng_n;
 use tokio::time::Instant;
 use tokio_stream::{iter, StreamExt};
 use crate::stun::CheckError;
@@ -41,7 +43,7 @@ async fn main() -> io::Result<()> {
         .filter_map(|res| res.as_ref().ok())
         .map(|profile| profile.candidate.clone())
         .collect::<Vec<_>>();
-    output.sort();
+    output.shuffle(thread::thread_rng());
     let output_hosts = output.into_iter()
         .map(|candidate| String::from(candidate))
         .reduce(|a, b| format!("{}\n{}", a, b))
@@ -56,7 +58,7 @@ async fn main() -> io::Result<()> {
         .collect::<HashSet<_>>();
     let mut output_ip4 = output_ip4.into_iter()
         .collect::<Vec<_>>();
-    output_ip4.sort();
+    output_ip4.shuffle(thread::thread_rng());
     let output_ip4 = output_ip4.into_iter()
         .reduce(|a, b| format!("{}\n{}", a, b))
         .unwrap_or(String::from(""));
@@ -70,7 +72,7 @@ async fn main() -> io::Result<()> {
         .collect::<HashSet<_>>();
     let mut output_ip6 = output_ip6.into_iter()
         .collect::<Vec<_>>();
-    output_ip6.sort();
+    output_ip6.shuffle(thread::thread_rng());
     let output_ip6 = output_ip6.into_iter()
         .reduce(|a, b| format!("{}\n{}", a, b))
         .unwrap_or(String::from(""));
