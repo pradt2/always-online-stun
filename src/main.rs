@@ -1,5 +1,7 @@
 use std::collections::HashSet;
 use std::thread;
+use rand::seq::SliceRandom;
+use rand::thread_rng;
 use stunclient::Error;
 use tokio::{io};
 use tokio::macros::support::thread_rng_n;
@@ -31,7 +33,7 @@ async fn main() -> io::Result<()> {
     let mut complete_timeout = 0;
     results.iter().for_each(|res| {
         match res {
-            Ok(profile) => { all_ok += 1; }
+            Ok(_) => { all_ok += 1; }
             Err(CheckError::DnsResolutionFailed) => { dns_unresolved += 1; }
             Err(CheckError::PartialTimeout) => { partial_timeout += 1; }
             Err(CheckError::Timeout) => { complete_timeout += 1; }
@@ -43,7 +45,7 @@ async fn main() -> io::Result<()> {
         .filter_map(|res| res.as_ref().ok())
         .map(|profile| profile.candidate.clone())
         .collect::<Vec<_>>();
-    output.shuffle(thread::thread_rng());
+    output.shuffle(&mut thread_rng());
     let output_hosts = output.into_iter()
         .map(|candidate| String::from(candidate))
         .reduce(|a, b| format!("{}\n{}", a, b))
@@ -58,7 +60,7 @@ async fn main() -> io::Result<()> {
         .collect::<HashSet<_>>();
     let mut output_ip4 = output_ip4.into_iter()
         .collect::<Vec<_>>();
-    output_ip4.shuffle(thread::thread_rng());
+    output_ip4.shuffle(&mut thread_rng());
     let output_ip4 = output_ip4.into_iter()
         .reduce(|a, b| format!("{}\n{}", a, b))
         .unwrap_or(String::from(""));
@@ -72,7 +74,7 @@ async fn main() -> io::Result<()> {
         .collect::<HashSet<_>>();
     let mut output_ip6 = output_ip6.into_iter()
         .collect::<Vec<_>>();
-    output_ip6.shuffle(thread::thread_rng());
+    output_ip6.shuffle(&mut thread_rng());
     let output_ip6 = output_ip6.into_iter()
         .reduce(|a, b| format!("{}\n{}", a, b))
         .unwrap_or(String::from(""));
