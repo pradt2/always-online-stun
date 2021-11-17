@@ -138,6 +138,7 @@ stun.heeds.eu:3478
 stun.hicare.net:3478
 stun.hide.me:3478
 stun.highfidelity.io:3478
+stun.hinet.net:3478
 stun.hoiio.com:3478
 stun.hosteurope.de:3478
 stun.hot-chilli.net:3478
@@ -154,6 +155,7 @@ stun.ipshka.com:3478
 stun.irishvoip.com:3478
 stun.isp.net.au:3478
 stun.issabel.org:3478
+stun.istitutogramscisiciliano.it:3478
 stun.it1.hr:3478
 stun.ivao.aero:3478
 stun.ivi.at:3478
@@ -180,9 +182,11 @@ stun.kreis-bergstrasse.de:3478
 stun.l.google.com:19302
 stun.l.google.com:19305
 stun.labs.net:3478
+stun.ladridiricette.it:3478
 stun.landvast.nl:3478
 stun.lebendigefluesse.at:3478
 stun.leibergmbh.de:3478
+stun.leonde.org:3478
 stun.lerros.com:3478
 stun.leucotron.com.br:3478
 stun.levigo.de:3478
@@ -200,13 +204,13 @@ stun.lundimatin.fr:3478
 stun.m-online.net:3478
 stun.magyarphone.eu:3478
 stun.marble.io:3478
+stun.marcelproust.it:3478
 stun.medvc.eu:3478
 stun.meetwife.com:3478
 stun.megatel.si:3478
 stun.meowsbox.com:3478
 stun.millenniumarts.org:3478
 stun.mit.de:3478
-stun.miwifi.com:3478
 stun.mixvoip.com:3478
 stun.mobile-italia.com:3478
 stun.modulus.gr:3478
@@ -241,9 +245,11 @@ stun.ooma.com:3478
 stun.openjobs.hu:3478
 stun.openvoip.it:3478
 stun.optdyn.com:3478
+stun.ortopediacoam.it:3478
 stun.otos.pl:3478
 stun.ozekiphone.com:3478
 stun.palava.tv:3478
+stun.parcodeinebrodi.it:3478
 stun.peeters.com:3478
 stun.peethultra.be:3478
 stun.peoplefone.ch:3478
@@ -366,6 +372,7 @@ stun.vadacom.co.nz:3478
 stun.var6.cn:3478
 stun.vavadating.com:3478
 stun.verbo.be:3478
+stun.vincross.com:3478
 stun.viva.gr:3478
 stun.vivox.com:3478
 stun.vo.lu:3478
