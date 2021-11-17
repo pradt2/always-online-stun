@@ -1,8 +1,10 @@
+124.64.206.224:8800
 iphone-stun.strato-iphone.de:3478
 numb.viagenie.ca:3478
 relay.webwormhole.io:3478
 stun-eu.3cx.com:3478
 stun-us.3cx.com:3478
+stun.1-voip.com:3478
 stun.12connect.com:3478
 stun.12voip.com:3478
 stun.1cbit.ru:3478
@@ -11,6 +13,7 @@ stun.3cx.com:3478
 stun.3deluxe.de:3478
 stun.3wayint.com:3478
 stun.5sn.com:3478
+stun.aceweb.com:3478
 stun.acquageraci.it:3478
 stun.acrobits.cz:3478
 stun.acronis.com:3478
@@ -61,10 +64,10 @@ stun.commpeak.com:3478
 stun.comrex.com:3478
 stun.connecteddata.com:3478
 stun.cope.es:3478
-stun.counterpath.com:3478
 stun.counterpath.net:3478
 stun.crimeastar.net:3478
 stun.crononauta.com:3478
+stun.ctafauni.it:3478
 stun.dcalling.de:3478
 stun.deepfinesse.com:3478
 stun.demos.ru:3478
@@ -124,6 +127,7 @@ stun.gntel.nl:3478
 stun.godatenow.com:3478
 stun.goldener-internetpreis.de:3478
 stun.goldfish.ie:3478
+stun.gradwell.com:3478
 stun.graftlab.com:3478
 stun.gravitel.ru:3478
 stun.grazertrinkwasseringefahr.at:3478
@@ -178,7 +182,6 @@ stun.kreis-bergstrasse.de:3478
 stun.l.google.com:19302
 stun.l.google.com:19305
 stun.labs.net:3478
-stun.ladridiricette.it:3478
 stun.landvast.nl:3478
 stun.lebendigefluesse.at:3478
 stun.leibergmbh.de:3478
@@ -241,7 +244,6 @@ stun.ooma.com:3478
 stun.openjobs.hu:3478
 stun.openvoip.it:3478
 stun.optdyn.com:3478
-stun.ortopediacoam.it:3478
 stun.otos.pl:3478
 stun.ozekiphone.com:3478
 stun.palava.tv:3478
@@ -261,11 +263,11 @@ stun.provectio.fr:3478
 stun.pruefplan.com:3478
 stun.pure-ip.com:3478
 stun.qcol.net:3478
+stun.qq.com:3478
 stun.rackco.com:3478
 stun.radiojar.com:3478
 stun.redworks.nl:3478
 stun.ringostat.com:3478
-stun.ringvoz.com:3478
 stun.rockenstein.de:3478
 stun.rolmail.net:3478
 stun.romaaeterna.nl:3478
@@ -277,17 +279,16 @@ stun.savemgo.com:3478
 stun.schlund.de:3478
 stun.schoeffel.de:3478
 stun.schulinformatik.at:3478
-stun.selasky.org:3478
 stun.senstar.com:3478
 stun.sewan.fr:3478
 stun.shadrinsk.net:3478
+stun.sharpbai.com:3478
 stun.shy.cz:3478
 stun.siedle.com:3478
 stun.sigmavoip.com:3478
 stun.signalwire.com:3478
 stun.simlar.org:3478
 stun.sip.us:3478
-stun.sipdiscount.com:3478
 stun.sipgate.net:10000
 stun.sipgate.net:3478
 stun.sipglobalphone.com:3478
@@ -296,7 +297,6 @@ stun.sipnet.com:3478
 stun.sipnet.net:3478
 stun.sipnet.ru:3478
 stun.sippeer.dk:3478
-stun.sipthor.net:3478
 stun.siptraffic.com:3478
 stun.siptrunk.com:3478
 stun.sipy.cz:3478
@@ -325,10 +325,10 @@ stun.streamnow.ch:3478
 stun.studio-link.de:3478
 stun.studio71.it:3478
 stun.stunprotocol.org:3478
+stun.surjaring.it:3478
 stun.swrag.de:3478
 stun.sylaps.com:3478
 stun.symonics.com:3478
-stun.syncthing.net:3478
 stun.synergiejobs.be:3478
 stun.syrex.co.za:3478
 stun.t-online.de:3478
@@ -337,8 +337,6 @@ stun.taxsee.com:3478
 stun.teamfon.de:3478
 stun.technosens.fr:3478
 stun.tel.lu:3478
-stun.tel2.co.uk:3478
-stun.telbo.com:3478
 stun.tele2.net:3478
 stun.teliax.com:3478
 stun.telnyx.com:3478
@@ -356,14 +354,12 @@ stun.trivenet.it:3478
 stun.ttmath.org:3478
 stun.tula.nu:3478
 stun.twt.it:3478
-stun.uabrides.com:3478
 stun.uiltucssicilia.it:3478
 stun.ukh.de:3478
 stun.uls.co.za:3478
 stun.url.net.au:3478
 stun.usfamily.net:3478
 stun.vadacom.co.nz:3478
-stun.var6.cn:3478
 stun.vavadating.com:3478
 stun.verbo.be:3478
 stun.vincross.com:3478
@@ -390,6 +386,7 @@ stun.voipinfocenter.com:3478
 stun.voipplanet.nl:3478
 stun.voippro.com:3478
 stun.voipraider.com:3478
+stun.voipstreet.com:3478
 stun.voipstunt.com:3478
 stun.voipvoice.it:3478
 stun.voipwise.com:3478
@@ -410,7 +407,6 @@ stun.wia.cz:3478
 stun.wifirst.net:3478
 stun.wtfismyip.com:3478
 stun.wxnz.net:3478
-stun.xten.com:3478
 stun.xtratelecom.es:3478
 stun.yesdates.com:3478
 stun.yeymo.com:3478
