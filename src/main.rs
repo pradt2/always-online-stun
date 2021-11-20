@@ -1,10 +1,12 @@
 use std::collections::HashSet;
+use std::rc::Rc;
 use std::thread;
 use rand::seq::SliceRandom;
 use rand::thread_rng;
 use stunclient::Error;
 use tokio::{io};
 use tokio::macros::support::thread_rng_n;
+use tokio::sync::Semaphore;
 use tokio::time::Instant;
 use tokio_stream::{iter, StreamExt};
 use crate::stun::CheckError;
@@ -15,14 +17,20 @@ mod stun;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
     let stream = candidates::get_candidates().await?.into_iter();
+    let semaphore = Rc::new(Semaphore::new(100));
     let profiles = stream
-        .map(|candidate| async move {
-            let res = stun::check_candidate(candidate.clone()).await;
-            match &res {
-                Ok(profile) => { println!("Success: {:?}", profile) }
-                Err(err) => { println!("Failure: {:?}", err) }
+        .map(|candidate| {
+            let semaphore_local_ref = semaphore.clone();
+            async move {
+                let permit = semaphore_local_ref.acquire().await.expect("Semaphore to be operating");
+                let res = stun::check_candidate(candidate.clone()).await;
+                drop(permit);
+                match &res {
+                    Ok(profile) => { println!("Success: {:?}", profile) }
+                    Err(err) => { println!("Failure: {:?}", err) }
+                }
+                res
             }
-            res
         })
         .collect::<Vec<_>>();
     let timestamp = Instant::now();
