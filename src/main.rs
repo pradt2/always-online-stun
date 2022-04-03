@@ -1,98 +1,56 @@
-use std::collections::HashSet;
-use std::rc::Rc;
-use std::thread;
-use rand::seq::SliceRandom;
-use rand::thread_rng;
-use stunclient::Error;
-use tokio::{io};
-use tokio::macros::support::thread_rng_n;
-use tokio::sync::Semaphore;
+use std::io;
 use tokio::time::Instant;
-use tokio_stream::{iter, StreamExt};
-use crate::stun::CheckError;
+use crate::utils::join_all_with_semaphore;
+use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
+use crate::servers::StunServer;
+use crate::stun::{StunServerTestResult};
 
-mod candidates;
+mod servers;
 mod stun;
+mod utils;
+mod outputs;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
-    let stream = candidates::get_candidates().await?.into_iter();
-    let semaphore = Rc::new(Semaphore::new(100));
-    let profiles = stream
+    let stun_servers = servers::get_stun_servers().await?;
+
+    let stun_server_test_results = stun_servers.into_iter()
         .map(|candidate| {
-            let semaphore_local_ref = semaphore.clone();
             async move {
-                let permit = semaphore_local_ref.acquire().await.expect("Semaphore to be operating");
-                let res = stun::check_candidate(candidate.clone()).await;
-                drop(permit);
-                match &res {
-                    Ok(profile) => { println!("Success: {:?}", profile) }
-                    Err(err) => { println!("Failure: {:?}", err) }
-                }
-                res
+                let test_result = stun::test_udp_stun_server(candidate).await;
+                test_result
             }
         })
         .collect::<Vec<_>>();
+
     let timestamp = Instant::now();
-    let profiles = futures::future::join_all(profiles).await;
-    let mut all_ok = 0;
-    let mut dns_unresolved = 0;
-    let mut partial_timeout = 0;
-    let mut complete_timeout = 0;
-    let mut incorrect_mapping_returned = 0;
-    profiles.iter().for_each(|res| {
-        match res {
-            Ok(_) => { all_ok += 1; }
-            Err(CheckError::DnsResolutionFailed) => { dns_unresolved += 1; }
-            Err(CheckError::PartialTimeout) => { partial_timeout += 1; }
-            Err(CheckError::Timeout) => { complete_timeout += 1; }
-            Err(CheckError::IncorrectMappingReturned) => { incorrect_mapping_returned += 1; }
-        }
-    });
-    println!(
-        "OK {} , DNS failure {} , p/Timeout {} , Timeout {} , Incorrect {}",
-        all_ok, dns_unresolved, partial_timeout, complete_timeout, incorrect_mapping_returned
-    );
+    let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), 1).await;
 
-    let mut output_hosts = profiles.iter()
-        .filter_map(|res| res.as_ref().ok())
-        .map(|profile| profile.candidate.clone())
-        .collect::<Vec<_>>();
-    output_hosts.shuffle(&mut thread_rng());
-    let output_hosts = output_hosts.into_iter()
-        .map(|candidate| String::from(candidate))
-        .reduce(|a, b| format!("{}\n{}", a, b))
-        .unwrap_or(String::from(""));
-    tokio::fs::write("valid_hosts.txt", output_hosts).await?;
+    write_stun_server_summary(&stun_server_test_results);
 
-    let output_ip4 = profiles.iter()
-        .filter_map(|res| res.as_ref().ok())
-        .flat_map(|profile| profile.addrs.clone().into_iter())
-        .filter(|addr| addr.is_ipv4())
-        .map(|addr| addr.to_string())
-        .collect::<HashSet<_>>();
-    let mut output_ip4 = output_ip4.into_iter()
-        .collect::<Vec<_>>();
-    output_ip4.shuffle(&mut thread_rng());
-    let output_ip4 = output_ip4.into_iter()
-        .reduce(|a, b| format!("{}\n{}", a, b))
-        .unwrap_or(String::from(""));
-    tokio::fs::write("valid_ipv4s.txt", output_ip4).await?;
-
-    let output_ip6 = profiles.iter()
-        .filter_map(|res| res.as_ref().ok())
-        .flat_map(|profile| profile.addrs.clone().into_iter())
-        .filter(|addr| addr.is_ipv6())
-        .map(|addr| addr.to_string())
-        .collect::<HashSet<_>>();
-    let mut output_ip6 = output_ip6.into_iter()
-        .collect::<Vec<_>>();
-    output_ip6.shuffle(&mut thread_rng());
-    let output_ip6 = output_ip6.into_iter()
-        .reduce(|a, b| format!("{}\n{}", a, b))
-        .unwrap_or(String::from(""));
-    tokio::fs::write("valid_ipv6s.txt", output_ip6).await?;
+    ValidHosts::default(&stun_server_test_results).save().await?;
+    ValidIpV4s::default(&stun_server_test_results).save().await?;
+    ValidIpV6s::default(&stun_server_test_results).save().await?;
 
     println!("Finished in {:?}", timestamp.elapsed());
     Ok(())
+}
+
+fn write_stun_server_summary(results: &Vec<StunServerTestResult>) {
+    let mut all_ok = 0;
+    let mut dns_unresolved = 0;
+    let mut other = 0;
+    results.iter().for_each(|server_test_result| {
+        if server_test_result.is_healthy() {
+            all_ok += 1;
+        } else if !server_test_result.is_resolvable() {
+            dns_unresolved += 1;
+        } else {
+            other += 1;
+        }
+    });
+    println!(
+        "OK {} , DNS failure {} , Other {}",
+        all_ok, dns_unresolved, other
+    );
 }
