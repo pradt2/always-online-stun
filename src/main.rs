@@ -24,7 +24,7 @@ async fn main() -> io::Result<()> {
         .collect::<Vec<_>>();
 
     let timestamp = Instant::now();
-    let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), 1).await;
+    let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), 100).await;
 
     write_stun_server_summary(&stun_server_test_results);
 
