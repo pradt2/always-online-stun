@@ -31,7 +31,7 @@ impl StunSocketTestResult {
 
 pub(crate) enum StunSocketResponse {
     HealthyResponse { rtt: Duration },
-    InvalidMappingResponse { invalid_mapping: SocketAddr, rtt: Duration },
+    InvalidMappingResponse { expected: SocketAddr, actual: SocketAddr, rtt: Duration },
     Timeout { deadline: Duration },
     UnexpectedError { err: String }
 }
@@ -107,7 +107,7 @@ async fn test_socket_addr(
         } else {
             StunSocketTestResult {
                 socket: socket_addr,
-                result: StunSocketResponse::InvalidMappingResponse { invalid_mapping: return_addr, rtt: request_duration },
+                result: StunSocketResponse::InvalidMappingResponse { expected: local_socket.local_addr().unwrap(), actual: return_addr, rtt: request_duration },
             }
         },
         Err(err) => {

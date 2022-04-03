@@ -3,7 +3,7 @@ use tokio::time::Instant;
 use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
-use crate::stun::{StunServerTestResult};
+use crate::stun::{StunServerTestResult, StunSocketResponse};
 
 mod servers;
 mod stun;
@@ -47,6 +47,14 @@ fn write_stun_server_summary(results: &Vec<StunServerTestResult>) {
             dns_unresolved += 1;
         } else {
             other += 1;
+            for socket_test in server_test_result.socket_tests {
+                match socket_test.result {
+                    StunSocketResponse::HealthyResponse { .. } => { print!("{} -> {} is healthy", server_test_result.server.hostname, socket_test.socket) }
+                    StunSocketResponse::InvalidMappingResponse { expected, actual, rtt } => { print!("{} -> {} has invalid mapping expected={} actual={}", server_test_result.server.hostname, socket_test.socket, expected, actual) }
+                    StunSocketResponse::Timeout { deadline } => { print!("{} -> {} timed out after {:?}", server_test_result.server.hostname, socket_test.socket, deadline) }
+                    StunSocketResponse::UnexpectedError { err } => { print!("{} -> {} returned an unexpected error {}", server_test_result.server.hostname, socket_test.socket, err) }
+                }
+            }
         }
     });
     println!(
