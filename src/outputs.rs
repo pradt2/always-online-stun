@@ -48,7 +48,7 @@ impl ValidIpV4s<'_> {
     pub(crate) fn default(server_test_results: &Vec<StunServerTestResult>) -> ValidIpV4s {
         ValidIpV4s {
             server_test_results,
-            file_path: String::from("valid_hosts.txt")
+            file_path: String::from("valid_ipv4s.txt")
         }
     }
 
@@ -83,7 +83,7 @@ impl ValidIpV6s<'_> {
     pub(crate) fn default(server_test_results: &Vec<StunServerTestResult>) -> ValidIpV6s {
         ValidIpV6s {
             server_test_results,
-            file_path: String::from("valid_hosts.txt")
+            file_path: String::from("valid_ipv6s.txt")
         }
     }
 
