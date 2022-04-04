@@ -5,6 +5,9 @@ use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
 use crate::stun::{StunServerTestResult, StunSocketResponse};
 
+extern crate pretty_env_logger;
+#[macro_use] extern crate log;
+
 mod servers;
 mod stun;
 mod utils;
@@ -12,7 +15,10 @@ mod outputs;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
+    pretty_env_logger::init_timed();
+
     let stun_servers = servers::get_stun_servers().await?;
+    info!("Loaded {} stun server candidates", stun_servers.len());
 
     let stun_server_test_results = stun_servers.into_iter()
         .map(|candidate| {
@@ -32,7 +38,7 @@ async fn main() -> io::Result<()> {
     ValidIpV4s::default(&stun_server_test_results).save().await?;
     ValidIpV6s::default(&stun_server_test_results).save().await?;
 
-    println!("Finished in {:?}", timestamp.elapsed());
+    info!("Finished in {:?}", timestamp.elapsed());
     Ok(())
 }
 
