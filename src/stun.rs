@@ -29,7 +29,10 @@ impl StunServerTestResult {
 
     pub(crate) fn is_timeout(&self) -> bool {
         return self.is_resolvable() && self.socket_tests.iter()
-            .all(|result| if let StunSocketResponse::Timeout {..} = result.result { true } else { false });
+            .all(|result| match result.result {
+                StunSocketResponse::Timeout {..} => true,
+                _ => false,
+            });
     }
 }
 
