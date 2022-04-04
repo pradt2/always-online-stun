@@ -14,25 +14,56 @@ impl StunServerTestResult {
     }
 
     pub(crate) fn is_healthy(&self) -> bool {
-        return self.is_resolvable() && self.socket_tests.iter()
-            .all(StunSocketTestResult::is_ok);
+        self.is_resolvable() && self.socket_tests.iter()
+            .all(StunSocketTestResult::is_ok)
     }
 
     pub(crate) fn is_partial_timeout(&self) -> bool {
-        return self.is_resolvable() && self.socket_tests.iter()
-            .all(|result| match result.result {
-                StunSocketResponse::HealthyResponse {..} => true,
-                StunSocketResponse::Timeout {..} => true,
-                _ => false,
-            });
+        self.is_resolvable()
+            && self.is_any_healthy()
+            && self.is_any_timeout()
+            &&! self.is_any_invalid_mapping()
+            &&! self.is_any_unexpected_response()
     }
 
     pub(crate) fn is_timeout(&self) -> bool {
-        return self.is_resolvable() && self.socket_tests.iter()
-            .all(|result| match result.result {
+        self.is_resolvable()
+            &&! self.is_any_healthy()
+            && self.is_any_timeout()
+            &&! self.is_any_invalid_mapping()
+            &&! self.is_any_unexpected_response()
+    }
+
+    fn is_any_healthy(&self) -> bool {
+        self.is_resolvable() && self.socket_tests.iter()
+            .any(|result| match result.result {
+                StunSocketResponse::HealthyResponse {..} => true,
+                _ => false,
+            })
+    }
+
+    fn is_any_timeout(&self) -> bool {
+        self.is_resolvable() && self.socket_tests.iter()
+            .any(|result| match result.result {
                 StunSocketResponse::Timeout {..} => true,
                 _ => false,
-            });
+            })
+    }
+
+    fn is_any_invalid_mapping(&self) -> bool {
+        self.is_resolvable() && self.socket_tests.iter()
+            .any(|result| match result.result {
+                StunSocketResponse::InvalidMappingResponse {..} => true,
+                _ => false,
+            })
+    }
+
+    fn is_any_unexpected_response(&self) -> bool {
+        self.is_resolvable() && self.socket_tests.iter()
+            .any(|result| match result.result {
+                StunSocketResponse::UnexpectedError {..} => true,
+                _ => false,
+            })
     }
 }
 

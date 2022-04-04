@@ -69,8 +69,8 @@ fn write_stun_server_summary(results: &Vec<StunServerTestResult>) {
             }
         }
     });
-    println!(
-        "OK={}, DNS failure={}, p/Timeout={}, Timeout={}, Other={}",
+    info!(
+        "Stats -> OK={}, DNS failure={}, p/Timeout={}, Timeout={}, Other={}",
         all_ok, dns_unresolved, partial_timeout, timeout, other
     );
 }
