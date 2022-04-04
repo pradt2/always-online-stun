@@ -101,7 +101,7 @@ pub(crate) async fn test_udp_stun_server(
 
     if socket_addrs.is_err() {
         if socket_addrs.as_ref().err().unwrap().to_string() != "failed to lookup address information: Name or service not known" {
-            warn!("{} -> Unexpected DNS failure: {}", server.hostname, socket_addrs.as_ref().err().unwrap().to_string());
+            warn!("{:>15} -> Unexpected DNS failure: {}", server.hostname, socket_addrs.as_ref().err().unwrap().to_string());
         }
         return StunServerTestResult {
             server,
@@ -153,13 +153,13 @@ async fn test_socket_addr(
 
     return match result {
         Ok(return_addr) => if return_addr.port() == local_socket.local_addr().unwrap().port() {
-            debug!("{} -> {} returned a healthy response", hostname, &socket_addr);
+            debug!("{:>15} -> {:>21} returned a healthy response", hostname, &socket_addr);
             StunSocketTestResult {
                 socket: socket_addr,
                 result: StunSocketResponse::HealthyResponse { rtt: request_duration },
             }
         } else {
-            debug!("{} -> {} returned an invalid mapping: expected={}, actual={}", hostname, &socket_addr, local_socket.local_addr().unwrap(), return_addr);
+            debug!("{:>15} -> {:>21} returned an invalid mapping: expected={}, actual={}", hostname, &socket_addr, local_socket.local_addr().unwrap(), return_addr);
             StunSocketTestResult {
                 socket: socket_addr,
                 result: StunSocketResponse::InvalidMappingResponse { expected: local_socket.local_addr().unwrap(), actual: return_addr, rtt: request_duration },
@@ -167,13 +167,13 @@ async fn test_socket_addr(
         },
         Err(err) => {
             if err.to_string() == "Timed out waiting for STUN server reply" {
-                debug!("{} -> {} timed out after {:?}", hostname, &socket_addr, deadline);
+                debug!("{:>15} -> {:>21} timed out after {:?}", hostname, &socket_addr, deadline);
                 StunSocketTestResult {
                     socket: socket_addr,
                     result: StunSocketResponse::Timeout { deadline },
                 }
             } else {
-                debug!("{} -> {} returned an unexpected error: {:?}", hostname, &socket_addr, err.to_string());
+                debug!("{:>15} -> {:>21} returned an unexpected error: {:?}", hostname, &socket_addr, err.to_string());
                 StunSocketTestResult {
                     socket: socket_addr,
                     result: StunSocketResponse::UnexpectedError { err: err.to_string() },

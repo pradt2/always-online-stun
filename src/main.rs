@@ -61,10 +61,10 @@ fn write_stun_server_summary(results: &Vec<StunServerTestResult>) {
             other += 1;
             for socket_test in &server_test_result.socket_tests {
                 match &socket_test.result {
-                    StunSocketResponse::HealthyResponse { .. } => { info!("Unhealthy host {} -> socket {} returned a healthy response", server_test_result.server.hostname, socket_test.socket) }
-                    StunSocketResponse::InvalidMappingResponse { expected, actual, rtt } => { info!("Unhealthy host {} -> socket {} returned an invalid mapping: expected={} actual={}", server_test_result.server.hostname, socket_test.socket, expected, actual) }
-                    StunSocketResponse::Timeout { deadline } => { info!("Unhealthy host {} -> socket {} timed out after {:?}", server_test_result.server.hostname, socket_test.socket, deadline) }
-                    StunSocketResponse::UnexpectedError { err } => { info!("Unhealthy host {} -> socket {} returned an unexpected error: {}", server_test_result.server.hostname, socket_test.socket, err) }
+                    StunSocketResponse::HealthyResponse { .. } => { info!("Unhealthy host {:>15} -> socket {:>21} returned a healthy response", server_test_result.server.hostname, socket_test.socket) }
+                    StunSocketResponse::InvalidMappingResponse { expected, actual, rtt } => { info!("Unhealthy host {:>15} -> socket {:>21} returned an invalid mapping: expected={} actual={}", server_test_result.server.hostname, socket_test.socket, expected, actual) }
+                    StunSocketResponse::Timeout { deadline } => { info!("Unhealthy host {:>15} -> socket {:>21} timed out after {:?}", server_test_result.server.hostname, socket_test.socket, deadline) }
+                    StunSocketResponse::UnexpectedError { err } => { info!("Unhealthy host {:>15} -> socket {:>21} returned an unexpected error: {}", server_test_result.server.hostname, socket_test.socket, err) }
                 }
             }
         }
