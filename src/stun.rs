@@ -159,7 +159,7 @@ async fn test_socket_addr(
                 result: StunSocketResponse::HealthyResponse { rtt: request_duration },
             }
         } else {
-            debug!("{} -> {} returned an invalid mapping - expected {}, actual {}", hostname, &socket_addr, local_socket.local_addr().unwrap(), return_addr);
+            debug!("{} -> {} returned an invalid mapping: expected={}, actual={}", hostname, &socket_addr, local_socket.local_addr().unwrap(), return_addr);
             StunSocketTestResult {
                 socket: socket_addr,
                 result: StunSocketResponse::InvalidMappingResponse { expected: local_socket.local_addr().unwrap(), actual: return_addr, rtt: request_duration },
@@ -173,7 +173,7 @@ async fn test_socket_addr(
                     result: StunSocketResponse::Timeout { deadline },
                 }
             } else {
-                debug!("{} -> {} returned an unexpected error {:?}", hostname, &socket_addr, err.to_string());
+                debug!("{} -> {} returned an unexpected error: {:?}", hostname, &socket_addr, err.to_string());
                 StunSocketTestResult {
                     socket: socket_addr,
                     result: StunSocketResponse::UnexpectedError { err: err.to_string() },
