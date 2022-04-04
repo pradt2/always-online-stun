@@ -39,12 +39,18 @@ async fn main() -> io::Result<()> {
 fn write_stun_server_summary(results: &Vec<StunServerTestResult>) {
     let mut all_ok = 0;
     let mut dns_unresolved = 0;
+    let mut partial_timeout = 0;
+    let mut timeout = 0;
     let mut other = 0;
     results.iter().for_each(|server_test_result| {
         if server_test_result.is_healthy() {
             all_ok += 1;
         } else if !server_test_result.is_resolvable() {
             dns_unresolved += 1;
+        } else if server_test_result.is_partial_timeout() {
+            partial_timeout += 1;
+        } else if server_test_result.is_timeout() {
+            timeout += 1;
         } else {
             other += 1;
             for socket_test in &server_test_result.socket_tests {
@@ -58,7 +64,7 @@ fn write_stun_server_summary(results: &Vec<StunServerTestResult>) {
         }
     });
     println!(
-        "OK {} , DNS failure {} , Other {}",
-        all_ok, dns_unresolved, other
+        "OK={}, DNS failure={}, p/Timeout={}, Timeout={}, Other={}",
+        all_ok, dns_unresolved, partial_timeout, timeout, other
     );
 }

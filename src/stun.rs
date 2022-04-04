@@ -14,7 +14,22 @@ impl StunServerTestResult {
     }
 
     pub(crate) fn is_healthy(&self) -> bool {
-        return self.is_resolvable() && self.socket_tests.iter().all(StunSocketTestResult::is_ok);
+        return self.is_resolvable() && self.socket_tests.iter()
+            .all(StunSocketTestResult::is_ok);
+    }
+
+    pub(crate) fn is_partial_timeout(&self) -> bool {
+        return self.is_resolvable() && self.socket_tests.iter()
+            .all(|result| match result.result {
+                StunSocketResponse::HealthyResponse {..} => true,
+                StunSocketResponse::Timeout {..} => true,
+                _ => false,
+            });
+    }
+
+    pub(crate) fn is_timeout(&self) -> bool {
+        return self.is_resolvable() && self.socket_tests.iter()
+            .all(|result| if let StunSocketResponse::Timeout {..} = result.result { true } else { false });
     }
 }
 
