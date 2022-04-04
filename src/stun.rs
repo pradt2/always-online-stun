@@ -99,7 +99,7 @@ async fn test_socket_addr(
     let request_duration = Instant::now() - start;
 
     return match result {
-        Ok(return_addr) => if return_addr == local_socket.local_addr().unwrap() {
+        Ok(return_addr) => if return_addr.port() == local_socket.local_addr().unwrap().port() {
             StunSocketTestResult {
                 socket: socket_addr,
                 result: StunSocketResponse::HealthyResponse { rtt: request_duration },
