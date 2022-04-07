@@ -46,10 +46,14 @@ async fn main() -> io::Result<()> {
     stun_server_test_results.iter()
         .filter(|test_result| test_result.is_healthy())
         .for_each(|test_result| {
-            client.get_hostname_geoip_info(test_result.server.hostname.as_str());
-            test_result.socket_tests.iter().for_each(|socket| {
-                client.get_ip_geoip_info(socket.socket.ip());
-            })
+            async {
+                client.get_hostname_geoip_info(test_result.server.hostname.as_str()).await;
+                test_result.socket_tests.iter().for_each(|socket| {
+                    async {
+                        client.get_ip_geoip_info(socket.socket.ip()).await;
+                    };
+                });
+            };
     });
 
     client.save().await;
