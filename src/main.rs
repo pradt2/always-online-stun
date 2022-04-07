@@ -46,7 +46,16 @@ async fn main() -> io::Result<()> {
 
     let mut stun_server_test_results_copy = Vec::new();
     stun_server_test_results_copy.clone_from_slice(stun_server_test_results.as_slice());
-    futures::stream::iter(stun_server_test_results_copy.into_iter())
+
+    client.borrow_mut().save().await?;
+
+    ValidHosts::default(&stun_server_test_results).save().await?;
+    ValidIpV4s::default(&stun_server_test_results).save().await?;
+    ValidIpV6s::default(&stun_server_test_results).save().await?;
+
+    write_stun_server_summary(stun_servers_count, &stun_server_test_results,timestamp.elapsed());
+
+    futures::stream::iter(stun_server_test_results.into_iter())
         .filter_map(|test_result| async move { if test_result.is_healthy() { Some(test_result) } else { None } })
         .for_each(|test_result| {
             let client = client.clone();
@@ -59,15 +68,7 @@ async fn main() -> io::Result<()> {
                     }
                 }).await
             }
-    });
-
-    client.borrow_mut().save().await?;
-
-    ValidHosts::default(&stun_server_test_results).save().await?;
-    ValidIpV4s::default(&stun_server_test_results).save().await?;
-    ValidIpV6s::default(&stun_server_test_results).save().await?;
-
-    write_stun_server_summary(stun_servers_count, &stun_server_test_results,timestamp.elapsed());
+        });
 
     Ok(())
 }
