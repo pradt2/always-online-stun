@@ -52,7 +52,7 @@ async fn main() -> io::Result<()> {
             })
     });
 
-    client.save();
+    client.save().await;
 
     ValidHosts::default(&stun_server_test_results).save().await?;
     ValidIpV4s::default(&stun_server_test_results).save().await?;
