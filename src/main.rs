@@ -44,9 +44,6 @@ async fn main() -> io::Result<()> {
     let timestamp = Instant::now();
     let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), CONCURRENT_SOCKETS_USED_LIMIT).await;
 
-    let mut stun_server_test_results_copy = Vec::new();
-    stun_server_test_results_copy.clone_from_slice(stun_server_test_results.as_slice());
-
     client.borrow_mut().save().await?;
 
     ValidHosts::default(&stun_server_test_results).save().await?;
@@ -60,15 +57,15 @@ async fn main() -> io::Result<()> {
         .for_each(|test_result| {
             let client = client.clone();
             async move {
-                client.borrow_mut().get_hostname_geoip_info(test_result.server.hostname.as_str()).await.expect("GeoIP info must be available");
+                client.borrow_mut().get_hostname_geoip_info(test_result.server.hostname.as_str()).await.expect("GeoIP host info must be available");
                 futures::stream::iter(test_result.socket_tests.iter()).for_each(|socket| {
                     let client = client.clone();
                     async move {
-                        client.borrow_mut().get_ip_geoip_info(socket.socket.ip()).await.expect("GeoIP info must be available");
+                        client.borrow_mut().get_ip_geoip_info(socket.socket.ip()).await.expect("GeoIP IP info must be available");
                     }
                 }).await
             }
-        });
+        }).await;
 
     Ok(())
 }
