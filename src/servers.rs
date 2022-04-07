@@ -2,12 +2,12 @@ use tokio::io;
 
 const FILE_PATH: &str = "candidates.txt";
 
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TransportProtocol {
     UDP, TCP
 }
 
-#[derive(Clone)]
+#[derive(Clone, Debug)]
 pub struct StunServer {
     pub protocol: TransportProtocol,
     pub hostname: String,

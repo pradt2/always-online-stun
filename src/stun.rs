@@ -3,6 +3,7 @@ use std::time::{Duration, Instant};
 use crate::utils::join_all_with_semaphore;
 use crate::StunServer;
 
+#[derive(Clone, Debug)]
 pub(crate) struct StunServerTestResult {
     pub(crate) server: StunServer,
     pub(crate) socket_tests: Vec<StunSocketTestResult>,
@@ -67,6 +68,7 @@ impl StunServerTestResult {
     }
 }
 
+#[derive(Clone, Debug)]
 pub(crate) struct StunSocketTestResult {
     pub(crate) socket: SocketAddr,
     pub(crate) result: StunSocketResponse
@@ -78,6 +80,7 @@ impl StunSocketTestResult {
     }
 }
 
+#[derive(Clone, Debug)]
 pub(crate) enum StunSocketResponse {
     HealthyResponse { rtt: Duration },
     InvalidMappingResponse { expected: SocketAddr, actual: SocketAddr, rtt: Duration },

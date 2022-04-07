@@ -1,5 +1,8 @@
+use std::cell::RefCell;
 use std::io;
+use std::rc::Rc;
 use std::time::Duration;
+use futures::StreamExt;
 use tokio::time::Instant;
 use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
@@ -21,9 +24,7 @@ const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 async fn main() -> io::Result<()> {
     pretty_env_logger::init();
 
-    let mut client = geoip::CachedIpGeolocationIpClient::default().await?;
-
-    client.save().await?;
+    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default().await?));
 
     let stun_servers = servers::get_stun_servers().await?;
 
@@ -43,20 +44,24 @@ async fn main() -> io::Result<()> {
     let timestamp = Instant::now();
     let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), CONCURRENT_SOCKETS_USED_LIMIT).await;
 
-    stun_server_test_results.iter()
-        .filter(|test_result| test_result.is_healthy())
+    let mut stun_server_test_results_copy = Vec::new();
+    stun_server_test_results_copy.clone_from_slice(stun_server_test_results.as_slice());
+    futures::stream::iter(stun_server_test_results_copy.into_iter())
+        .filter_map(|test_result| async move { if test_result.is_healthy() { Some(test_result) } else { None } })
         .for_each(|test_result| {
-            async {
-                client.get_hostname_geoip_info(test_result.server.hostname.as_str()).await;
-                test_result.socket_tests.iter().for_each(|socket| {
-                    async {
-                        client.get_ip_geoip_info(socket.socket.ip()).await;
-                    };
-                });
-            };
+            let client = client.clone();
+            async move {
+                client.borrow_mut().get_hostname_geoip_info(test_result.server.hostname.as_str()).await.expect("GeoIP info must be available");
+                futures::stream::iter(test_result.socket_tests.iter()).for_each(|socket| {
+                    let client = client.clone();
+                    async move {
+                        client.borrow_mut().get_ip_geoip_info(socket.socket.ip()).await.expect("GeoIP info must be available");
+                    }
+                }).await
+            }
     });
 
-    client.save().await;
+    client.borrow_mut().save().await?;
 
     ValidHosts::default(&stun_server_test_results).save().await?;
     ValidIpV4s::default(&stun_server_test_results).save().await?;

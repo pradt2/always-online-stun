@@ -1,10 +1,9 @@
-use std::collections::{HashMap, HashSet};
+use std::collections::{HashMap};
 use std::io;
-use std::io::{BufRead, ErrorKind};
+use std::io::{ErrorKind};
 use std::io::ErrorKind::Other;
 use std::net::IpAddr;
 use std::time::Duration;
-use tokio::fs::File;
 
 pub(crate) struct IpGeolocationIoClient {
     api_key: String,
