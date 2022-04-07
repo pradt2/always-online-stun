@@ -22,14 +22,10 @@ async fn main() -> io::Result<()> {
     pretty_env_logger::init();
 
     let mut client = geoip::CachedIpGeolocationIpClient::default().await?;
-    let result = client
-        .get_hostname_geoip_info("86.10.243.212")
-        .await;
 
     client.save().await?;
 
-    let stun_servers = servers::get_stun_servers()
-        .await?;
+    let stun_servers = servers::get_stun_servers().await?;
 
     let stun_servers_count = stun_servers.len();
     info!("Loaded {} stun server hosts", stun_servers.len());
@@ -46,6 +42,17 @@ async fn main() -> io::Result<()> {
 
     let timestamp = Instant::now();
     let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), CONCURRENT_SOCKETS_USED_LIMIT).await;
+
+    stun_server_test_results.iter()
+        .filter(|test_result| test_result.is_healthy())
+        .for_each(|test_result| {
+            client.get_hostname_geoip_info(test_result.server.hostname.as_str());
+            test_result.socket_tests.iter().for_each(|socket| {
+                client.get_ip_geoip_info(socket.socket.ip());
+            })
+    });
+
+    client.save();
 
     ValidHosts::default(&stun_server_test_results).save().await?;
     ValidIpV4s::default(&stun_server_test_results).save().await?;
