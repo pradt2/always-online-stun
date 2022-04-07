@@ -44,8 +44,6 @@ async fn main() -> io::Result<()> {
     let timestamp = Instant::now();
     let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), CONCURRENT_SOCKETS_USED_LIMIT).await;
 
-    client.borrow_mut().save().await?;
-
     ValidHosts::default(&stun_server_test_results).save().await?;
     ValidIpV4s::default(&stun_server_test_results).save().await?;
     ValidIpV6s::default(&stun_server_test_results).save().await?;
@@ -66,6 +64,8 @@ async fn main() -> io::Result<()> {
                 }).await
             }
         }).await;
+
+    client.borrow_mut().save().await?;
 
     Ok(())
 }
