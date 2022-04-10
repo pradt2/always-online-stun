@@ -50,19 +50,16 @@ async fn main() -> io::Result<()> {
 
     write_stun_server_summary(stun_servers_count, &stun_server_test_results,timestamp.elapsed());
 
-    futures::stream::iter(stun_server_test_results.into_iter())
+    futures::stream::iter(stun_server_test_results.iter())
         .filter_map(|test_result| async move { if test_result.is_healthy() { Some(test_result) } else { None } })
-        .for_each(|test_result| {
+        .map(|test_result| futures::stream::iter(test_result.socket_tests.iter()))
+        .flatten()
+        .map(|test_result| test_result.socket)
+        .for_each(|socket| {
             let client = client.clone();
-            async move {
-                client.borrow_mut().get_hostname_geoip_info(test_result.server.hostname.as_str()).await.expect("GeoIP host info must be available");
-                futures::stream::iter(test_result.socket_tests.iter()).for_each(|socket| {
-                    let client = client.clone();
-                    async move {
-                        client.borrow_mut().get_ip_geoip_info(socket.socket.ip()).await.expect("GeoIP IP info must be available");
-                    }
-                }).await
-            }
+                async move {
+                    client.borrow_mut().get_ip_geoip_info(socket.ip()).await.expect("GeoIP IP info must be available");
+                }
         }).await;
 
     client.borrow_mut().save().await?;
