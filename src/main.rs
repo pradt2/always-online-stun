@@ -1,13 +1,17 @@
 use std::cell::RefCell;
+use std::convert::TryInto;
 use std::io;
+use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::rc::Rc;
 use std::time::Duration;
 use futures::StreamExt;
+use tokio::net::UdpSocket;
 use tokio::time::Instant;
 use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
 use crate::stun::{StunServerTestResult, StunSocketResponse};
+use crate::stun_client_2::{Attribute, GenericAttrReader, NonParsableAttribute};
 
 extern crate pretty_env_logger;
 #[macro_use] extern crate log;
@@ -17,12 +21,46 @@ mod stun;
 mod utils;
 mod outputs;
 mod geoip;
+mod git;
+mod stun_client;
+mod stun_client_2;
 
 const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
     pretty_env_logger::init();
+
+    let sock = UdpSocket::bind("0.0.0.0:0").await?;
+    sock.connect("stun.stunprotocol.org:3478").await?;
+    let cookie =  0x2112A442_u32.to_be_bytes();
+    let req = [0, 1u8.to_be(), 0, 0, cookie[0], cookie[1], cookie[2], cookie[3], 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
+    sock.send(&req).await?;
+
+    let mut buf = [0u8; 120];
+    let bytes_read = sock.recv(&mut buf).await?;
+
+    let r = stun_client_2::StunMessageReader { bytes: buf[0..bytes_read].as_ref() };
+    info!("Method {:?} , Class {:?}", r.get_method().unwrap(), r.get_class());
+    r.get_attrs().for_each(|attr| {
+        match &attr {
+            Ok(attr) => {
+                match &attr {
+                    Attribute::MappedAddress(r) => info!("MappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::XorMappedAddress(r) => info!("XorMappedAddress {:?} total len {}", SocketAddr::new(r.get_address().unwrap(), r.get_port()), r.get_total_length()),
+                    Attribute::OptXorMappedAddress(r) => info!("OptXorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::OtherAddress(r) => info!("OtherAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::ResponseOrigin(r) => info!("ResponseOrigin {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                }
+            }
+            Err(attr) => {
+                match &attr {
+                    NonParsableAttribute::Unknown(r) => warn!("UnknownAttr type {:04x} len {}", r.get_type_raw(), r.get_total_length()),
+                    NonParsableAttribute::Malformed(r) => warn!("MalformedAttr type {:04x} len {}", r.get_type_raw(), r.get_value_length_raw()),
+                }
+            }
+        }
+    });
 
     let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default().await?));
 
