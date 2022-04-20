@@ -1,5 +1,6 @@
 use std::cell::RefCell;
 use std::convert::TryInto;
+use std::fmt::format;
 use std::io;
 use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::rc::Rc;
@@ -27,30 +28,53 @@ mod stun_client_2;
 
 const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() -> io::Result<()> {
-    pretty_env_logger::init();
-
+async fn get_stun_response(addr: &str) -> io::Result<()> {
     let sock = UdpSocket::bind("0.0.0.0:0").await?;
-    sock.connect("stun.stunprotocol.org:3478").await?;
+    sock.connect(addr).await?;
     let cookie =  0x2112A442_u32.to_be_bytes();
     let req = [0, 1u8.to_be(), 0, 0, cookie[0], cookie[1], cookie[2], cookie[3], 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
     sock.send(&req).await?;
 
     let mut buf = [0u8; 120];
-    let bytes_read = sock.recv(&mut buf).await?;
+    let bytes_read = tokio::time::timeout(Duration::from_secs(1), sock.recv(&mut buf)).await?;
+
+    if bytes_read.is_err() {
+        info!("Addr {} timed out", addr);
+        return Ok(());
+    }
+
+    let bytes_read = bytes_read.unwrap();
 
     let r = stun_client_2::StunMessageReader { bytes: buf[0..bytes_read].as_ref() };
     info!("Method {:?} , Class {:?}", r.get_method().unwrap(), r.get_class());
     r.get_attrs().for_each(|attr| {
         match &attr {
             Ok(attr) => {
-                match &attr {
+                match attr {
                     Attribute::MappedAddress(r) => info!("MappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::XorMappedAddress(r) => info!("XorMappedAddress {:?} total len {}", SocketAddr::new(r.get_address().unwrap(), r.get_port()), r.get_total_length()),
+                    Attribute::ResponseAddress(r) => info!("ResponseAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::ChangeAddress(r) => info!("ChangeAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::SourceAddress(r) => info!("SourceAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::ChangedAddress(r) => info!("ChangedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::XorMappedAddress(r) => info!("XorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
                     Attribute::OptXorMappedAddress(r) => info!("OptXorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
                     Attribute::OtherAddress(r) => info!("OtherAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
                     Attribute::ResponseOrigin(r) => info!("ResponseOrigin {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::AlternateServer(r) => info!("AlternateServer {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::Software(r) => info!("Software {}", r.get_software().unwrap()),
+                    Attribute::ReflectedFrom(r) => info!("ReflectedFrom {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+                    Attribute::ErrorCode(r) => info!("ErrorCode {:?}", r.get_error().unwrap()),
+                    Attribute::Fingerprint(r) => info!("Fingerprint {}", r.get_checksum()),
+                    Attribute::MessageIntegrity(r) => info!("MessageIntegrity {:?}", r.get_digest()),
+                    Attribute::Realm(r) => info!("Realm {}", r.get_realm().unwrap()),
+                    Attribute::Nonce(r) => info!("Nonce {}", r.get_nonce().unwrap()),
+                    Attribute::Password(r) => info!("Password {}", r.get_password().unwrap()),
+                    Attribute::UnknownAttributes(r) => {
+                        for attr_code in r.get_attr_codes() {
+                            info!("Unknown attribute {}", attr_code)
+                        }
+                    },
+                    Attribute::Username(r) => info!("Username {}", r.get_username().unwrap()),
                 }
             }
             Err(attr) => {
@@ -61,6 +85,12 @@ async fn main() -> io::Result<()> {
             }
         }
     });
+    Ok(())
+}
+
+#[tokio::main(flavor = "current_thread")]
+async fn main() -> io::Result<()> {
+    pretty_env_logger::init();
 
     let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default().await?));
 
@@ -68,6 +98,14 @@ async fn main() -> io::Result<()> {
 
     let stun_servers_count = stun_servers.len();
     info!("Loaded {} stun server hosts", stun_servers.len());
+
+    let f = stun_servers.iter().map(|server| {
+        async move {
+            let addr = format!("{}:{}", server.hostname, server.port);
+            get_stun_response(addr.as_str()).await;
+        }
+    }).collect::<Vec<_>>();
+    join_all_with_semaphore(f.into_iter(), 1).await;
 
     let stun_server_test_results = stun_servers.into_iter()
         .map(|candidate| {
