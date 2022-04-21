@@ -51,12 +51,10 @@ impl IpGeolocationIoClient {
             .map_err(|err| io::Error::new(ErrorKind::Other, err))?;
 
         let lat = response.get("latitude")
-            .cloned()
             .map(|lat_str| lat_str.parse().unwrap())
             .unwrap_or(0 as f32);
 
         let lon = response.get("longitude")
-            .cloned()
             .map(|lon_str| lon_str.parse().unwrap())
             .unwrap_or(0 as f32);
 

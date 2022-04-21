@@ -12,7 +12,7 @@ use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
 use crate::stun::{StunServerTestResult, StunSocketResponse};
-use crate::stun_client_2::{Attribute, GenericAttrReader, NonParsableAttribute};
+use crate::stun_codec::{Attribute, NonParsableAttribute};
 
 extern crate pretty_env_logger;
 #[macro_use] extern crate log;
@@ -23,8 +23,7 @@ mod utils;
 mod outputs;
 mod geoip;
 mod git;
-mod stun_client;
-mod stun_client_2;
+mod stun_codec;
 
 const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 
@@ -45,7 +44,7 @@ async fn get_stun_response(addr: &str) -> io::Result<()> {
 
     let bytes_read = bytes_read.unwrap();
 
-    let r = stun_client_2::StunMessageReader { bytes: buf[0..bytes_read].as_ref() };
+    let r = stun_codec::StunMessageReader { bytes: buf[0..bytes_read].as_ref() };
     info!("Method {:?} , Class {:?}", r.get_method().unwrap(), r.get_class());
     r.get_attrs().for_each(|attr| {
         match &attr {

@@ -6,7 +6,6 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-bitwise = { path = "../bitwise", default-features = false }
 futures = { version = "0.3.17" }
 log = { version = "0.4.16" }
 pretty_env_logger = { version = "0.4.0" }
