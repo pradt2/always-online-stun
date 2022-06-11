@@ -1,0 +1,23 @@
+on:
+  schedule:
+    # Minute zero of every hour
+    - cron: '0 * * * *'
+  # # You can use this to test the workflow by pushing to the test branch
+  # push:
+  #   branches:
+  #     - test
+
+jobs:
+  check_list:
+    runs-on: ubuntu-latest
+    env:
+      RUST_LOG: info
+      IPGEOLOCATIONIO_API_KEY: ${{ secrets.IPGEOLOCATIONIO_API_KEY }}
+    steps:
+      # Checkout the repository
+      - uses: actions/checkout@v2
+      # Check the list
+      - name: Check the list
+        run: cargo run
+      # Commit the code
+      - uses: stefanzweifel/git-auto-commit-action@v4
