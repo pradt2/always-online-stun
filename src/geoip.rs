@@ -1,4 +1,4 @@
-use std::collections::{HashMap};
+use std::collections::{BTreeMap, HashMap};
 use std::io;
 use std::io::{ErrorKind};
 use std::io::ErrorKind::Other;
@@ -67,14 +67,14 @@ impl IpGeolocationIoClient {
 pub(crate) struct CachedIpGeolocationIpClient {
     path: String,
     client: IpGeolocationIoClient,
-    map: HashMap<String, GeoIpData>,
+    map: BTreeMap<String, GeoIpData>,
 }
 
 impl CachedIpGeolocationIpClient {
     pub(crate) async fn new(filename: String) -> io::Result<CachedIpGeolocationIpClient> {
         let cache_str = tokio::fs::read_to_string(filename.as_str()).await?;
 
-        let map: HashMap<String, GeoIpData> = serde_json::de::from_str(cache_str.as_str())
+        let map: BTreeMap<String, GeoIpData> = serde_json::de::from_str(cache_str.as_str())
             .map_err(|err| io::Error::new(Other, err))?;
 
         let client = CachedIpGeolocationIpClient {
@@ -99,7 +99,7 @@ impl CachedIpGeolocationIpClient {
     }
 
     pub(crate) async fn save(&self) -> io::Result<()> {
-        let str = serde_json::ser::to_string(&self.map)
+        let str = serde_json::ser::to_string_pretty(&self.map)
             .map_err(|err| io::Error::new(Other, err))?;
         tokio::fs::write(self.path.as_str(), str).await
     }
