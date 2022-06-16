@@ -24,6 +24,11 @@ const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 async fn main() -> io::Result<()> {
     pretty_env_logger::init();
 
+    let is_behind_nat: bool = std::env::var("IS_BEHIND_NAT")
+        .unwrap_or(String::from("false"))
+        .parse()
+        .expect("IS_BEHIND_NAT must be true or false");
+
     let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default().await?));
 
     let stun_servers = servers::get_stun_servers().await?;
@@ -33,7 +38,7 @@ async fn main() -> io::Result<()> {
 
     let stun_server_test_results = stun_servers.into_iter()
         .map(|candidate| async move {
-            let test_result = stun::test_udp_stun_server(candidate).await;
+            let test_result = stun::test_udp_stun_server(candidate, is_behind_nat).await;
             print_stun_server_status(&test_result);
             test_result
         })
