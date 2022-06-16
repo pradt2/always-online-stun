@@ -32,12 +32,10 @@ async fn main() -> io::Result<()> {
     info!("Loaded {} stun server hosts", stun_servers.len());
 
     let stun_server_test_results = stun_servers.into_iter()
-        .map(|candidate| {
-            async move {
-                let test_result = stun::test_udp_stun_server(candidate).await;
-                print_stun_server_status(&test_result);
-                test_result
-            }
+        .map(|candidate| async move {
+            let test_result = stun::test_udp_stun_server(candidate).await;
+            print_stun_server_status(&test_result);
+            test_result
         })
         .collect::<Vec<_>>();
 
