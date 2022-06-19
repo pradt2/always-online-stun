@@ -6,12 +6,13 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
+clap = { version = "3.2.5", default-features = false, features = ["color", "derive", "env", "std", "suggestions"] }
 futures = { version = "0.3.17" }
 log = { version = "0.4.16" }
 pretty_env_logger = { version = "0.4.0" }
 rand = { version = "0.8.4", default-features = false }
-reqwest = { version = "0.11.10", default-features = false, features=["json", "rustls-tls"] }
-serde_json = { version = "1.0.70", default-features = false }
+reqwest = { version = "0.11.10", default-features = false, features = ["json", "rustls-tls"] }
+serde_json = { version = "1.0.70", default-features = false, features = ["std"] }
 stunclient = { version = "0.3.1", default-features = false, features = ["async"] }
 tokio = { version = "1.14.0", default-features = false, features = ["fs", "macros", "net", "rt"] }
 tokio-stream = { version = "0.1.8", default-features = false }

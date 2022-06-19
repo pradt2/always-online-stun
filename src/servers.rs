@@ -1,6 +1,5 @@
+use std::path::PathBuf;
 use tokio::io;
-
-const FILE_PATH: &str = "candidates.txt";
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub enum TransportProtocol {
@@ -14,8 +13,8 @@ pub struct StunServer {
     pub port: u16,
 }
 
-pub async fn get_stun_servers() -> io::Result<Vec<StunServer>> {
-    let stun_servers = tokio::fs::read_to_string(FILE_PATH).await?
+pub async fn get_stun_servers(filepath: PathBuf) -> io::Result<Vec<StunServer>> {
+    let stun_servers = tokio::fs::read_to_string(filepath).await?
         .split('\n')
         .map(|s| s.trim())
         .filter(|s| !s.is_empty())

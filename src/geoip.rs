@@ -3,6 +3,7 @@ use std::io;
 use std::io::{ErrorKind};
 use std::io::ErrorKind::Other;
 use std::net::IpAddr;
+use std::path::PathBuf;
 use std::time::Duration;
 
 pub(crate) struct IpGeolocationIoClient {
@@ -65,14 +66,14 @@ impl IpGeolocationIoClient {
 }
 
 pub(crate) struct CachedIpGeolocationIpClient {
-    path: String,
+    path: PathBuf,
     client: IpGeolocationIoClient,
     map: BTreeMap<String, GeoIpData>,
 }
 
 impl CachedIpGeolocationIpClient {
-    pub(crate) async fn new(filename: String) -> io::Result<CachedIpGeolocationIpClient> {
-        let cache_str = tokio::fs::read_to_string(filename.as_str()).await?;
+    pub(crate) async fn new(filename: PathBuf) -> io::Result<CachedIpGeolocationIpClient> {
+        let cache_str = tokio::fs::read_to_string(&filename).await?;
 
         let map: BTreeMap<String, GeoIpData> = serde_json::de::from_str(cache_str.as_str())
             .map_err(|err| io::Error::new(Other, err))?;
@@ -86,8 +87,8 @@ impl CachedIpGeolocationIpClient {
         Ok(client)
     }
 
-    pub(crate) async fn default() -> io::Result<CachedIpGeolocationIpClient> {
-        CachedIpGeolocationIpClient::new(String::from("geoip_cache.txt")).await
+    pub(crate) async fn default(filepath: PathBuf) -> io::Result<CachedIpGeolocationIpClient> {
+        CachedIpGeolocationIpClient::new(filepath).await
     }
 
     pub(crate) async fn get_hostname_geoip_info(&mut self, hostname: &str) -> io::Result<GeoIpData> {
@@ -101,7 +102,7 @@ impl CachedIpGeolocationIpClient {
     pub(crate) async fn save(&self) -> io::Result<()> {
         let str = serde_json::ser::to_string_pretty(&self.map)
             .map_err(|err| io::Error::new(Other, err))?;
-        tokio::fs::write(self.path.as_str(), str).await
+        tokio::fs::write(&self.path, str).await
     }
 
     async fn get_geoip_info(&mut self, hostname_or_ip: &str) -> io::Result<GeoIpData> {

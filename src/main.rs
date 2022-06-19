@@ -1,16 +1,21 @@
 use std::cell::RefCell;
+use std::fmt::{Display, Formatter};
 use std::io;
+use std::path::PathBuf;
 use std::rc::Rc;
 use std::time::Duration;
 use futures::StreamExt;
 use tokio::time::Instant;
+use clap::Parser;
+
 use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
 use crate::stun::{StunServerTestResult, StunSocketResponse};
 
 extern crate pretty_env_logger;
-#[macro_use] extern crate log;
+#[macro_use]
+extern crate log;
 
 mod servers;
 mod stun;
@@ -19,24 +24,56 @@ mod outputs;
 mod geoip;
 mod by_threes_check;
 
-const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
+#[derive(Parser, Debug)]
+/// Bulk tester of STUN servers
+struct Cli {
+    /// number of concurrently tested servers
+    #[clap(short = 'c', long = "concurrency", default_value_t = 64)]
+    concurrency: usize,
+
+    /// whether the running machine is behind a NAT
+    #[clap(long = "nat", default_value_t = false)]
+    is_behind_nat: bool,
+
+    /// file containing \n-separated host:port STUN servers
+    #[clap(long = "candidates", parse(from_os_str), default_value_os_t = PathBuf::from("candidates.txt"))]
+    candidates_file: PathBuf,
+
+    /// file for valid host:port values
+    #[clap(long = "output-hosts", parse(from_os_str), default_value_os_t = PathBuf::from("valid_hosts.txt"))]
+    valid_hosts_file: PathBuf,
+
+    /// file for valid ipv4:port values
+    #[clap(long = "output-ipv4", parse(from_os_str), default_value_os_t = PathBuf::from("valid_ipv4s.txt"))]
+    valid_ipv4_file: PathBuf,
+
+    /// file for valid ipv6:port values
+    #[clap(long = "output-ipv6", parse(from_os_str), default_value_os_t = PathBuf::from("valid_ipv6s.txt"))]
+    valid_ipv6_file: PathBuf,
+
+    /// API key for the https://ipgeolocation.io service
+    #[clap(long = "ipgeolocation-api-key")]
+    ipgeo_api_key: String,
+
+    /// file with geoip cache data
+    #[clap(long = "geoip-cache", parse(from_os_str), default_value_os_t = PathBuf::from("geoip_cache.txt"))]
+    geoip_cache_file: PathBuf,
+}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
     pretty_env_logger::init();
 
-    let is_behind_nat: bool = std::env::var("IS_BEHIND_NAT")
-        .unwrap_or(String::from("false"))
-        .parse()
-        .expect("IS_BEHIND_NAT must be true or false");
+    let cli: Cli = Cli::parse();
 
-    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default().await?));
+    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default(cli.geoip_cache_file).await?));
 
-    let stun_servers = servers::get_stun_servers().await?;
+    let stun_servers = servers::get_stun_servers(cli.candidates_file).await?;
 
     let stun_servers_count = stun_servers.len();
     info!("Loaded {} stun server hosts", stun_servers.len());
 
+    let is_behind_nat = cli.is_behind_nat;
     let stun_server_test_results = stun_servers.into_iter()
         .map(|candidate| async move {
             let test_result = stun::test_udp_stun_server(candidate, is_behind_nat).await;
@@ -46,13 +83,13 @@ async fn main() -> io::Result<()> {
         .collect::<Vec<_>>();
 
     let timestamp = Instant::now();
-    let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), CONCURRENT_SOCKETS_USED_LIMIT).await;
+    let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), cli.concurrency).await;
 
-    ValidHosts::default(&stun_server_test_results).save().await?;
-    ValidIpV4s::default(&stun_server_test_results).save().await?;
-    ValidIpV6s::default(&stun_server_test_results).save().await?;
+    ValidHosts::default(&stun_server_test_results, cli.valid_hosts_file).save().await?;
+    ValidIpV4s::default(&stun_server_test_results, cli.valid_ipv4_file).save().await?;
+    ValidIpV6s::default(&stun_server_test_results, cli.valid_ipv6_file).save().await?;
 
-    write_stun_server_summary(stun_servers_count, &stun_server_test_results,timestamp.elapsed());
+    write_stun_server_summary(stun_servers_count, &stun_server_test_results, timestamp.elapsed());
 
     futures::stream::iter(stun_server_test_results.iter())
         .filter_map(|test_result| async move { if test_result.is_healthy() { Some(test_result) } else { None } })
@@ -61,9 +98,9 @@ async fn main() -> io::Result<()> {
         .map(|test_result| test_result.socket)
         .for_each(|socket| {
             let client = client.clone();
-                async move {
-                    client.borrow_mut().get_ip_geoip_info(socket.ip()).await.expect("GeoIP IP info must be available");
-                }
+            async move {
+                client.borrow_mut().get_ip_geoip_info(socket.ip()).await.expect("GeoIP IP info must be available");
+            }
         }).await;
 
     client.borrow_mut().save().await?;
