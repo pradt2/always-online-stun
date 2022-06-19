@@ -52,8 +52,8 @@ struct Cli {
     valid_ipv6_file: PathBuf,
 
     /// API key for the https://ipgeolocation.io service
-    #[clap(long = "ipgeolocation-api-key")]
-    ipgeo_api_key: String,
+    #[clap(long = "ipgeolocationio-api-key", env)]
+    ipgeolocationio_api_key: String,
 
     /// file with geoip cache data
     #[clap(long = "geoip-cache", parse(from_os_str), default_value_os_t = PathBuf::from("geoip_cache.txt"))]
