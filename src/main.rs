@@ -12,7 +12,7 @@ use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
 use crate::stun::{StunServerTestResult, StunSocketResponse};
-use crate::stun_codec::{Attribute, NonParsableAttribute};
+// use crate::stun_codec::{Attribute, NonParsableAttribute};
 
 extern crate pretty_env_logger;
 #[macro_use] extern crate log;
@@ -23,7 +23,6 @@ mod utils;
 mod outputs;
 mod geoip;
 mod git;
-mod stun_codec;
 
 const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 
@@ -44,46 +43,46 @@ async fn get_stun_response(addr: &str) -> io::Result<()> {
 
     let bytes_read = bytes_read.unwrap();
 
-    let r = stun_codec::StunMessageReader { bytes: buf[0..bytes_read].as_ref() };
-    info!("Method {:?} , Class {:?}", r.get_method().unwrap(), r.get_class());
-    r.get_attrs().for_each(|attr| {
-        match &attr {
-            Ok(attr) => {
-                match attr {
-                    Attribute::MappedAddress(r) => info!("MappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::ResponseAddress(r) => info!("ResponseAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::ChangeAddress(r) => info!("ChangeAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::SourceAddress(r) => info!("SourceAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::ChangedAddress(r) => info!("ChangedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::XorMappedAddress(r) => info!("XorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::OptXorMappedAddress(r) => info!("OptXorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::OtherAddress(r) => info!("OtherAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::ResponseOrigin(r) => info!("ResponseOrigin {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::AlternateServer(r) => info!("AlternateServer {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::Software(r) => info!("Software {}", r.get_software().unwrap()),
-                    Attribute::ReflectedFrom(r) => info!("ReflectedFrom {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-                    Attribute::ErrorCode(r) => info!("ErrorCode {:?}", r.get_error().unwrap()),
-                    Attribute::Fingerprint(r) => info!("Fingerprint {}", r.get_checksum()),
-                    Attribute::MessageIntegrity(r) => info!("MessageIntegrity {:?}", r.get_digest()),
-                    Attribute::Realm(r) => info!("Realm {}", r.get_realm().unwrap()),
-                    Attribute::Nonce(r) => info!("Nonce {}", r.get_nonce().unwrap()),
-                    Attribute::Password(r) => info!("Password {}", r.get_password().unwrap()),
-                    Attribute::UnknownAttributes(r) => {
-                        for attr_code in r.get_attr_codes() {
-                            info!("Unknown attribute {}", attr_code)
-                        }
-                    },
-                    Attribute::Username(r) => info!("Username {}", r.get_username().unwrap()),
-                }
-            }
-            Err(attr) => {
-                match &attr {
-                    NonParsableAttribute::Unknown(r) => warn!("UnknownAttr type {:04x} len {}", r.get_type_raw(), r.get_total_length()),
-                    NonParsableAttribute::Malformed(r) => warn!("MalformedAttr type {:04x} len {}", r.get_type_raw(), r.get_value_length_raw()),
-                }
-            }
-        }
-    });
+    // let r = stun_codec::StunMessageReader { bytes: buf[0..bytes_read].as_ref() };
+    // info!("Method {:?} , Class {:?}", r.get_method().unwrap(), r.get_class());
+    // r.get_attrs().for_each(|attr| {
+    //     match &attr {
+    //         Ok(attr) => {
+    //             match attr {
+    //                 Attribute::MappedAddress(r) => info!("MappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::ResponseAddress(r) => info!("ResponseAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::ChangeAddress(r) => info!("ChangeAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::SourceAddress(r) => info!("SourceAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::ChangedAddress(r) => info!("ChangedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::XorMappedAddress(r) => info!("XorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::OptXorMappedAddress(r) => info!("OptXorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::OtherAddress(r) => info!("OtherAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::ResponseOrigin(r) => info!("ResponseOrigin {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::AlternateServer(r) => info!("AlternateServer {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::Software(r) => info!("Software {}", r.get_software().unwrap()),
+    //                 Attribute::ReflectedFrom(r) => info!("ReflectedFrom {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
+    //                 Attribute::ErrorCode(r) => info!("ErrorCode {:?}", r.get_error().unwrap()),
+    //                 Attribute::Fingerprint(r) => info!("Fingerprint {}", r.get_checksum()),
+    //                 Attribute::MessageIntegrity(r) => info!("MessageIntegrity {:?}", r.get_digest()),
+    //                 Attribute::Realm(r) => info!("Realm {}", r.get_realm().unwrap()),
+    //                 Attribute::Nonce(r) => info!("Nonce {}", r.get_nonce().unwrap()),
+    //                 Attribute::Password(r) => info!("Password {}", r.get_password().unwrap()),
+    //                 Attribute::UnknownAttributes(r) => {
+    //                     for attr_code in r.get_attr_codes() {
+    //                         info!("Unknown attribute {}", attr_code)
+    //                     }
+    //                 },
+    //                 Attribute::Username(r) => info!("Username {}", r.get_username().unwrap()),
+    //             }
+    //         }
+    //         Err(attr) => {
+    //             match &attr {
+    //                 NonParsableAttribute::Unknown(r) => warn!("UnknownAttr type {:04x} len {}", r.get_type_raw(), r.get_total_length()),
+    //                 NonParsableAttribute::Malformed(r) => warn!("MalformedAttr type {:04x} len {}", r.get_type_raw(), r.get_value_length_raw()),
+    //             }
+    //         }
+    //     }
+    // });
     Ok(())
 }
 

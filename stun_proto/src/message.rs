@@ -11,18 +11,19 @@ impl StunMessageReader<'_> {
         u16::from_be_bytes(self.bytes[0..2].try_into().unwrap())
     }
 
+    pub fn get_method_raw(&self) -> u16 {
+        let msg_type = self.get_message_type();
+        let method_code: u16 = msg_type & 0b0011111011101111;
+        method_code
+    }
+
+
     pub fn get_method(&self) -> Result<Method, u16> {
         let method_code = self.get_method_raw();
         match method_code {
             1 => Ok(Method::Binding),
             _ => Err(method_code)
         }
-    }
-
-    pub fn get_method_raw(&self) -> u16 {
-        let msg_type = self.get_message_type();
-        let method_code: u16 = msg_type & 0b11111011101111;
-        method_code
     }
 
     pub fn get_class(&self) -> MessageClass {
