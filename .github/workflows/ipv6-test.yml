@@ -18,6 +18,8 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - name: Set up Resolvconf
+      run: apt-get update && apt-get install resolvconf
     - name: Set up WireGuard
       uses: egor-tensin/setup-wireguard@v1
       with:
