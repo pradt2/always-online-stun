@@ -22,14 +22,14 @@ jobs:
       run: sudo apt-get update && sudo apt-get install resolvconf wireguard wireguard-tools
     - name: Set up WireGuard
       run: |
-        echo "[Interface]" >> /etc/wireguard/wg0.conf
-        echo "PrivateKey = ${{ secrets.WG_IFACE_PRIVATE_KEY }}" >> /etc/wireguard/wg0.conf
-        echo "Address = ${{ secrets.WG_IFACE_ADDRESS }}" >> /etc/wireguard/wg0.conf
-        echo "DNS = 1.1.1.1" >> /etc/wireguard/wg0.conf
-        echo "[Peer]" >> /etc/wireguard/wg0.conf
-        echo "PublicKey = ${{ secrets.WG_PEER_PUBLIC_KEY }}" >> /etc/wireguard/wg0.conf
-        echo "Endpoint = ${{ secrets.WG_PEER_ENDPOINT }}" >> /etc/wireguard/wg0.conf
-        echo "AllowedIPs = ${{ secrets.WG_PEER_ENDPOINT }}" >> /etc/wireguard/wg0.conf
+        sudo echo "[Interface]" >> /etc/wireguard/wg0.conf
+        sudo echo "PrivateKey = ${{ secrets.WG_IFACE_PRIVATE_KEY }}" >> /etc/wireguard/wg0.conf
+        sudo echo "Address = ${{ secrets.WG_IFACE_ADDRESS }}" >> /etc/wireguard/wg0.conf
+        sudo echo "DNS = 1.1.1.1" >> /etc/wireguard/wg0.conf
+        sudo echo "[Peer]" >> /etc/wireguard/wg0.conf
+        sudo echo "PublicKey = ${{ secrets.WG_PEER_PUBLIC_KEY }}" >> /etc/wireguard/wg0.conf
+        sudo echo "Endpoint = ${{ secrets.WG_PEER_ENDPOINT }}" >> /etc/wireguard/wg0.conf
+        sudo echo "AllowedIPs = ${{ secrets.WG_PEER_ENDPOINT }}" >> /etc/wireguard/wg0.conf
         sudo wg-quick up wg0
     - name: Run ip addr
       run: ip addr
