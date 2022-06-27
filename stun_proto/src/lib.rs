@@ -242,6 +242,15 @@ struct RawAttributeIterator<'a> {
     idx: usize,
 }
 
+impl<'a> RawAttributeIterator<'a> {
+    fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes,
+            idx: 0,
+        }
+    }
+}
+
 impl<'a> Iterator for RawAttributeIterator<'a> {
     type Item = Result<(&'a [u8; 2], &'a [u8; 2], &'a [u8])>;
 
@@ -249,7 +258,7 @@ impl<'a> Iterator for RawAttributeIterator<'a> {
         if self.idx >= self.bytes.len() {
             None
         } else {
-            let typ_raw = self.bytes.get(self.idx .. self.idx + 2)
+            let typ_raw = self.bytes.get(self.idx..self.idx + 2)
                 .map(|b| b.try_into().unwrap())
                 .ok_or(ReaderErr::NotEnoughBytes);
 
@@ -257,11 +266,11 @@ impl<'a> Iterator for RawAttributeIterator<'a> {
                 Ok(t) => t,
                 Err(err) => {
                     self.idx = self.bytes.len();
-                    return Some(Err(err))
+                    return Some(Err(err));
                 }
             };
 
-            let val_len_raw = self.bytes.get(self.idx + 2 .. self.idx + 4)
+            let val_len_raw = self.bytes.get(self.idx + 2..self.idx + 4)
                 .map(|b| b.try_into().unwrap())
                 .ok_or(ReaderErr::NotEnoughBytes);
 
@@ -269,20 +278,20 @@ impl<'a> Iterator for RawAttributeIterator<'a> {
                 Ok(t) => t,
                 Err(err) => {
                     self.idx = self.bytes.len();
-                    return Some(Err(err))
+                    return Some(Err(err));
                 }
             };
 
             let val_len = u16::from_be_bytes(*val_len_raw) as usize;
 
-            let val_raw = self.bytes.get(self.idx + 4 .. self.idx + 4 + val_len)
+            let val_raw = self.bytes.get(self.idx + 4..self.idx + 4 + val_len)
                 .ok_or(ReaderErr::NotEnoughBytes);
 
             let val_raw = match val_raw {
                 Ok(val) => val,
                 Err(err) => {
                     self.idx = self.bytes.len();
-                    return Some(Err(err))
+                    return Some(Err(err));
                 }
             };
 
@@ -294,7 +303,15 @@ impl<'a> Iterator for RawAttributeIterator<'a> {
 }
 
 struct AttributeIterator<'a> {
-    raw_iter: RawAttributeIterator<'a>
+    raw_iter: RawAttributeIterator<'a>,
+}
+
+impl<'a> AttributeIterator<'a> {
+    fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            raw_iter: RawAttributeIterator::new(bytes)
+        }
+    }
 }
 
 impl<'a> Iterator for AttributeIterator<'a> {
@@ -312,34 +329,91 @@ impl<'a> Iterator for AttributeIterator<'a> {
     }
 }
 
-impl AttributeIterator<'_> {
-    fn new(bytes: &'_ [u8]) -> AttributeIterator {
-        AttributeIterator {
-            raw_iter: RawAttributeIterator {
-                bytes,
-                idx: 0
+enum Rfc3489Attribute<'a> {
+    MappedAddress(MappedAddressAttributeReader<'a>),
+}
+
+struct Rfc3489Iterator<'a> {
+    attr_iter: AttributeIterator<'a>,
+}
+
+impl<'a> Rfc3489Iterator<'a> {
+    fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            attr_iter: AttributeIterator::new(bytes)
+        }
+    }
+}
+
+impl<'a> Iterator for Rfc3489Iterator<'a> {
+    type Item = Result<Rfc3489Attribute<'a>>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.attr_iter.next() {
+            None => None,
+            Some(Err(err)) => Some(Err(err)),
+            Some(Ok((typ, bytes))) => match typ {
+                0x0001 => Some(Ok(Rfc3489Attribute::MappedAddress(MappedAddressAttributeReader::new(bytes)))),
+                _ => Some(Err(ReaderErr::UnexpectedValue))
             }
         }
     }
 }
 
-struct MappedAddress<'a> {
+enum IpAddr {
+    V4 { addr: u32, port: u16 },
+    V6 { addr: u128, port: u16 },
+}
+
+struct MappedAddressAttributeReader<'a> {
     bytes: &'a [u8],
 }
 
-impl GenericAttribute<'_> for MappedAddress<'_> {
-    fn get_bytes_raw(&'_ self) -> &'_ [u8] {
-        self.bytes
+impl<'a> MappedAddressAttributeReader<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self { bytes }
     }
-}
 
-struct XorMappedAddress<'a> {
-    bytes: &'a [u8],
-}
+    pub fn get_address(&self) -> Result<IpAddr> {
+        let addr_family = if let Some(val) = self.bytes.get(0..2)
+            .map(|b| b.try_into().unwrap())
+            .map(|b: &[u8; 2]| u16::from_be_bytes(*b)) { val } else {
+            return Err(ReaderErr::NotEnoughBytes);
+        };
 
-impl GenericAttribute<'_> for XorMappedAddress<'_> {
-    fn get_bytes_raw(&'_ self) -> &'_ [u8] {
-        self.bytes
+        let port = if let Some(val) = self.bytes.get(2..4)
+            .map(|b| b.try_into().unwrap())
+            .map(|b: &[u8; 2]| u16::from_be_bytes(*b)) { val } else {
+            return Err(ReaderErr::NotEnoughBytes);
+        };
+
+        match addr_family {
+            1 => {
+                let b = self.bytes.get(4..8)
+                    .map(|b| b.try_into().unwrap())
+                    .map(|b: &[u8; 4]| u32::from_be_bytes(*b))
+                    .ok_or(ReaderErr::NotEnoughBytes);
+
+                let addr = if let Ok(b) = b { b } else {
+                    return Err(ReaderErr::NotEnoughBytes);
+                };
+
+                Ok(IpAddr::V4 { addr, port })
+            }
+            2 => {
+                let b = self.bytes.get(4..20)
+                    .map(|b| b.try_into().unwrap())
+                    .map(|b: [u8; 16]| u128::from_be_bytes(b))
+                    .ok_or(ReaderErr::NotEnoughBytes);
+
+                let addr = if let Ok(b) = b { b } else {
+                    return Err(ReaderErr::NotEnoughBytes);
+                };
+
+                Ok(IpAddr::V6 { addr, port })
+            }
+            _ => Err(ReaderErr::UnexpectedValue)
+        }
     }
 }
 
@@ -382,7 +456,7 @@ mod tests {
                 Ok((typ, val)) => {
                     assert_eq!(1u16, typ);
                     assert_eq!([0x01, 0x01, 0x01, 0x01], *val);
-                },
+                }
                 Err(_) => assert!(false, "Test attr should be valid")
             }
         }
@@ -409,7 +483,7 @@ mod tests {
     #[test]
     fn test_iter_over_attrs_invalid_attr_extra_byte() {
         let attr = [
-            0x00, 0x01,             // type
+            0x00, 0xFF,             // type
             0x00, 0x03,             // value length (4-1 because we're simulating an extra byte)
             0x01, 0x01, 0x01, 0x01, // value
         ];
@@ -419,7 +493,7 @@ mod tests {
         let mut iter = AttributeIterator::new(&attr);
 
         if let Some(Ok((typ, val))) = iter.next() {
-            assert_eq!(1u16, typ);
+            assert_eq!(0xFF, typ);
             assert_eq!([0x01, 0x01, 0x01], *val);
         } else {
             assert!(false, "First attr should be valid");
@@ -429,6 +503,85 @@ mod tests {
             assert!(true);
         } else {
             assert!(false, "Second attr should be an error");
+        }
+    }
+
+    #[test]
+    fn test_parse_mapped_address_attr_val_ipv4() {
+        let attr_val = [
+            0x00, 0x01,             // address family
+            0x0A, 0x0B,             // port
+            0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
+        ];
+
+        let r = MappedAddressAttributeReader::new(&attr_val);
+        let addr = if let Ok(addr) = r.get_address() { addr } else {
+            assert!(false, "Test address should be a valid address");
+            return;
+        };
+
+        if let IpAddr::V4 { addr, port } = addr {
+            assert_eq!(0x0A << 8 | 0x0B, port);
+            assert_eq!(0x0C0D0E0F, addr);
+        } else {
+            assert!(false, "Test address should be a V4 address");
+        }
+    }
+
+    #[test]
+    fn test_parse_mapped_address_attr_val_ipv6() {
+        let attr_val = [
+            0x00, 0x02,             // address family
+            0x03, 0x04,             // port
+            0x05, 0x06, 0x07, 0x08,
+            0x09, 0x0A, 0x0B, 0x0C,
+            0x0D, 0x0E, 0x0F, 0x1A,
+            0x1B, 0x1C, 0x1D, 0x1E, // ipv6 address
+        ];
+
+        let r = MappedAddressAttributeReader::new(&attr_val);
+        let addr = if let Ok(addr) = r.get_address() { addr } else {
+            assert!(false, "Test address should be a valid address");
+            return;
+        };
+
+        if let IpAddr::V6 { addr, port } = addr {
+            assert_eq!(0x0304, port);
+            assert_eq!(0x05060708090A0B0C0D0E0F1A1B1C1D1E, addr);
+        } else {
+            assert!(false, "Test address should be a V6 address");
+        }
+    }
+
+    #[test]
+    fn test_parse_mapped_address_attr() {
+        let attr = [
+            0x00, 0x01,             // type (MappedAddress)
+            0x00, 0x08,             // value length
+            0x00, 0x01,             // address family
+            0x0A, 0x0B,             // port
+            0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
+        ];
+
+        assert_eq!(1, Rfc3489Iterator::new(&attr).count());
+
+        let r = Rfc3489Iterator::new(&attr).next();
+
+        let r = if let Some(Ok(Rfc3489Attribute::MappedAddress(r))) = r { r } else {
+            assert!(false, "Iterator should return a valid MappingAddress attribute");
+            return;
+        };
+
+        let addr = if let Ok(addr) = r.get_address() { addr } else {
+            assert!(false, "Test address should be a valid address");
+            return;
+        };
+
+        if let IpAddr::V4 { addr, port } = addr {
+            assert_eq!(0x0A << 8 | 0x0B, port);
+            assert_eq!(0x0C0D0E0F, addr);
+        } else {
+            assert!(false, "Test address should be a V4 address");
         }
     }
 }
