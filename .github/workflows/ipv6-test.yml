@@ -28,5 +28,9 @@ jobs:
         private_key: '${{ secrets.WG_IFACE_PRIVATE_KEY }}'
     - name: Run ip addr
       run: ip addr
+    - name: Run cat ipv6
+      run: cat /sys/module/ipv6/parameters/disable
+    - name: Run sysctl
+      run: sysctl -a 2>/dev/null | grep disable_ipv6
     - name: Run ping
       run: ping6 -c 1 google.com
