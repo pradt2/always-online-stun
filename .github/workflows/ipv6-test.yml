@@ -23,21 +23,22 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
+    - uses: actions/checkout@v3
     - name: Set up dependencies
       run: sudo apt-get update && sudo apt-get install resolvconf wireguard wireguard-tools
     - name: Build executable
       run: cargo build
     - name: Set up WireGuard
       run: |
-        echo "[Interface]" >> ~/wg0.conf
-        echo "PrivateKey = $WG_IFACE_PRIVATE_KEY" >> ~/wg0.conf
-        echo "Address = $WG_IFACE_ADDRESS" >> ~/wg0.conf
-        echo "DNS = 1.1.1.1" >> ~/wg0.conf
-        echo "[Peer]" >> ~/wg0.conf
-        echo "PublicKey = $WG_PEER_PUBLIC_KEY" >> ~/wg0.conf
-        echo "Endpoint = $WG_PEER_ENDPOINT" >> ~/wg0.conf
-        echo "AllowedIPs = $WG_PEER_ALLOWED_IPS" >> ~/wg0.conf
-        sudo wg-quick up ~/wg0.conf
+        echo "[Interface]" >> /tmp/wg0.conf
+        echo "PrivateKey = $WG_IFACE_PRIVATE_KEY" >> /tmp/wg0.conf
+        echo "Address = $WG_IFACE_ADDRESS" >> /tmp/wg0.conf
+        echo "DNS = 1.1.1.1" >> /tmp/wg0.conf
+        echo "[Peer]" >> /tmp/wg0.conf
+        echo "PublicKey = $WG_PEER_PUBLIC_KEY" >> /tmp/wg0.conf
+        echo "Endpoint = $WG_PEER_ENDPOINT" >> /tmp/wg0.conf
+        echo "AllowedIPs = $WG_PEER_ALLOWED_IPS" >> /tmp/wg0.conf
+        sudo wg-quick up /tmp/wg0.conf
     - name: Ensure IPv4 and IPv6 connectivity
       run: curl google.com && curl -6 google.com
     - name: Run executable
