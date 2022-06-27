@@ -578,7 +578,7 @@ mod tests {
         };
 
         if let IpAddr::V4 { addr, port } = addr {
-            assert_eq!(0x0A << 8 | 0x0B, port);
+            assert_eq!(0x0A0B, port);
             assert_eq!(0x0C0D0E0F, addr);
         } else {
             assert!(false, "Test address should be a V4 address");
