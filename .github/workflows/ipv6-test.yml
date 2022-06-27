@@ -11,6 +11,11 @@ env:
   IS_BEHIND_NAT: true
   RUST_LOG: debug
   IPGEOLOCATIONIO_API_KEY: ${{ secrets.IPGEOLOCATIONIO_API_KEY }}
+  WG_IFACE_PRIVATE_KEY: ${{ secrets.WG_IFACE_PRIVATE_KEY }}
+  WG_IFACE_ADDRESS: ${{ secrets.WG_IFACE_ADDRESS }}
+  WG_PEER_PUBLIC_KEY: ${{ secrets.WG_PEER_PUBLIC_KEY }}
+  WG_PEER_ENDPOINT: ${{ secrets.WG_PEER_ENDPOINT }}
+  WG_PEER_ALLOWED_IPS: ${{ secrets.WG_PEER_ALLOWED_IPS }}
 
 jobs:
   build:
@@ -18,21 +23,23 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - name: Set up Resolvconf
-      run: apt-get update && apt-get install resolvconf
+    - uses: actions/checkout@v3
+    - name: Set up dependencies
+      run: sudo apt-get update && sudo apt-get install resolvconf wireguard wireguard-tools
+    - name: Build executable
+      run: cargo build
     - name: Set up WireGuard
-      uses: egor-tensin/setup-wireguard@v1
-      with:
-        endpoint: '${{ secrets.WG_PEER_ENDPOINT }}'
-        endpoint_public_key: '${{ secrets.WG_PEER_PUBLIC_KEY }}'
-        ips: '${{ secrets.WG_IFACE_ADDRESS }}'
-        allowed_ips: '${{ secrets.WG_PEER_ALLOWED_IPS }}'
-        private_key: '${{ secrets.WG_IFACE_PRIVATE_KEY }}'
-    - name: Run ip addr
-      run: ip addr
-    - name: Run cat ipv6
-      run: cat /sys/module/ipv6/parameters/disable
-    - name: Run sysctl
-      run: sysctl -a 2>/dev/null | grep disable_ipv6
-    - name: Run ping
-      run: ping6 -c 1 google.com
+      run: |
+        echo "[Interface]" >> /tmp/wg0.conf
+        echo "PrivateKey = $WG_IFACE_PRIVATE_KEY" >> /tmp/wg0.conf
+        echo "Address = $WG_IFACE_ADDRESS" >> /tmp/wg0.conf
+        echo "DNS = 1.1.1.1" >> /tmp/wg0.conf
+        echo "[Peer]" >> /tmp/wg0.conf
+        echo "PublicKey = $WG_PEER_PUBLIC_KEY" >> /tmp/wg0.conf
+        echo "Endpoint = $WG_PEER_ENDPOINT" >> /tmp/wg0.conf
+        echo "AllowedIPs = $WG_PEER_ALLOWED_IPS" >> /tmp/wg0.conf
+        sudo wg-quick up /tmp/wg0.conf
+    - name: Ensure IPv4 and IPv6 connectivity
+      run: curl google.com && curl -6 google.com
+    - name: Run executable
+      run: cargo run
