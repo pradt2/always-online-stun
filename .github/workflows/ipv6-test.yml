@@ -25,6 +25,8 @@ jobs:
     steps:
     - name: Set up dependencies
       run: sudo apt-get update && sudo apt-get install resolvconf wireguard wireguard-tools
+    - name: Build executable
+      run: cargo build
     - name: Set up WireGuard
       run: |
         echo "[Interface]" >> ~/wg0.conf
@@ -36,13 +38,7 @@ jobs:
         echo "Endpoint = $WG_PEER_ENDPOINT" >> ~/wg0.conf
         echo "AllowedIPs = $WG_PEER_ALLOWED_IPS" >> ~/wg0.conf
         sudo wg-quick up ~/wg0.conf
-    - name: Run ip addr
-      run: ip addr
-    - name: Run cat ipv6
-      run: cat /sys/module/ipv6/parameters/disable
-    - name: Run sysctl
-      run: sysctl -a 2>/dev/null | grep disable_ipv6
-    - name: Run curl
-      run: curl icanhazip.com
-    - name: Run ping6
-      run: curl -6 icanhazip.com
+    - name: Ensure IPv4 and IPv6 connectivity
+      run: curl google.com && curl -6 google.com
+    - name: Run executable
+      run: cargo run
