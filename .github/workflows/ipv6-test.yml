@@ -35,6 +35,6 @@ jobs:
     - name: Run sysctl
       run: sysctl -a 2>/dev/null | grep disable_ipv6
     - name: Run curl
-      run: curl google.com
+      run: curl icanhazip.com
     - name: Run ping6
-      run: curl -6 google.com
+      run: curl -6 icanhazip.com
