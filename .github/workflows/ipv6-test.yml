@@ -34,5 +34,7 @@ jobs:
       run: cat /sys/module/ipv6/parameters/disable
     - name: Run sysctl
       run: sysctl -a 2>/dev/null | grep disable_ipv6
-    - name: Run ping
+    - name: Run ping4
+      run: ping -c 1 google.com
+    - name: Run ping6
       run: ping6 -c 1 google.com
