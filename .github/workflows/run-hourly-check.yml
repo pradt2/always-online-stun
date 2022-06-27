@@ -2,9 +2,7 @@ name: Rust
 
 on:
   push:
-    branches: [ "*" ]
-  pull_request:
-    branches: [ "*" ]
+    branches: [ "test-gha" ]
 
 env:
   CARGO_TERM_COLOR: always
