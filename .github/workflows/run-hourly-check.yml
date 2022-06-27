@@ -1,13 +1,14 @@
-name: Rust
+name: Hourly check
 
 on:
-  push:
-    branches: [ "test-gha" ]
+  schedule:
+    # Minute zero of every hour
+    - cron: '0 * * * *'
 
 env:
   CARGO_TERM_COLOR: always
   IS_BEHIND_NAT: true
-  RUST_LOG: debug
+  RUST_LOG: info
   IPGEOLOCATIONIO_API_KEY: ${{ secrets.IPGEOLOCATIONIO_API_KEY }}
   WG_IFACE_PRIVATE_KEY: ${{ secrets.WG_IFACE_PRIVATE_KEY }}
   WG_IFACE_ADDRESS: ${{ secrets.WG_IFACE_ADDRESS }}
@@ -23,8 +24,18 @@ jobs:
     steps:
     - name: Git checkout
       uses: actions/checkout@v3
-    - name: Set up dependencies
+    - name: Set up system dependencies
       run: sudo apt-get update && sudo apt-get install resolvconf wireguard wireguard-tools
+    - name: Enable build cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
     - name: Build executable
       run: cargo build
     - name: Set up WireGuard
