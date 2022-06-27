@@ -84,20 +84,243 @@ pub struct StringReader<'a> {
     bytes: &'a [u8],
 }
 
-impl <'a> StringReader<'a> {
+impl<'a> StringReader<'a> {
     pub fn new(bytes: &'a [u8]) -> Self {
         Self {
             bytes
         }
     }
 
-    pub unsafe fn get_value_unchecked(&self) -> &str {
+    pub unsafe fn get_value_unchecked(&self) -> &'a str {
         core::str::from_utf8_unchecked(self.bytes)
     }
 
-    pub fn get_value(&self) -> Result<&str> {
+    pub fn get_value(&self) -> Result<&'a str> {
         core::str::from_utf8(self.bytes)
             .map_err(|_| ReaderErr::UnexpectedValue)
+    }
+}
+
+pub struct MessageIntegrityReader<'a> {
+    bytes: &'a [u8],
+}
+
+impl<'a> MessageIntegrityReader<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn get_value(&self) -> Result<&[u8; 20]> {
+        self.bytes.get(0..20)
+            .map(|b| b.try_into().unwrap())
+            .ok_or(ReaderErr::NotEnoughBytes)
+    }
+}
+
+pub struct FingerprintReader<'a> {
+    bytes: &'a [u8],
+}
+
+impl<'a> FingerprintReader<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn get_value(&self) -> Result<u32> {
+        self.bytes.get(0..4)
+            .map(|b| b.try_into().unwrap())
+            .map(|b: &[u8; 4]| u32::from_be_bytes(*b) ^ 0x5354554E)
+            .ok_or(ReaderErr::NotEnoughBytes)
+    }
+}
+
+pub struct UnknownAttrsIterator<'a> {
+    bytes: &'a [u8],
+    idx: usize,
+}
+
+impl<'a> Iterator for UnknownAttrsIterator<'a> {
+    type Item = Result<u16>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx >= self.bytes.len() {
+            None
+        } else {
+            let code = if let Ok(code) = self.bytes
+                .get(self.idx..self.idx + 2)
+                .map(|b| b.try_into().unwrap())
+                .map(|b: &[u8; 2]| u16::from_be_bytes(*b))
+                .ok_or(ReaderErr::NotEnoughBytes) { code } else {
+                return Some(Err(ReaderErr::NotEnoughBytes));
+            };
+
+            self.idx += 2;
+            Some(Ok(code))
+        }
+    }
+}
+
+pub struct UnknownAttrsReader<'a> {
+    bytes: &'a [u8],
+}
+
+impl<'a> UnknownAttrsReader<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn unknown_type_codes(&self) -> UnknownAttrsIterator<'a> {
+        UnknownAttrsIterator {
+            bytes: self.bytes,
+            idx: 0,
+        }
+    }
+}
+
+pub struct ErrorCodeReader<'a> {
+    bytes: &'a [u8],
+}
+
+impl<'a> ErrorCodeReader<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn get_code(&self) -> Result<u16> {
+        let class = if let Ok(class) = self.bytes
+            .get(2)
+            .map(|b| b >> 5) // we only care about 3 MSB
+            .ok_or(ReaderErr::NotEnoughBytes) { class as u16 } else {
+            return Err(ReaderErr::NotEnoughBytes);
+        };
+
+        let num = if let Ok(num) = self.bytes
+            .get(3)
+            .map(|b| *b)
+            .ok_or(ReaderErr::NotEnoughBytes) { num as u16 } else {
+            return Err(ReaderErr::NotEnoughBytes);
+        };
+
+        let code = class * 100 + num;
+        Ok(code)
+    }
+
+    pub fn get_reason(&self) -> Result<&str> {
+        let b = if let Ok(b) = self.bytes
+            .get(4..)
+            .ok_or(ReaderErr::NotEnoughBytes) { b } else {
+            return Err(ReaderErr::NotEnoughBytes);
+        };
+        StringReader::new(b).get_value()
+    }
+
+    pub unsafe fn get_reason_unchecked(&self) -> Result<&str> {
+        let b = if let Ok(b) = self.bytes
+            .get(4..)
+            .ok_or(ReaderErr::NotEnoughBytes) { b } else {
+            return Err(ReaderErr::NotEnoughBytes);
+        };
+        Ok(StringReader::new(b).get_value_unchecked())
+    }
+}
+
+struct RawAttributeIterator<'a> {
+    bytes: &'a [u8],
+    idx: usize,
+}
+
+impl<'a> RawAttributeIterator<'a> {
+    fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes,
+            idx: 0,
+        }
+    }
+}
+
+impl<'a> Iterator for RawAttributeIterator<'a> {
+    type Item = Result<(&'a [u8; 2], &'a [u8; 2], &'a [u8])>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        if self.idx >= self.bytes.len() {
+            None
+        } else {
+            let typ_raw = self.bytes.get(self.idx..self.idx + 2)
+                .map(|b| b.try_into().unwrap())
+                .ok_or(ReaderErr::NotEnoughBytes);
+
+            let typ_raw = match typ_raw {
+                Ok(t) => t,
+                Err(err) => {
+                    self.idx = self.bytes.len();
+                    return Some(Err(err));
+                }
+            };
+
+            let val_len_raw = self.bytes.get(self.idx + 2..self.idx + 4)
+                .map(|b| b.try_into().unwrap())
+                .ok_or(ReaderErr::NotEnoughBytes);
+
+            let val_len_raw: &[u8; 2] = match val_len_raw {
+                Ok(t) => t,
+                Err(err) => {
+                    self.idx = self.bytes.len();
+                    return Some(Err(err));
+                }
+            };
+
+            let val_len = u16::from_be_bytes(*val_len_raw) as usize;
+
+            let val_raw = self.bytes.get(self.idx + 4..self.idx + 4 + val_len)
+                .ok_or(ReaderErr::NotEnoughBytes);
+
+            let val_raw = match val_raw {
+                Ok(val) => val,
+                Err(err) => {
+                    self.idx = self.bytes.len();
+                    return Some(Err(err));
+                }
+            };
+
+            self.idx += 4 + val_len;
+
+            Some(Ok((typ_raw, val_len_raw, val_raw)))
+        }
+    }
+}
+
+pub struct BaseAttributeIterator<'a> {
+    raw_iter: RawAttributeIterator<'a>,
+}
+
+impl<'a> BaseAttributeIterator<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            raw_iter: RawAttributeIterator::new(bytes)
+        }
+    }
+}
+
+impl<'a> Iterator for BaseAttributeIterator<'a> {
+    type Item = Result<(u16, &'a [u8])>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        match self.raw_iter.next() {
+            None => None,
+            Some(Err(err)) => Some(Err(err)),
+            Some(Ok((typ_raw, _, val_raw))) => {
+                let typ = u16::from_be_bytes(*typ_raw);
+                Some(Ok((typ, val_raw)))
+            }
+        }
     }
 }
 
@@ -206,11 +429,128 @@ mod tests {
     #[test]
     fn string() {
         let attr_val = [
-            0x68, 0x65, 0x6C, 0x6C, 0x6F // hello
+            0x68, 0x65, 0x6C, 0x6C, 0x6F, // hello
         ];
 
         let r = StringReader::new(&attr_val);
         assert_eq!("hello", r.get_value().unwrap());
         unsafe { assert_eq!("hello", r.get_value_unchecked()); }
     }
+
+    #[test]
+    fn fingerprint() {
+        let attr_val = [
+            0x0A, 0x0B, 0x0C, 0x0D
+        ];
+
+        let r = FingerprintReader::new(&attr_val);
+        assert_eq!(0x0A0B0C0D ^ 0x5354554E, r.get_value().unwrap())
+    }
+
+    #[test]
+    fn message_integrity() {
+        let attr_val = [
+            0x01, 0x02, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F,
+            0x1A, 0x1B, 0x1C, 0x1D,
+        ];
+
+        let r = MessageIntegrityReader::new(&attr_val);
+        assert_eq!(&attr_val, r.get_value().unwrap())
+    }
+
+    #[test]
+    fn unknown_attrs() {
+        let attr_val = [
+            0x01, 0x02,
+        ];
+
+        assert_eq!(1, UnknownAttrsReader::new(&attr_val).unknown_type_codes().count());
+
+        let code = UnknownAttrsReader::new(&attr_val).unknown_type_codes().next().unwrap().unwrap();
+        assert_eq!(0x0102, code);
+    }
+
+    #[test]
+    fn error_code() {
+        let attr_val = [
+            0x00, 0x00,                     // mandatory padding
+            0x40, 0x16,                     // code 222
+            0x68, 0x65, 0x6C, 0x6C, 0x6F,   // reason 'hello'
+        ];
+
+        let r = ErrorCodeReader::new(&attr_val);
+
+        assert_eq!(222, r.get_code().unwrap());
+        assert_eq!("hello", r.get_reason().unwrap());
+        unsafe { assert_eq!("hello", r.get_reason_unchecked().unwrap()); }
+    }
+
+    #[test]
+    fn test_iter_over_attrs() {
+        let attr = [
+            0x00, 0x01,             // type
+            0x00, 0x04,             // value length
+            0x01, 0x01, 0x01, 0x01, // value
+        ];
+
+        assert_eq!(1, BaseAttributeIterator::new(&attr).count());
+
+        for attr in BaseAttributeIterator::new(&attr) {
+            match attr {
+                Ok((typ, val)) => {
+                    assert_eq!(1u16, typ);
+                    assert_eq!([0x01, 0x01, 0x01, 0x01], *val);
+                }
+                Err(_) => assert!(false, "Test attr should be valid")
+            }
+        }
+    }
+
+    #[test]
+    fn test_iter_over_attrs_invalid_attr_missing_byte() {
+        let attr = [
+            0x00, 0x01,             // type
+            0x00, 0x05,             // value length (4+1 because we're simulating a missing byte)
+            0x01, 0x01, 0x01, 0x01, // value
+        ];
+
+        assert_eq!(1, BaseAttributeIterator::new(&attr).count());
+
+        for attr in BaseAttributeIterator::new(&attr) {
+            match attr {
+                Ok(_) => assert!(false, "Test attr should be invalid"),
+                Err(_) => assert!(true, "Test attr should be valid")
+            }
+        }
+    }
+
+    #[test]
+    fn test_iter_over_attrs_invalid_attr_extra_byte() {
+        let attr = [
+            0x00, 0xFF,             // type
+            0x00, 0x03,             // value length (4-1 because we're simulating an extra byte)
+            0x01, 0x01, 0x01, 0x01, // value
+        ];
+
+        assert_eq!(2, BaseAttributeIterator::new(&attr).count());
+
+        let mut iter = BaseAttributeIterator::new(&attr);
+
+        if let Some(Ok((typ, val))) = iter.next() {
+            assert_eq!(0xFF, typ);
+            assert_eq!([0x01, 0x01, 0x01], *val);
+        } else {
+            assert!(false, "First attr should be valid");
+        }
+
+        if let Some(Err(_)) = iter.next() {
+            assert!(true);
+        } else {
+            assert!(false, "Second attr should be an error");
+        }
+    }
+
 }
