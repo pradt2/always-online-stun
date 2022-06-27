@@ -27,12 +27,6 @@ pub enum RfcSpec {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq)]
-pub enum AddressFamily {
-    V4,
-    V6,
-}
-
-#[derive(Copy, Clone, Debug, PartialEq)]
 pub enum ComplianceError {}
 
 #[derive(Copy, Clone, Debug, PartialEq)]

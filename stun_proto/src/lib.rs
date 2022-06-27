@@ -1,5 +1,9 @@
 #![no_std]
 
+use vals::{SocketAddrReader, StringReader, XorSocketAddrReader};
+
+mod vals;
+
 type Result<T> = core::result::Result<T, ReaderErr>;
 
 #[derive(Debug, PartialEq)]
@@ -330,17 +334,38 @@ impl<'a> Iterator for AttributeIterator<'a> {
 }
 
 enum Rfc3489Attribute<'a> {
-    MappedAddress(MappedAddressAttributeReader<'a>),
+    MappedAddress(vals::SocketAddrReader<'a>),
+    ResponseAddress(vals::SocketAddrReader<'a>),
+    ChangeAddress(vals::SocketAddrReader<'a>),
+    SourceAddress(vals::SocketAddrReader<'a>),
+    ChangedAddress(vals::SocketAddrReader<'a>),
+    Username(vals::StringReader<'a>),
+    Password(vals::StringReader<'a>),
+    // MessageIntegrity(vals::<'a>),
+    // UnknownAttributes(vals::<'a>),
+    ReflectedFrom(vals::SocketAddrReader<'a>),
+    // ErrorCode(vals::<'a>),
+    Realm(vals::StringReader<'a>),
+    Nonce(vals::StringReader<'a>),
+    XorMappedAddress(vals::XorSocketAddrReader<'a>),
+    OptXorMappedAddress(vals::XorSocketAddrReader<'a>),
+    Software(vals::StringReader<'a>),
+    AlternateServer(vals::SocketAddrReader<'a>),
+    ResponseOrigin(vals::SocketAddrReader<'a>),
+    OtherAddress(vals::SocketAddrReader<'a>),
+    // Fingerprint(vals::<'a>),
 }
 
 struct Rfc3489Iterator<'a> {
     attr_iter: AttributeIterator<'a>,
+    transaction_id: u128,
 }
 
 impl<'a> Rfc3489Iterator<'a> {
-    fn new(bytes: &'a [u8]) -> Self {
+    fn new(bytes: &'a [u8], transaction_id: u128) -> Self {
         Self {
-            attr_iter: AttributeIterator::new(bytes)
+            attr_iter: AttributeIterator::new(bytes),
+            transaction_id
         }
     }
 }
@@ -353,68 +378,36 @@ impl<'a> Iterator for Rfc3489Iterator<'a> {
             None => None,
             Some(Err(err)) => Some(Err(err)),
             Some(Ok((typ, bytes))) => match typ {
-                0x0001 => Some(Ok(Rfc3489Attribute::MappedAddress(MappedAddressAttributeReader::new(bytes)))),
+                0x0001 => Some(Ok(Rfc3489Attribute::MappedAddress(SocketAddrReader::new(bytes)))),
+                0x0002 => Some(Ok(Rfc3489Attribute::ResponseAddress(SocketAddrReader::new(bytes)))),
+                0x0003 => Some(Ok(Rfc3489Attribute::ChangeAddress(SocketAddrReader::new(bytes)))),
+                0x0004 => Some(Ok(Rfc3489Attribute::SourceAddress(SocketAddrReader::new(bytes)))),
+                0x0005 => Some(Ok(Rfc3489Attribute::ChangedAddress(SocketAddrReader::new(bytes)))),
+                0x0006 => Some(Ok(Rfc3489Attribute::Username(StringReader::new(bytes)))),
+                0x0007 => Some(Ok(Rfc3489Attribute::Password(StringReader::new(bytes)))),
+                // 0x0008 => Some(Ok(Rfc3489Attribute::MessageIntegrity(MessageIntegrityAttributeReader::new(bytes)))),
+                // 0x000A => Some(Ok(Rfc3489Attribute::UnknownAttributes(UnknownAttributesAttributeReader::new(bytes)))),
+                0x000B => Some(Ok(Rfc3489Attribute::ReflectedFrom(SocketAddrReader::new(bytes)))),
+                // 0x0009 => Some(Ok(Rfc3489Attribute::ErrorCode(ErrorCodeAttributeReader::new(bytes)))),
+                0x0014 => Some(Ok(Rfc3489Attribute::Realm(StringReader::new(bytes)))),
+                0x0015 => Some(Ok(Rfc3489Attribute::Nonce(StringReader::new(bytes)))),
+                0x0020 => Some(Ok(Rfc3489Attribute::XorMappedAddress(XorSocketAddrReader::new(bytes, self.transaction_id)))),
+                0x8020 => Some(Ok(Rfc3489Attribute::OptXorMappedAddress(XorSocketAddrReader::new(bytes, self.transaction_id)))),
+                0x8022 => Some(Ok(Rfc3489Attribute::Software(StringReader::new(bytes)))),
+                0x8023 => Some(Ok(Rfc3489Attribute::AlternateServer(SocketAddrReader::new(bytes)))),
+                0x802b => Some(Ok(Rfc3489Attribute::ResponseOrigin(SocketAddrReader::new(bytes)))),
+                0x802c => Some(Ok(Rfc3489Attribute::OtherAddress(SocketAddrReader::new(bytes)))),
+                // 0x8028 => Some(Ok(Rfc3489Attribute::Fingerprint(FingerprintAttributeReader::new(bytes))),
+                // _ => Err(NonParsableAttribute::Unknown(UnknownAttrReader::new(bytes)))
                 _ => Some(Err(ReaderErr::UnexpectedValue))
             }
         }
     }
 }
 
-enum IpAddr {
+pub enum SocketAddr {
     V4 { addr: u32, port: u16 },
     V6 { addr: u128, port: u16 },
-}
-
-struct MappedAddressAttributeReader<'a> {
-    bytes: &'a [u8],
-}
-
-impl<'a> MappedAddressAttributeReader<'a> {
-    pub fn new(bytes: &'a [u8]) -> Self {
-        Self { bytes }
-    }
-
-    pub fn get_address(&self) -> Result<IpAddr> {
-        let addr_family = if let Some(val) = self.bytes.get(0..2)
-            .map(|b| b.try_into().unwrap())
-            .map(|b: &[u8; 2]| u16::from_be_bytes(*b)) { val } else {
-            return Err(ReaderErr::NotEnoughBytes);
-        };
-
-        let port = if let Some(val) = self.bytes.get(2..4)
-            .map(|b| b.try_into().unwrap())
-            .map(|b: &[u8; 2]| u16::from_be_bytes(*b)) { val } else {
-            return Err(ReaderErr::NotEnoughBytes);
-        };
-
-        match addr_family {
-            1 => {
-                let b = self.bytes.get(4..8)
-                    .map(|b| b.try_into().unwrap())
-                    .map(|b: &[u8; 4]| u32::from_be_bytes(*b))
-                    .ok_or(ReaderErr::NotEnoughBytes);
-
-                let addr = if let Ok(b) = b { b } else {
-                    return Err(ReaderErr::NotEnoughBytes);
-                };
-
-                Ok(IpAddr::V4 { addr, port })
-            }
-            2 => {
-                let b = self.bytes.get(4..20)
-                    .map(|b| b.try_into().unwrap())
-                    .map(|b: [u8; 16]| u128::from_be_bytes(b))
-                    .ok_or(ReaderErr::NotEnoughBytes);
-
-                let addr = if let Ok(b) = b { b } else {
-                    return Err(ReaderErr::NotEnoughBytes);
-                };
-
-                Ok(IpAddr::V6 { addr, port })
-            }
-            _ => Err(ReaderErr::UnexpectedValue)
-        }
-    }
 }
 
 #[cfg(test)]
@@ -507,53 +500,6 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_mapped_address_attr_val_ipv4() {
-        let attr_val = [
-            0x00, 0x01,             // address family
-            0x0A, 0x0B,             // port
-            0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
-        ];
-
-        let r = MappedAddressAttributeReader::new(&attr_val);
-        let addr = if let Ok(addr) = r.get_address() { addr } else {
-            assert!(false, "Test address should be a valid address");
-            return;
-        };
-
-        if let IpAddr::V4 { addr, port } = addr {
-            assert_eq!(0x0A << 8 | 0x0B, port);
-            assert_eq!(0x0C0D0E0F, addr);
-        } else {
-            assert!(false, "Test address should be a V4 address");
-        }
-    }
-
-    #[test]
-    fn test_parse_mapped_address_attr_val_ipv6() {
-        let attr_val = [
-            0x00, 0x02,             // address family
-            0x03, 0x04,             // port
-            0x05, 0x06, 0x07, 0x08,
-            0x09, 0x0A, 0x0B, 0x0C,
-            0x0D, 0x0E, 0x0F, 0x1A,
-            0x1B, 0x1C, 0x1D, 0x1E, // ipv6 address
-        ];
-
-        let r = MappedAddressAttributeReader::new(&attr_val);
-        let addr = if let Ok(addr) = r.get_address() { addr } else {
-            assert!(false, "Test address should be a valid address");
-            return;
-        };
-
-        if let IpAddr::V6 { addr, port } = addr {
-            assert_eq!(0x0304, port);
-            assert_eq!(0x05060708090A0B0C0D0E0F1A1B1C1D1E, addr);
-        } else {
-            assert!(false, "Test address should be a V6 address");
-        }
-    }
-
-    #[test]
     fn test_parse_mapped_address_attr() {
         let attr = [
             0x00, 0x01,             // type (MappedAddress)
@@ -563,9 +509,9 @@ mod tests {
             0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
         ];
 
-        assert_eq!(1, Rfc3489Iterator::new(&attr).count());
+        assert_eq!(1, Rfc3489Iterator::new(&attr, 0).count());
 
-        let r = Rfc3489Iterator::new(&attr).next();
+        let r = Rfc3489Iterator::new(&attr, 0).next();
 
         let r = if let Some(Ok(Rfc3489Attribute::MappedAddress(r))) = r { r } else {
             assert!(false, "Iterator should return a valid MappingAddress attribute");
@@ -577,7 +523,7 @@ mod tests {
             return;
         };
 
-        if let IpAddr::V4 { addr, port } = addr {
+        if let SocketAddr::V4 { addr, port } = addr {
             assert_eq!(0x0A0B, port);
             assert_eq!(0x0C0D0E0F, addr);
         } else {
