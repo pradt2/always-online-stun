@@ -19,7 +19,7 @@ jobs:
 
     steps:
     - name: Set up Resolvconf
-      run: apt-get update && apt-get install resolvconf
+      run: sudo apt-get update && sudo apt-get install resolvconf
     - name: Set up WireGuard
       uses: egor-tensin/setup-wireguard@v1
       with:
