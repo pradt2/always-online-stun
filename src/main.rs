@@ -4,6 +4,7 @@ use std::rc::Rc;
 use std::time::Duration;
 use futures::StreamExt;
 use tokio::time::Instant;
+use crate::geoip::GeolocationDbClient;
 use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
@@ -29,7 +30,7 @@ async fn main() -> io::Result<()> {
         .parse()
         .expect("IS_BEHIND_NAT must be true or false");
 
-    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default().await?));
+    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::<GeolocationDbClient>::default().await?));
 
     let stun_servers = servers::get_stun_servers().await?;
 
