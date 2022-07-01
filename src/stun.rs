@@ -1,5 +1,6 @@
 use std::net::{SocketAddr};
 use std::time::{Duration, Instant};
+use stunclient::Error;
 use tokio::net::UdpSocket;
 use crate::utils::join_all_with_semaphore;
 use crate::StunServer;
@@ -105,7 +106,9 @@ pub(crate) async fn test_udp_stun_server(
     let socket_addrs = tokio::net::lookup_host(format!("{}:{}", server.hostname, server.port)).await;
 
     if socket_addrs.is_err() {
-        if socket_addrs.as_ref().err().unwrap().to_string() != "failed to lookup address information: Name or service not known" {
+        let err_str = socket_addrs.as_ref().err().unwrap().to_string();
+        if err_str.contains("Name or service not known") ||
+            err_str.contains("No address associated with hostname") {} else {
             warn!("{:<21} -> Unexpected DNS failure: {}", server.hostname, socket_addrs.as_ref().err().unwrap().to_string());
         }
         return StunServerTestResult {
@@ -177,12 +180,18 @@ async fn test_socket_addr_against_trusted_party(
             }
         }).expect("Trusted party must provide IPv4 and v6 connectivity");
 
-    let mut client = stunclient::StunClient::new(trusted_party_addr);
-    let deadline = Duration::from_secs(5);
-    client.set_timeout(deadline);
+    let mut local_socket_mapping = None;
+    for _ in 0..3 {
+        let mut client = stunclient::StunClient::new(trusted_party_addr);
+        let deadline = Duration::from_secs(5);
+        client.set_timeout(deadline);
+        match client.query_external_address_async(&local_socket).await {
+            Ok(addr) => {local_socket_mapping = Some(addr); break},
+            Err(_) => continue
+        }
+    };
 
-    let local_socket_mapping = client.query_external_address_async(&local_socket).await
-        .expect("Trusted party must provide a valid mapping");
+    let local_socket_mapping = local_socket_mapping.expect("Trusted party must provide a valid mapping");
 
     test_socket(hostname, socket_addr, local_socket_mapping, &local_socket).await
 }
