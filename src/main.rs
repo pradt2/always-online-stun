@@ -8,6 +8,7 @@ use futures::StreamExt;
 use tokio::time::Instant;
 use clap::Parser;
 
+use crate::geoip::GeolocationDbClient;
 use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
@@ -66,7 +67,7 @@ async fn main() -> io::Result<()> {
 
     let cli: Cli = Cli::parse();
 
-    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default(cli.geoip_cache_file).await?));
+    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::<GeolocationDbClient>::new(cli.candidates_file).await?));
 
     let stun_servers = servers::get_stun_servers(cli.candidates_file).await?;
 

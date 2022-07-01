@@ -1,0 +1,62 @@
+name: Hourly check
+
+on:
+  schedule:
+    # Minute zero of every hour
+    - cron: '0 * * * *'
+
+env:
+  CARGO_TERM_COLOR: always
+  IS_BEHIND_NAT: true
+  RUST_LOG: info
+  IPGEOLOCATIONIO_API_KEY: ${{ secrets.IPGEOLOCATIONIO_API_KEY }}
+  WG_IFACE_PRIVATE_KEY: ${{ secrets.WG_IFACE_PRIVATE_KEY }}
+  WG_IFACE_ADDRESS: ${{ secrets.WG_IFACE_ADDRESS }}
+  WG_PEER_PUBLIC_KEY: ${{ secrets.WG_PEER_PUBLIC_KEY }}
+  WG_PEER_ENDPOINT: ${{ secrets.WG_PEER_ENDPOINT }}
+  WG_PEER_ALLOWED_IPS: ${{ secrets.WG_PEER_ALLOWED_IPS }}
+
+jobs:
+  build:
+
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Git checkout
+      uses: actions/checkout@v3
+    - name: Set up system dependencies
+      run: sudo apt-get update && sudo apt-get install resolvconf wireguard wireguard-tools
+    - name: Enable build cache
+      uses: actions/cache@v3
+      with:
+        path: |
+          ~/.cargo/bin/
+          ~/.cargo/registry/index/
+          ~/.cargo/registry/cache/
+          ~/.cargo/git/db/
+          target/
+        key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+    - name: Build executable
+      run: cargo build
+    - name: Set up WireGuard
+      run: |
+        echo "[Interface]" >> /tmp/wg0.conf
+        echo "PrivateKey = $WG_IFACE_PRIVATE_KEY" >> /tmp/wg0.conf
+        echo "Address = $WG_IFACE_ADDRESS" >> /tmp/wg0.conf
+        echo "DNS = 1.1.1.1" >> /tmp/wg0.conf
+        echo "[Peer]" >> /tmp/wg0.conf
+        echo "PublicKey = $WG_PEER_PUBLIC_KEY" >> /tmp/wg0.conf
+        echo "Endpoint = $WG_PEER_ENDPOINT" >> /tmp/wg0.conf
+        echo "AllowedIPs = $WG_PEER_ALLOWED_IPS" >> /tmp/wg0.conf
+        sudo wg-quick up /tmp/wg0.conf
+    - name: Ensure IPv4 and IPv6 connectivity
+      run: curl google.com && curl -6 google.com
+    - name: Run executable
+      run: cargo run
+    - name: Create timestamp
+      id: create-timestamp
+      run: echo "::set-output name=timestamp::$(echo $(date --utc))"
+    - name: Git commit & push
+      uses: stefanzweifel/git-auto-commit-action@v4
+      with:
+        commit_message: Check ${{ steps.create-timestamp.outputs.timestamp }}
