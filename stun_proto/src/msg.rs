@@ -1,4 +1,17 @@
-use super::{Class, Method, ReaderErr, Result};
+use super::{ReaderErr, Result};
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Method {
+    Binding,
+}
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum Class {
+    Request,
+    Indirection,
+    SuccessResponse,
+    ErrorResponse,
+}
 
 pub struct RawMsgHeaderReader<'a> {
     bytes: &'a [u8],

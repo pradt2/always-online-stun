@@ -1,11 +1,11 @@
 #![no_std]
 
 mod base;
-mod vals;
+mod attrs;
 mod msg;
 
 use base::*;
-use vals::*;
+use attrs::*;
 use msg::*;
 
 pub mod rfc3xxx;

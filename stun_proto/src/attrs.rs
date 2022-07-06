@@ -1,4 +1,11 @@
-use crate::{ReaderErr, Result, SocketAddr};
+use crate::{ReaderErr, Result};
+
+
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum SocketAddr {
+    V4 { addr: u32, port: u16 },
+    V6 { addr: u128, port: u16 },
+}
 
 pub struct SocketAddrReader<'a> {
     bytes: &'a [u8],

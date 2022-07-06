@@ -1,5 +1,7 @@
 use super::*;
-pub use super::base::*;
+
+pub use super::msg::{Class, Method};
+pub use super::attrs::{SocketAddr};
 
 pub struct Reader<'a> {
     header: MsgHeaderReader<'a>,
