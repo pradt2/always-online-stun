@@ -167,7 +167,7 @@ async fn test_socket_addr_against_trusted_party(
         }
     ).await.unwrap();
 
-    let trusted_party_addr = tokio::net::lookup_host("stun.nextcloud.com:3478").await
+    let trusted_party_addr = tokio::net::lookup_host("stun.l.google.com:19305").await
         .expect("Trusted party hostname must be resolvable")
         .find_map(|resolved_addr| match &socket_addr {
             SocketAddr::V4(_) => match &resolved_addr {
