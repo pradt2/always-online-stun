@@ -4,6 +4,8 @@ This document distills the message formats listed in all RFC documents related t
 
 ## [RFC 3489](https://datatracker.ietf.org/doc/html/rfc3489)
 
+Note: This RFC has been obsoleted in its entirety by RFC 5389.
+
 ### [Section 11.1](https://datatracker.ietf.org/doc/html/rfc3489#section-11.1) Message header
 
 ```text
@@ -21,12 +23,12 @@ This document distills the message formats listed in all RFC documents related t
 The Message Types can take on the following values:
 
 ```text
-0x0001  :  Binding Request
-0x0101  :  Binding Response
-0x0111  :  Binding Error Response
-0x0002  :  Shared Secret Request
-0x0102  :  Shared Secret Response
-0x0112  :  Shared Secret Error Response
+0x0001: Binding Request
+0x0101: Binding Response
+0x0111: Binding Error Response
+0x0002: Shared Secret Request
+0x0102: Shared Secret Response
+0x0112: Shared Secret Error Response
 ```
 
 The message length is the count, in bytes, of the size of the
@@ -323,4 +325,503 @@ The padding bits are ignored, and may be any value.
 
 Attributes with type values between `0x0000` and `0x7FFF` are comprehension-required attributes, which means that the STUN agent cannot successfully process the message unless it understands the attribute.
 Attributes with type values between `0x8000` and `0xFFFF` are comprehension-optional attributes.
+
+### [Section 15.1](https://datatracker.ietf.org/doc/html/rfc5389#section-15.1) Attribute MAPPED-ADDRESS
+
+The MAPPED-ADDRESS attribute indicates a reflexive transport address
+of the client.  It consists of an 8-bit address family and a 16-bit
+port, followed by a fixed-length value representing the IP address.
+If the address family is IPv4, the address MUST be 32 bits.  If the
+address family is IPv6, the address MUST be 128 bits.  All fields
+must be in network byte order.
+
+```text
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|X X X X X X X X|    Family     |           Port                |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
+|             Addr(32 bits for v4 or 128 bits for v6)           |
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The address family can take on the following values:
+
+```text
+0x01 : IPv4
+0x02 : IPv6
+```
+
+The first 8 bits of the MAPPED-ADDRESS MUST be set to 0 and MUST be ignored by receivers.
+
+### [Section 15.2](https://datatracker.ietf.org/doc/html/rfc5389#section-15.2) Attribute XOR-MAPPED-ADDRESS
+
+The XOR-MAPPED-ADDRESS attribute is identical to the MAPPED-ADDRESS attribute, except that the reflexive transport address is obfuscated through the XOR function.
+
+The format of the XOR-MAPPED-ADDRESS is:
+
+```text
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|X X X X X X X X|    Family     |           Port                |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                                                               |
+|             Addr(32 bits for v4 or 128 bits for v6)           |
+|                                                               |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The Family represents the IP address family, and is encoded
+identically to the Family in MAPPED-ADDRESS.
+
+Port is computed by taking the mapped port in host byte order, XOR'ing it with the most significant 16 bits of the magic cookie, and then the converting the result to network byte order. 
+If the IP address family is IPv4, Address is computed by taking the mapped IP address in host byte order, XOR'ing it with the magic cookie, and converting the result to network byte order.
+If the IP address family is IPv6, Address is computed by taking the mapped IP address in host byte order, XOR'ing it with the concatenation of the magic cookie and the 96-bit transaction ID, and converting the result to network byte order.
+
+### [Section 15.3](https://datatracker.ietf.org/doc/html/rfc5389#section-15.3) Attribute USERNAME
+
+The value of USERNAME is a variable-length value.
+It MUST contain a [UTF-8](https://datatracker.ietf.org/doc/html/rfc3629) encoded sequence of less than 513 bytes, and MUST have been processed using [SASLprep](https://datatracker.ietf.org/doc/html/rfc4013).
+
+### [Section 15.4](https://datatracker.ietf.org/doc/html/rfc5389#section-15.4) Attribute MESSAGE-INTEGRITY
+
+The MESSAGE-INTEGRITY attribute contains an [HMAC-SHA1](https://datatracker.ietf.org/doc/html/rfc2104) of the STUN message.
+Since it uses the SHA1 hash, the HMAC will be 20 bytes.
+
+### [Section 15.5](https://datatracker.ietf.org/doc/html/rfc5389#section-15.5) Attribute FINGERPRINT
+
+The FINGERPRINT attribute MAY be present in all STUN messages. 
+The value of the attribute is computed as the CRC-32 of the STUN message up to (but excluding) the FINGERPRINT attribute itself, XOR'ed with the 32-bit value 0x5354554e.
+
+### [Section 15.6](https://datatracker.ietf.org/doc/html/rfc5389#section-15.6) Attribute ERROR-CODE
+
+The ERROR-CODE attribute is used in error response messages.  It
+contains a numeric error code value in the range of 300 to 699 plus a
+textual reason phrase encoded in [UTF-8](https://datatracker.ietf.org/doc/html/rfc3629), and is consistent
+in its code assignments and semantics with [SIP](https://datatracker.ietf.org/doc/html/rfc3261) [RFC3261] and [HTTP](https://datatracker.ietf.org/doc/html/rfc2616).  The reason phrase is meant for user consumption, and can
+be anything appropriate for the error code.  Recommended reason
+phrases for the defined error codes are included in the IANA registry
+for error codes.  The reason phrase MUST be a UTF-8 encoded
+sequence of less than 128 characters (which can be as long as 763
+bytes).
+
+```text
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|           Reserved, should be 0         |Class|     Number    |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|                    Reason Phrase (variable)                  ..
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The Reserved bits SHOULD be 0, and are for alignment on 32-bit
+boundaries.  Receivers MUST ignore these bits.  The Class represents
+the hundreds digit of the error code.  The value MUST be between 3
+and 6.  The Number represents the error code modulo 100, and its
+value MUST be between 0 and 99.
+
+The following error codes, along with their recommended reason
+phrases, are defined:
+
+ - `300  Try Alternate` The client should contact an alternate server for
+this request.  This error response MUST only be sent if the
+request included a USERNAME attribute and a valid MESSAGE-
+INTEGRITY attribute; otherwise, it MUST NOT be sent and error
+code 400 (Bad Request) is suggested.  This error response MUST
+be protected with the MESSAGE-INTEGRITY attribute, and receivers
+MUST validate the MESSAGE-INTEGRITY of this response before
+redirecting themselves to an alternate server.
+
+
+ - `400  Bad Request` The request was malformed.  The client SHOULD NOT
+retry the request without modification from the previous
+attempt.  The server may not be able to generate a valid
+MESSAGE-INTEGRITY for this error, so the client MUST NOT expect
+a valid MESSAGE-INTEGRITY attribute on this response.
+
+
+ - `401  Unauthorized` The request did not contain the correct
+credentials to proceed.  The client should retry the request
+with proper credentials.
+
+
+ - `420  Unknown Attribute` The server received a STUN packet containing
+a comprehension-required attribute that it did not understand.
+The server MUST put this unknown attribute in the UNKNOWN-
+ATTRIBUTE attribute of its error response.
+
+
+ - `438  Stale Nonce` The NONCE used by the client was no longer valid.
+The client should retry, using the NONCE provided in the
+response.
+
+
+ - `500  Server Error` The server has suffered a temporary error.  The
+client should try again.
+
+
+### [Section 15.7](https://datatracker.ietf.org/doc/html/rfc5389#section-15.7) Attribute REALM
+
+It MUST be a [UTF-8](https://datatracker.ietf.org/doc/html/rfc3629) encoded sequence of less than 128 characters (which
+can be as long as 763 bytes), and MUST have been processed using [SASLprep](https://datatracker.ietf.org/doc/html/rfc4013).
+
+### [Section 15.8](https://datatracker.ietf.org/doc/html/rfc5389#section-15.8) Attribute NONCE
+
+It contains a sequence of qdtext or quoted-pair, which are defined in
+[RFC 3261](https://datatracker.ietf.org/doc/html/rfc3261).
+Note that this means that the NONCE attribute will not contain actual quote characters.
+
+It MUST be less than 128 characters (which can be as long as 763 bytes).
+
+### [Section 15.9](https://datatracker.ietf.org/doc/html/rfc5389#section-15.9) Attribute UNKNOWN-ATTRIBUTES
+
+The attribute contains a list of 16-bit values, each of which
+represents an attribute type that was not understood by the server.
+
+```text
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|      Attribute 1 Type           |     Attribute 2 Type        |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|      Attribute 3 Type           |     Attribute 4 Type       ..
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+In RFC 3489, this field was padded to 32 by duplicating the last attribute.
+In this version of the specification, the normal padding rules for attributes are used instead.
+
+### [Section 15.10](https://datatracker.ietf.org/doc/html/rfc5389#section-15.10) Attribute SOFTWARE
+
+The value of SOFTWARE is variable length. It MUST be a [UTF-8](https://datatracker.ietf.org/doc/html/rfc3629)
+encoded sequence of less than 128 characters (which can be as long as 763 bytes).
+
+### [Section 15.11](https://datatracker.ietf.org/doc/html/rfc5389#section-15.11) Attribute ALTERNATE-SERVER
+
+The value is encoded in the same way as MAPPED-ADDRESS, and thus refers to a
+single server by IP address.  The IP address family MUST be identical to that of the source IP address of the request.
+
+### [Section 18.2](https://datatracker.ietf.org/doc/html/rfc5389#section-18.2) Attribute types registry
+
+The initial STUN Attributes types are:
+
+Comprehension-required range (`0x0000`-`0x7FFF`):
+```text
+0x0000: (Reserved)
+0x0001: MAPPED-ADDRESS
+0x0002: (Reserved; was RESPONSE-ADDRESS)
+0x0003: (Reserved; was CHANGE-ADDRESS)
+0x0004: (Reserved; was SOURCE-ADDRESS)
+0x0005: (Reserved; was CHANGED-ADDRESS)
+0x0006: USERNAME
+0x0007: (Reserved; was PASSWORD)
+0x0008: MESSAGE-INTEGRITY
+0x0009: ERROR-CODE
+0x000A: UNKNOWN-ATTRIBUTES
+0x000B: (Reserved; was REFLECTED-FROM)
+0x0014: REALM
+0x0015: NONCE
+0x0020: XOR-MAPPED-ADDRESS
+```
+
+Comprehension-optional range (`0x8000`-`0xFFFF`)
+```text
+0x8022: SOFTWARE
+0x8023: ALTERNATE-SERVER
+0x8028: FINGERPRINT
+```
+
+## [RFC 5245](https://datatracker.ietf.org/doc/html/rfc5245)
+
+### [Section 19.1](https://datatracker.ietf.org/doc/html/rfc5245#section-19.1) New attributes
+
+This specification defines four new attributes, PRIORITY, USE-CANDIDATE, ICE-CONTROLLED, and ICE-CONTROLLING.
+
+The PRIORITY attribute indicates the priority that is to be
+associated with a peer reflexive candidate, should one be discovered
+by this check.  It is a 32-bit unsigned integer, and has an attribute
+value of 0x0024.
+
+The USE-CANDIDATE attribute indicates that the candidate pair
+resulting from this check should be used for transmission of media.
+The attribute has no content (the Length field of the attribute is
+zero); it serves as a flag.  It has an attribute value of 0x0025.
+
+The ICE-CONTROLLED attribute is present in a Binding request and
+indicates that the client believes it is currently in the controlled
+role.  The content of the attribute is a 64-bit unsigned integer in
+network byte order, which contains a random number used for tie-
+breaking of role conflicts.
+
+The ICE-CONTROLLING attribute is present in a Binding request and
+indicates that the client believes it is currently in the controlling
+role.  The content of the attribute is a 64-bit unsigned integer in
+network byte order, which contains a random number used for tie-
+breaking of role conflicts.
+
+### [Section 19.12](https://datatracker.ietf.org/doc/html/rfc5245#section-19.2) New error codes
+
+This specification defines a single error response code:
+
+ - `487 (Role Conflict)`  The Binding request contained either the ICE-CONTROLLING or ICE-CONTROLLED attribute, indicating a role that
+conflicted with the server.  The server ran a tie-breaker based on
+the tie-breaker value in the request and determined that the
+client needs to switch roles.
+
+## [RFC 5780](https://datatracker.ietf.org/doc/html/rfc5780)
+
+### [Section 7.2](https://datatracker.ietf.org/doc/html/rfc5780#section-7.2) Attribute CHANGE-REQUEST
+
+The attribute is 32 bits long, although only two bits (A and B) are used:
+
+```text
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 0 A B 0|
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The meanings of the flags are:
+
+A: This is the "change IP" flag.  If true, it requests the server to
+send the Binding Response with a different IP address than the one
+the Binding Request was received on.
+
+B: This is the "change port" flag.  If true, it requests the server
+to send the Binding Response with a different port than the one
+the Binding Request was received on.
+
+### [Section 7.3](https://datatracker.ietf.org/doc/html/rfc5780#section-7.3) Attribute RESPONSE-ORIGIN
+
+The RESPONSE-ORIGIN attribute is inserted by the server and indicates the source IP address and port the response was sent from.
+
+*Editor's note:* The RFC does not explicity specify whether this attribute follows the MAPPED-ADDERESS or XOR-MAPPED-ADDRESS semantics.
+However, it can be inferred (guessed) from Section 7.2 that the attribute should follow the MAPPED-ADDRESS semantics.
+
+### [Section 7.4](https://datatracker.ietf.org/doc/html/rfc5780#section-7.4) Attribute OTHER-ADDRESS
+
+It informs the client of the source IP address and port that would be used if the client requested the "change IP" and "change port" behavior.
+
+OTHER-ADDRESS uses the same attribute number as CHANGED-ADDRESS from
+RFC 3489 because it is simply a new name with the same
+semantics as CHANGED-ADDRESS.  It has been renamed to more clearly
+indicate its function.
+
+*Editor's note*: **in my opinion**, the paragraph above is incorrect.
+This is because the attribute type of the CHANGED-ADDRESS attriubute in RFC 3489 equals `0x0005`, whereas attribute type of the OTHER-ADDRESS attribute equals `0x802c`.
+For this reason I believe that the paragraph above should be be dismissed.
+
+### [Section 7.5](https://datatracker.ietf.org/doc/html/rfc5780#section-7.5) Attribute RESPONSE-PORT
+
+RESPONSE-PORT is a 16-bit unsigned integer in network byte order followed by 2 bytes of padding.
+Allowable values of RESPONSE-PORT are `0`-`65536`.
+
+### [Section 7.6](https://datatracker.ietf.org/doc/html/rfc5780#section-7.6) Attribute PADDING
+
+PADDING consists entirely of a free-form string, the value of which does not matter.
+
+### [Section 9.1](https://datatracker.ietf.org/doc/html/rfc5780#section-9.1) Attribute types registry
+
+This specification defines several new STUN attributes.  IANA has
+added these new protocol elements to the "STUN Attributes" registry.
+
+```text
+0x0003: CHANGE-REQUEST
+0x0027: RESPONSE-PORT
+0x0026: PADDING
+0x8027: CACHE-TIMEOUT
+0x802b: RESPONSE-ORIGIN
+0x802c: OTHER-ADDRESS
+```
+
+*Editor's note:* No other RFC metions the CACHE-TIMEOUT attribute; it is only metioned in an IETF's [Draft document ver. 6 of RFC 5780](https://datatracker.ietf.org/doc/html/draft-ietf-behave-nat-behavior-discovery-06).
+The description of the attribute is present in [Section 7.8](https://datatracker.ietf.org/doc/html/draft-ietf-behave-nat-behavior-discovery-06#section-7.8) of the Draft document.
+This entire section is removed in [version 7](https://datatracker.ietf.org/doc/html/draft-ietf-behave-nat-behavior-discovery-07) of the Draft document and does not reappear again either in subsequent drafts, nor in the final RFC 5780 document.
+Even though the description is missing from the RFC, several mentions of the attribute are scattered throughout the document, and hence the attribute is listed here as well.
+
+The relelant excerpt from the description from the Draft document ver. 6 is thus pasted below, even though it formally does not belong to RFC 5780.
+
+> The CACHE-TIMEOUT is used in Binding Requests and Responses. It indicates the time duration (in seconds) that the server will cache the source address and USERNAME of an original binding request that will later by followed by a request from a different source address with a XOR-RESPONSE-TARGET asking that a response be reflected to the source address of the original binding request.
+  The client inserts a value in CACHE-TIMEOUT into the Binding Request indicating the amount of time it would like the server to cache that information. The server responds with a CACHE-TIMEOUT in its Binding Response providing a prediction of how long it will cache that information.
+
+*Editor's note, again:* you may notice that there is no mention of byte order, signed/unsigned format, or padding.
+This is not by the editor's omission, these details are indeed missing from the original Draft document.
+
+## [RFC 5766](https://datatracker.ietf.org/doc/html/rfc5766)
+
+### [Section 13](https://datatracker.ietf.org/doc/html/rfc5766#section-13) New STUN methods
+
+This section lists the codepoints for the new STUN methods defined in
+this specification.
+
+```text
+0x003  :  Allocate          (only request/response semantics defined)
+0x004  :  Refresh           (only request/response semantics defined)
+0x006  :  Send              (only indication semantics defined)
+0x007  :  Data              (only indication semantics defined)
+0x008  :  CreatePermission  (only request/response semantics defined)
+0x009  :  ChannelBind       (only request/response semantics defined)
+```
+
+### [Section 14](https://datatracker.ietf.org/doc/html/rfc5766#section-14) New STUN attributes
+
+This STUN extension defines the following new attributes:
+
+```text
+0x000C: CHANNEL-NUMBER
+0x000D: LIFETIME
+0x0010: Reserved (was BANDWIDTH)
+0x0012: XOR-PEER-ADDRESS
+0x0013: DATA
+0x0016: XOR-RELAYED-ADDRESS
+0x0018: EVEN-PORT
+0x0019: REQUESTED-TRANSPORT
+0x001A: DONT-FRAGMENT
+0x0021: Reserved (was TIMER-VAL)
+0x0022: RESERVATION-TOKEN
+```
+
+Any attribute whose length is not a multiple of 4 bytes MUST be immediately followed by 1 to 3 padding bytes.
+
+### [Section 14.1](https://datatracker.ietf.org/doc/html/rfc5766#section-14.1) Attribute CHANNEL-NUMBER
+
+The CHANNEL-NUMBER attribute contains the number of the channel.  The
+value portion of this attribute is 4 bytes long and consists of a 16-
+bit unsigned integer, followed by a two-octet RFFU (Reserved For
+Future Use) field, which MUST be set to 0 on transmission and MUST be
+ignored on reception.
+
+```text
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|        Channel Number         |         RFFU = 0              |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+### [Section 14.2](https://datatracker.ietf.org/doc/html/rfc5766#section-14.2) Attribute LIFETIME
+
+The LIFETIME attribute represents the duration for which the server
+will maintain an allocation in the absence of a refresh.  The value
+portion of this attribute is 4-bytes long and consists of a 32-bit
+unsigned integral value representing the number of seconds remaining
+until expiration.
+
+### [Section 14.3](https://datatracker.ietf.org/doc/html/rfc5766#section-14.3) Attribute XOR-PEER-ADDRESS
+
+The XOR-PEER-ADDRESS specifies the address and port of the peer as
+seen from the TURN server.  (For example, the peer's server-reflexive
+transport address if the peer is behind a NAT.)  It is encoded in the
+same way as XOR-MAPPED-ADDRESS in RFC 5389.
+
+
+### [Section 14.4](https://datatracker.ietf.org/doc/html/rfc5766#section-14.4) Attribute DATA
+
+The DATA attribute is present in all Send and Data indications.  The
+value portion of this attribute is variable length and consists of
+the application data (that is, the data that would immediately follow
+the UDP header if the data was been sent directly between the client
+and the peer).  If the length of this attribute is not a multiple of
+4, then padding must be added after this attribute.
+
+### [Section 14.5](https://datatracker.ietf.org/doc/html/rfc5766#section-14.5) Attribute XOR-RELAYED-ADDRESS
+
+The XOR-RELAYED-ADDRESS is present in Allocate responses.  It
+specifies the address and port that the server allocated to the
+client. It is encoded in the same way as XOR-MAPPED-ADDRESS in RFC 5389.
+
+### [Section 14.6](https://datatracker.ietf.org/doc/html/rfc5766#section-14.6) Attribute EVEN-PORT
+
+This attribute allows the client to request that the port in the
+relayed transport address be even, and (optionally) that the server
+reserve the next-higher port number.  The value portion of this
+attribute is 1 byte long.  Its format is:
+
+```text
+ 0 1 2 3 4 5 6 7
++-+-+-+-+-+-+-+-+
+|R|    RFFU     |
++-+-+-+-+-+-+-+-+
+```
+
+The value contains a single 1-bit flag:
+
+R: If 1, the server is requested to reserve the next-higher port
+number (on the same IP address) for a subsequent allocation.  If
+0, no such reservation is requested.
+
+The other 7 bits of the attribute's value must be set to zero on
+transmission and ignored on reception.
+
+Since the length of this attribute is not a multiple of 4, padding
+must immediately follow this attribute.
+
+### [Section 14.7](https://datatracker.ietf.org/doc/html/rfc5766#section-14.7) Attribute REQUESTED-TRANSPORT
+
+This attribute is used by the client to request a specific transport
+protocol for the allocated transport address.  The value of this
+attribute is 4 bytes with the following format:
+
+```text
+ 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|    Protocol   |                    RFFU                       |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The Protocol field specifies the desired protocol.  The codepoints
+used in this field are taken from those allowed in the Protocol field
+in the IPv4 header and the NextHeader field in the IPv6 header
+[Protocol-Numbers](https://datatracker.ietf.org/doc/html/rfc5766#ref-Protocol-Numbers).  This specification only allows the use of
+codepoint 17 (User Datagram Protocol).
+
+The RFFU field MUST be set to zero on transmission and MUST be
+ignored on reception. It is reserved for future uses.
+
+### [Section 14.8](https://datatracker.ietf.org/doc/html/rfc5766#section-14.8) Attribute DONT-FRAGMENT
+
+This attribute has no value part and thus the attribute length field is 0.
+
+### [Section 14.9](https://datatracker.ietf.org/doc/html/rfc5766#section-14.9) Attribute RESERVATION-TOKEN
+
+The attribute value is 8 bytes and contains the token value.
+
+### [Section 15](https://datatracker.ietf.org/doc/html/rfc5766#section-15) New STUN Error Response Codes
+
+This document defines the following new error response codes:
+
+ - `403  (Forbidden)` The request was valid but cannot be performed due
+to administrative or similar restrictions.
+
+
+ - `437  (Allocation Mismatch)` A request was received by the server that
+requires an allocation to be in place, but no allocation exists,
+or a request was received that requires no allocation, but an
+allocation exists.
+
+ - `441  (Wrong Credentials)` The credentials in the (non-Allocate)
+request do not match those used to create the allocation.
+
+ - `442  (Unsupported Transport Protocol)` The Allocate request asked the
+server to use a transport protocol between the server and the peer
+that the server does not support.  NOTE: This does NOT refer to
+the transport protocol used in the 5-tuple.
+
+
+ - `486  (Allocation Quota Reached)` No more allocations using this
+username can be created at the present time.
+
+
+ - `508  (Insufficient Capacity)` The server is unable to carry out the
+request due to some capacity limit being reached.  In an Allocate
+response, this could be due to the server having no more relayed
+transport addresses available at that time, having none with the
+requested properties, or the one that corresponds to the specified
+reservation token is not available.
+
+## Other relevant documents
+
+### [RFC 5769](https://datatracker.ietf.org/doc/html/rfc5769)
+
+This document lists sample STUN messages to be used as test vectors.
+The samples include both IPv4 and IPv6 cases.
 
