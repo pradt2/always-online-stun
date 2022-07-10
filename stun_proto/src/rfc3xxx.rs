@@ -2,6 +2,7 @@ use super::*;
 
 pub use super::msg::{Class, Method};
 pub use super::attrs::{SocketAddr};
+pub use super::base::ReaderErr;
 
 pub struct Reader<'a> {
     header: MsgHeaderReader<'a>,
