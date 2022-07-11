@@ -148,18 +148,22 @@ Legend:
 
 ### Message types
 
-| Type                        | Reader  | Writer  |
-|:----------------------------|:-------:|:-------:|
-| `Allocate Request`          | &cross; | &cross; |
-| `Allocate Response`         | &cross; | &cross; |
-| `Refresh Request`           | &cross; | &cross; |
-| `Refresh Response`          | &cross; | &cross; |
-| `Send Indication`           | &cross; | &cross; |
-| `Data Indication`           | &cross; | &cross; |
-| `CreatePermission Request`  | &cross; | &cross; |
-| `CreatePermission Response` | &cross; | &cross; |
-| `ChannelBind Request`       | &cross; | &cross; |
-| `ChannelBind Response`      | &cross; | &cross; |
+| Type                              | Reader  | Writer  |
+|:----------------------------------|:-------:|:-------:|
+| `Allocate Request`                | &cross; | &cross; |
+| `Allocate Response`               | &cross; | &cross; |
+| `Allocate Error Response`         | &cross; | &cross; |
+| `Refresh Request`                 | &cross; | &cross; |
+| `Refresh Response`                | &cross; | &cross; |
+| `Refresh Error Response`          
+| `Send Indication`                 | &cross; | &cross; |
+| `Data Indication`                 | &cross; | &cross; |
+| `CreatePermission Request`        | &cross; | &cross; |
+| `CreatePermission Response`       | &cross; | &cross; |
+| `CreatePermission Error Response` | &cross; | &cross; |
+| `ChannelBind Request`             | &cross; | &cross; |
+| `ChannelBind Response`            | &cross; | &cross; |
+| `ChannelBind Error Response`      | &cross; | &cross; |
 
 ### Attributes
 
@@ -260,15 +264,22 @@ Legend:
 
 ### Message types
 
-| Type                        | Reader  | Writer  |
-|:----------------------------|:-------:|:-------:|
-| `Allocate Request`          | &cross; | &cross; |
-| `Allocate Response`         | &cross; | &cross; |
-| `Refresh Request`           | &cross; | &cross; |
-| `Refresh Response`          | &cross; | &cross; |
-| `Send Indication`           | &cross; | &cross; |
-| `Data Indication`           | &cross; | &cross; |
-| `CreatePermission Request`  | &cross; | &cross; |
+| Type                              | Reader  | Writer  |
+|:----------------------------------|:-------:|:-------:|
+| `Allocate Request`                | &cross; | &cross; |
+| `Allocate Response`               | &cross; | &cross; |
+| `Allocate Error Response`         | &cross; | &cross; |
+| `Refresh Request`                 | &cross; | &cross; |
+| `Refresh Response`                | &cross; | &cross; |
+| `Refresh Error Response`
+| `Send Indication`                 | &cross; | &cross; |
+| `Data Indication`                 | &cross; | &cross; |
+| `CreatePermission Request`        | &cross; | &cross; |
+| `CreatePermission Response`       | &cross; | &cross; |
+| `CreatePermission Error Response` | &cross; | &cross; |
+| `ChannelBind Request`             | &cross; | &cross; |
+| `ChannelBind Response`            | &cross; | &cross; |
+| `ChannelBind Error Response`      | &cross; | &cross; |
 
 ### Attributes
 
