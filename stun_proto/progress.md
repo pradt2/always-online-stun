@@ -155,7 +155,7 @@ Legend:
 | `Allocate Error Response`         | &cross; | &cross; |
 | `Refresh Request`                 | &cross; | &cross; |
 | `Refresh Response`                | &cross; | &cross; |
-| `Refresh Error Response`          
+| `Refresh Error Response`          | &cross; | &cross; |
 | `Send Indication`                 | &cross; | &cross; |
 | `Data Indication`                 | &cross; | &cross; |
 | `CreatePermission Request`        | &cross; | &cross; |
@@ -271,7 +271,7 @@ Legend:
 | `Allocate Error Response`         | &cross; | &cross; |
 | `Refresh Request`                 | &cross; | &cross; |
 | `Refresh Response`                | &cross; | &cross; |
-| `Refresh Error Response`
+| `Refresh Error Response`          | &cross; | &cross; |
 | `Send Indication`                 | &cross; | &cross; |
 | `Data Indication`                 | &cross; | &cross; |
 | `CreatePermission Request`        | &cross; | &cross; |
