@@ -1596,6 +1596,16 @@ defined in [Section 4.2.2 of RFC6749](https://datatracker.ietf.org/doc/html/rfc6
 server could revoke the token, but the client would assume that
 the token has not expired and would not refresh the token.
 
+### [Section 12](https://datatracker.ietf.org/doc/html/rfc7635#section-12) IANA considerations
+
+This document defines the THIRD-PARTY-AUTHORIZATION STUN attribute,
+described in Section 6.  IANA has allocated the comprehension-
+optional codepoint `0x802E` for this attribute.
+
+This document defines the ACCESS-TOKEN STUN attribute, described in
+Section 6. IANA has allocated the comprehension-required codepoint
+`0x001B` for this attribute.
+
 ## [RFC 8016](https://datatracker.ietf.org/doc/html/rfc8016)
 
 ### [Section 3.3](https://datatracker.ietf.org/doc/html/rfc8016#section-3.3) Attribute MOBILITY-TICKET
