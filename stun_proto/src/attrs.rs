@@ -59,6 +59,25 @@ impl<'a> SocketAddrReader<'a> {
     }
 }
 
+pub struct SocketAddrWriter<'a> {
+    bytes: &'a mut [u8]
+}
+
+impl<'a> SocketAddrWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn write(addr: &SocketAddr) -> u16 {
+        match addr {
+            SocketAddr::V4{addr, port} => 0,
+            SocketAddr::V6 {addr, port} => 1
+        }
+    }
+}
+
 pub struct XorSocketAddrReader<'a> {
     socket_addr_reader: SocketAddrReader<'a>,
     transaction_id: u128,

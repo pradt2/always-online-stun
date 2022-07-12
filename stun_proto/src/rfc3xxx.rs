@@ -1,96 +1,55 @@
 use super::*;
 
-pub use super::msg::{Class, Method};
 pub use super::attrs::{SocketAddr};
 pub use super::base::ReaderErr;
 
+#[derive(Copy, Clone, Debug, PartialEq)]
+pub enum MessageType {
+    BindingRequest = 0x0001,
+    BindingResponse = 0x0101,
+    BindingErrorResponse = 0x0111,
+    SharedSecretRequest = 0x0002,
+    SharedSecretResponse = 0x0102,
+    SharedSecretErrorResponse = 0x0112,
+}
+
+impl TryFrom<u16> for MessageType {
+    type Error = ReaderErr;
+
+    fn try_from(value: u16) -> core::result::Result<Self, Self::Error> {
+        match value {
+            0x0001 => Ok(MessageType::BindingRequest),
+            0x0101 => Ok(MessageType::BindingResponse),
+            0x0111 => Ok(MessageType::BindingErrorResponse),
+            0x0002 => Ok(MessageType::SharedSecretRequest),
+            0x0102 => Ok(MessageType::SharedSecretResponse),
+            0x0112 => Ok(MessageType::SharedSecretErrorResponse),
+            _ => Err(ReaderErr::UnexpectedValue)
+        }
+    }
+}
+
 pub struct Reader<'a> {
-    header: MsgHeaderReader<'a>,
+    header: RawMsgHeaderReader<'a>,
+    attr_bytes: &'a [u8],
 }
 
 impl<'a> Reader<'a> {
     pub fn new(bytes: &'a [u8]) -> Self {
+        let header_bytes = bytes.get(0..20).unwrap_or(bytes);
+        let attr_bytes = bytes.get(20..).unwrap_or(&bytes[0..0]);
         Self {
-            header: MsgHeaderReader::new(bytes)
+            header: RawMsgHeaderReader::new(header_bytes),
+            attr_bytes,
         }
     }
 
-    /// Gets the message method.
-    /// <br><br>
-    ///
-    /// Currently the method `Binding` is the only method in the RFC specs.
-    /// <br><br>
-    ///
-    /// Ignores the first two bits of the message header, as they should always be 0.
-    /// <br><br>
-    ///
-    /// Returns
-    /// - `Result::NotEnoughBytes` if the message is not large enough
-    /// - `Result::UnexpectedValue` if the value doesn't correspond to a known method
-    /// <br><br>
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    /// ```
-    /// use stun_proto::rfc3xxx::*;
-    /// let msg = [0x0, 0x1];
-    /// let r = Reader::new(&msg);
-    /// assert_eq!(Method::Binding, r.get_method().unwrap());
-    /// ```
-    ///
-    /// The message is not large enough:
-    /// ```
-    /// use stun_proto::rfc3xxx::*;
-    /// let msg = [];
-    /// let r = Reader::new(&msg);
-    /// assert_eq!(ReaderErr::NotEnoughBytes, r.get_method().unwrap_err());
-    /// ```
-    ///
-    /// The value does not correspond to a known method:
-    /// ```
-    /// use stun_proto::rfc3xxx::*;
-    /// let msg = [0x0, 0xF];
-    /// let r = Reader::new(&msg);
-    /// assert_eq!(ReaderErr::UnexpectedValue, r.get_method().unwrap_err());
-    /// ```
-    pub fn get_method(&self) -> Result<Method> {
-        self.header.get_method()
+    pub fn get_message_type(&self) -> Result<MessageType> {
+        self.header.get_message_type()?.try_into()
     }
 
-    /// Gets the message class.
-    /// <br><br>
-    ///
-    /// Ignores all header bits except the 5th and the 9th bit.
-    /// <br><br>
-    ///
-    /// Returns
-    /// - `Result::NotEnoughBytes` if the message is not large enough
-    /// <br><br>
-    ///
-    /// # Examples
-    ///
-    /// Basic usage:
-    /// ```
-    /// use stun_proto::rfc3xxx::*;
-    /// let msg = [0x0, 0x1];
-    /// let r = Reader::new(&msg);
-    /// assert_eq!(Class::Request, r.get_class().unwrap());
-    /// ```
-    ///
-    /// The message is not large enough:
-    /// ```
-    /// use stun_proto::rfc3xxx::*;
-    /// let msg = [];
-    /// let r = Reader::new(&msg);
-    /// assert_eq!(ReaderErr::NotEnoughBytes, r.get_class().unwrap_err());
-    /// ```
-    pub fn get_class(&self) -> Result<Class> {
-        self.header.get_class()
-    }
-
-    pub fn get_magic_cookie(&self) -> Result<u32> {
-        self.header.get_magic_cookie()
+    pub fn get_message_length(&self) -> Result<u16> {
+        self.header.get_message_length()
     }
 
     pub fn get_transaction_id(&self) -> Result<u128> {
@@ -98,9 +57,46 @@ impl<'a> Reader<'a> {
     }
 
     pub fn attrs(&self) -> Result<AttributeIterator> {
-        let bytes = self.header.get_attributes()?;
         let transaction_id = self.header.get_transaction_id()?;
-        Ok(AttributeIterator::new(bytes, transaction_id))
+        Ok(AttributeIterator::new(self.attr_bytes, transaction_id))
+    }
+}
+
+pub struct Writer<'a> {
+    header: RawMsgHeaderWriter<'a>,
+    attr_bytes: &'a mut [u8],
+}
+
+impl<'a> Writer<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        if bytes.len() <= 20 {
+            let (header_bytes, attr_bytes) = bytes.split_at_mut(20);
+            Self {
+                header: RawMsgHeaderWriter::new(header_bytes),
+                attr_bytes,
+            }
+        } else {
+            // for such a small buffer,
+            // attr is guarateed to get a slice of zero length
+            // but who are we to judge
+            let (header_bytes, attr_bytes) = bytes.split_at_mut(bytes.len());
+            Self {
+                header: RawMsgHeaderWriter::new(header_bytes),
+                attr_bytes,
+            }
+        }
+    }
+
+    pub fn set_message_type(&mut self, typ: MessageType) -> Result<()> {
+        self.header.set_message_type(typ as u16)
+    }
+
+    pub fn set_message_length(&mut self, len: u16) -> Result<()> {
+        self.header.set_message_length(len)
+    }
+
+    pub fn set_transaction_id(&mut self, tid: u128) -> Result<()> {
+        self.header.set_transaction_id(tid)
     }
 }
 
@@ -179,27 +175,37 @@ impl<'a> Iterator for AttributeIterator<'a> {
 mod tests {
     use super::*;
 
+    const HEADER: [u8; 20] = [
+        0x00, 0x01,             // type: Binding Request
+        0x00, 0x04,             // length: 4 (header does not count)
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x00,
+        0x00, 0x00, 0x00, 0x01, // transaction id (16 bytes total)
+    ];
+
     #[test]
-    fn message_header() {
-        let msg = [
-            0x00, 0x01,             // method: Binding , class: Request
-            0x00, 0x00,             // length: 0 (header does not count)
-            0x21, 0x12, 0xA4, 0x42, // magic cookie (RFC spec constant)
-            0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x01, // transaction id (12 bytes total)
-        ];
-
-        let r = MsgHeaderReader::new(&msg);
-
-        assert_eq!(Method::Binding, r.get_method().unwrap());
-        assert_eq!(Class::Request, r.get_class().unwrap());
-        assert_eq!(0x2112A442, r.get_magic_cookie().unwrap());
+    fn read_message_header() {
+        let r = Reader::new(&HEADER);
+        assert_eq!(MessageType::BindingRequest, r.get_message_type().unwrap());
+        assert_eq!(4u16, r.get_message_length().unwrap());
         assert_eq!(1u128, r.get_transaction_id().unwrap());
     }
 
     #[test]
-    fn mapped_address_attr() {
+    fn write_message_header() {
+        let mut buffer = [0u8; 20];
+
+        let mut w = Writer::new(&mut buffer);
+        w.set_message_type(MessageType::BindingRequest).unwrap();
+        w.set_message_length(4).unwrap();
+        w.set_transaction_id(1).unwrap();
+
+        assert_eq!(HEADER, buffer);
+    }
+
+    #[test]
+    fn read_mapped_address_attr() {
         let attr = [
             0x00, 0x01,             // type (MappedAddress)
             0x00, 0x08,             // value length
@@ -231,11 +237,11 @@ mod tests {
     }
 
     #[test]
-    fn message() {
+    fn read_message() {
         let attr = [
             0x00, 0x01,             // method: Binding , class: Request
             0x00, 0x0C,             // length: 12 (only data after 20-byte header)
-            0x21, 0x12, 0xA4, 0x42, // magic cookie (RFC spec constant)
+            0x00, 0x00, 0x00, 0x00, // magic cookie (RFC spec constant)
             0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x00,
             0x00, 0x00, 0x00, 0x01, // transaction id (12 bytes total)
@@ -248,9 +254,9 @@ mod tests {
 
         let r = Reader::new(&attr);
 
-        assert_eq!(Method::Binding, r.get_method().unwrap());
-        assert_eq!(Class::Request, r.get_class().unwrap());
-        assert_eq!(0x2112A442, r.get_magic_cookie().unwrap());
+        // assert_eq!(Method::Binding, r.get_method().unwrap());
+        // assert_eq!(Class::Request, r.get_class().unwrap());
+        // assert_eq!(0x2112A442, r.get_magic_cookie().unwrap());
         assert_eq!(1u128, r.get_transaction_id().unwrap());
 
         assert_eq!(1, r.attrs().unwrap().count());
