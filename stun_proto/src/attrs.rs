@@ -60,7 +60,7 @@ impl<'a> SocketAddrReader<'a> {
 }
 
 pub struct SocketAddrWriter<'a> {
-    bytes: &'a mut [u8]
+    bytes: &'a mut [u8],
 }
 
 impl<'a> SocketAddrWriter<'a> {
@@ -72,8 +72,8 @@ impl<'a> SocketAddrWriter<'a> {
 
     pub fn write(addr: &SocketAddr) -> u16 {
         match addr {
-            SocketAddr::V4{addr, port} => 0,
-            SocketAddr::V6 {addr, port} => 1
+            SocketAddr::V4 { addr, port } => 0,
+            SocketAddr::V6 { addr, port } => 1
         }
     }
 }
@@ -604,5 +604,4 @@ mod tests {
             assert!(false, "Second attr should be an error");
         }
     }
-
 }
