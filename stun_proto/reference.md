@@ -4,8 +4,6 @@ This document distills the message formats listed in all RFC documents related t
 
 ## [RFC 3489](https://datatracker.ietf.org/doc/html/rfc3489)
 
-Note: This RFC has been obsoleted in its entirety by RFC 5389.
-
 ### [Section 11.1](https://datatracker.ietf.org/doc/html/rfc3489#section-11.1) Message header
 
 ```text
