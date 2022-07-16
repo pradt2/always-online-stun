@@ -13,50 +13,50 @@ Legend:
 ### Message types
 | Type                           | Reader  | Writer  |
 |:-------------------------------|:-------:|:-------:|
-| `Binding Request`              | &cross; | &cross; |
-| `Binding Response`             | &cross; | &cross; |
-| `Binding Error Response`       | &cross; | &cross; |
-| `Shared Secret Request`        | &cross; | &cross; |
-| `Shared Secret Response`       | &cross; | &cross; |
-| `Shared Secret Error Response` | &cross; | &cross; |
+| `Binding Request`              | &check; | &check; |
+| `Binding Response`             | &check; | &check; |
+| `Binding Error Response`       | &check; | &check; |
+| `Shared Secret Request`        | &check; | &check; |
+| `Shared Secret Response`       | &check; | &check; |
+| `Shared Secret Error Response` | &check; | &check; |
 
 ### Header features
 
 | Feature        | Reader  | Writer  |
 |:---------------|:-------:|:-------:|
-| Message length | &cross; | &cross; |
-| Transaction ID | &cross; | &cross; |
+| Message length | &check; | &check; |
+| Transaction ID | &check; | &check; |
 
 ### Attributes
 
 | Attribute            | Reader  | Writer  |
 |:---------------------|:-------:|:-------:|
-| `MAPPED-ADDRESS`     | &cross; | &cross; |
-| `RESPONSE-ADDRESS`   | &cross; | &cross; |
-| `CHANGE-REQUEST`     | &cross; | &cross; |
-| `SOURCE-ADDRESS`     | &cross; | &cross; |
-| `CHANGED-ADDRESS`    | &cross; | &cross; |
-| `USERNAME`           | &cross; | &cross; |
-| `PASSWORD`           | &cross; | &cross; |
-| `MESSAGE-INTEGRITY`  | &cross; | &cross; |
-| `ERROR-CODE`         | &cross; | &cross; |
-| `UNKNOWN-ATTRIBUTES` | &cross; | &cross; |
-| `REFLECTED-FROM`     | &cross; | &cross; |
+| `MAPPED-ADDRESS`     | &check; | &cross; |
+| `RESPONSE-ADDRESS`   | &check; | &cross; |
+| `CHANGE-REQUEST`     | &check; | &cross; |
+| `SOURCE-ADDRESS`     | &check; | &cross; |
+| `CHANGED-ADDRESS`    | &check; | &cross; |
+| `USERNAME`           | &check; | &cross; |
+| `PASSWORD`           | &check; | &cross; |
+| `MESSAGE-INTEGRITY`  | &check; | &cross; |
+| `ERROR-CODE`         | &check; | &cross; |
+| `UNKNOWN-ATTRIBUTES` | &check; | &cross; |
+| `REFLECTED-FROM`     | &check; | &cross; |
 
 
 ### Error codes
 
 | Error code | Reader  | Writer  |
 |:-----------|:-------:|:-------:|
-| `400`      | &cross; | &cross; |
-| `401`      | &cross; | &cross; |
-| `420`      | &cross; | &cross; |
-| `430`      | &cross; | &cross; |
-| `431`      | &cross; | &cross; |
-| `432`      | &cross; | &cross; |
-| `433`      | &cross; | &cross; |
-| `500`      | &cross; | &cross; |
-| `600`      | &cross; | &cross; |
+| `400`      | &check; | &cross; |
+| `401`      | &check; | &cross; |
+| `420`      | &check; | &cross; |
+| `430`      | &check; | &cross; |
+| `431`      | &check; | &cross; |
+| `432`      | &check; | &cross; |
+| `433`      | &check; | &cross; |
+| `500`      | &check; | &cross; |
+| `600`      | &check; | &cross; |
 
 
 ## [RFC 5389](https://datatracker.ietf.org/doc/html/rfc5389)

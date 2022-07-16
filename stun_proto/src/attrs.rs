@@ -258,6 +258,26 @@ impl<'a> ErrorCodeReader<'a> {
     }
 }
 
+pub struct ChangeRequestReader<'a> {
+    bytes: &'a [u8]
+}
+
+impl<'a> ChangeRequestReader<'a> {
+    pub fn new(bytes: &'a [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn change_ip(&self) -> Result<bool> {
+        Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 4 > 0)
+    }
+
+    pub fn change_port(&self) -> Result<bool> {
+        Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 2 > 0)
+    }
+}
+
 struct RawAttributeIterator<'a> {
     bytes: &'a [u8],
     idx: usize,
@@ -536,6 +556,29 @@ mod tests {
         assert_eq!(222, r.get_code().unwrap());
         assert_eq!("hello", r.get_reason().unwrap());
         unsafe { assert_eq!("hello", r.get_reason_unchecked().unwrap()); }
+    }
+
+    #[test]
+    fn change_request() {
+        let change_ip   = u32::to_be_bytes(0b00000000000000000000000000000100);
+        let r = ChangeRequestReader::new(&change_ip);
+        assert!(r.change_ip().unwrap());
+        assert!(!r.change_port().unwrap());
+
+        let change_port = u32::to_be_bytes(0b00000000000000000000000000000010);
+        let r = ChangeRequestReader::new(&change_port);
+        assert!(!r.change_ip().unwrap());
+        assert!(r.change_port().unwrap());
+
+        let change_both = u32::to_be_bytes(0b00000000000000000000000000000110);
+        let r = ChangeRequestReader::new(&change_both);
+        assert!(r.change_ip().unwrap());
+        assert!(r.change_port().unwrap());
+
+        let change_none = u32::to_be_bytes(0b00000000000000000000000000000000);
+        let r = ChangeRequestReader::new(&change_none);
+        assert!(!r.change_ip().unwrap());
+        assert!(!r.change_port().unwrap());
     }
 
     #[test]
