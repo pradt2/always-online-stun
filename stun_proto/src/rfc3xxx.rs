@@ -232,7 +232,7 @@ impl<'a> Iterator for AttributeIterator<'a> {
                 0x0009 => Some(Ok(Attribute::ErrorCode(StunErrorReader::new(value)))),
                 0x000A => Some(Ok(Attribute::UnknownAttributes(UnknownAttrsReader::new(value)))),
                 0x000B => Some(Ok(Attribute::ReflectedFrom(SocketAddrReader::new(value)))),
-                typ if typ >= 0x7FFF => Some(Ok(Attribute::OptionalAttribute { typ, value })),
+                typ if typ > 0x7FFF => Some(Ok(Attribute::OptionalAttribute { typ, value })),
                 _ => Some(Err(ReaderErr::UnexpectedValue))
             }
         }
@@ -284,43 +284,59 @@ mod tests {
 
     #[test]
     fn read_resolve_attrs() {
-        if let Attribute::MappedAddress(_) = AttributeIterator::new(&[0x00, 0x01, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+        if let Some(Ok(Attribute::MappedAddress(_))) = AttributeIterator::new(&[0x00, 0x01, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute MAPPED-ADDRESS");
         }
-        if let Attribute::ResponseAddress(_) = AttributeIterator::new(&[0x00, 0x02, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::ResponseAddress(_))) = AttributeIterator::new(&[0x00, 0x02, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute RESPONSE-ADDRESS");
         }
-        if let Attribute::ChangeRequest(_) = AttributeIterator::new(&[0x00, 0x03, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::ChangeRequest(_))) = AttributeIterator::new(&[0x00, 0x03, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute CHANGE-REQUEST");
         }
-        if let Attribute::SourceAddress(_) = AttributeIterator::new(&[0x00, 0x04, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::SourceAddress(_))) = AttributeIterator::new(&[0x00, 0x04, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute SOURCE-ADDRESS");
         }
-        if let Attribute::ChangedAddress(_) = AttributeIterator::new(&[0x00, 0x05, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::ChangedAddress(_))) = AttributeIterator::new(&[0x00, 0x05, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute CHANGED-ADDRESS");
         }
-        if let Attribute::Username(_) = AttributeIterator::new(&[0x00, 0x06, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::Username(_))) = AttributeIterator::new(&[0x00, 0x06, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute USERNAME");
         }
-        if let Attribute::Password(_) = AttributeIterator::new(&[0x00, 0x07, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::Password(_))) = AttributeIterator::new(&[0x00, 0x07, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute PASSWORD");
         }
-        if let Attribute::MessageIntegrity(_) = AttributeIterator::new(&[0x00, 0x08, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::MessageIntegrity(_))) = AttributeIterator::new(&[0x00, 0x08, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute MESSAGE-INTEGRITY");
         }
-        if let Attribute::ErrorCode(_) = AttributeIterator::new(&[0x00, 0x09, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::ErrorCode(_))) = AttributeIterator::new(&[0x00, 0x09, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute ERROR-CODE");
         }
-        if let Attribute::UnknownAttributes(_) = AttributeIterator::new(&[0x00, 0x0A, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::UnknownAttributes(_))) = AttributeIterator::new(&[0x00, 0x0A, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute UNKNOWN-ATTRIBUTES");
         }
-        if let Attribute::ReflectedFrom(_) = AttributeIterator::new(&[0x00, 0x0B, 0x00, 0x00]).next().unwrap().unwrap() {} else {
+
+        if let Some(Ok(Attribute::ReflectedFrom(_))) = AttributeIterator::new(&[0x00, 0x0B, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute REFLECTED-FROM");
         }
+
+        for optional_attr in 0x0000..=0x7FFF as u16 {
+            if let Some(Ok(Attribute::OptionalAttribute { .. })) = AttributeIterator::new(&u32::to_be_bytes((optional_attr as u32) << 16)).next() {
+                assert!(false, "Unexpected generic optional attribute for code {:#06X}", optional_attr);
+            }
+        }
+
         for optional_attr in 0x8000..=0xFFFF as u16 {
-            let optional_attr = (optional_attr as u32) << 16;
-            if let Attribute::OptionalAttribute { .. } = AttributeIterator::new(&u32::to_be_bytes(optional_attr)).next().unwrap().unwrap() {} else {
-                assert!(false, "Expected generic optional attribute");
+            if let Attribute::OptionalAttribute { .. } = AttributeIterator::new(&u32::to_be_bytes((optional_attr as u32) << 16)).next().unwrap().unwrap() {} else {
+                assert!(false, "Expected generic optional attribute for code {:#06X}", optional_attr);
             }
         }
     }

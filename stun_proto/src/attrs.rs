@@ -339,9 +339,7 @@ impl<'a> Iterator for RawAttributeIterator<'a> {
             // new attributes always start at 4 byte boundary
             // the value length attribute only describes 'useful' bits
             // and excludes any padding bits that are added on top
-            // this bithack gets us the nearest greater multiple of 4
-            // unless val_len is already a multiple of 4, then it does nothing
-            let val_len_and_padding = (val_len + 3) & !3;
+            let val_len_and_padding = get_nearest_greater_multiple_of_4(val_len);
 
             self.idx += 4 + val_len_and_padding;
 
@@ -377,16 +375,20 @@ impl<'a> Iterator for BaseAttributeIterator<'a> {
     }
 }
 
+/*
+ this bithack gets us the nearest greater multiple of 4
+ unless val_len is already a multiple of 4, then it does nothing
+*/
+fn get_nearest_greater_multiple_of_4(len: usize) -> usize {
+    (len + 3) & !3
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
     fn byte_boundary_logic() {
-        fn get_nearest_greater_multiple_of_4(len: usize) -> usize {
-            (len + 3) & !3
-        }
-
         assert_eq!(0, get_nearest_greater_multiple_of_4(0));
         assert_eq!(4, get_nearest_greater_multiple_of_4(1));
         assert_eq!(4, get_nearest_greater_multiple_of_4(2));
