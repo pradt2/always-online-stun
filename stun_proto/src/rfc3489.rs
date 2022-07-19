@@ -160,6 +160,10 @@ impl<'a> Writer<'a> {
         self.header.set_message_length(len)
     }
 
+    pub fn update_message_length(&mut self) -> Result<()> {
+        self.set_message_length(self.attr_bytes_used)
+    }
+
     pub fn set_transaction_id(&mut self, tid: u128) -> Result<()> {
         self.header.set_transaction_id(tid)
     }
@@ -730,23 +734,23 @@ mod tests {
         let mut w = Writer::new(&mut buffer);
         w.set_message_type(MessageType::BindingRequest).unwrap();
         w.set_transaction_id(1).unwrap();
-        let mut attr_bytes = 0;
-        attr_bytes += w.add_mapped_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        attr_bytes += w.add_mapped_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
 
-        attr_bytes += w.add_response_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        attr_bytes += w.add_response_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_mapped_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
+        w.add_mapped_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
 
-        attr_bytes += w.add_source_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        attr_bytes += w.add_source_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_response_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
+        w.add_response_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
 
-        attr_bytes += w.add_changed_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        attr_bytes += w.add_changed_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_source_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
+        w.add_source_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
 
-        attr_bytes += w.add_reflected_from_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        attr_bytes += w.add_reflected_from_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_changed_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
+        w.add_changed_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
 
-        w.set_message_length(attr_bytes).unwrap();
+        w.add_reflected_from_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
+        w.add_reflected_from_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+
+        w.update_message_length().unwrap();
 
         assert_eq!(MESSAGE, buffer);
     }

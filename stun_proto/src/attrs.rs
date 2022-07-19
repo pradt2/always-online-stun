@@ -123,7 +123,7 @@ impl<'a> XorSocketAddrReader<'a> {
             }
             Ok(SocketAddr::V6 { addr, port }) => {
                 let mask = 0x2112A442 << 92 | self.transaction_id;
-                Ok(SocketAddr::V6 { addr: addr ^ self.transaction_id, port })
+                Ok(SocketAddr::V6 { addr: addr ^ mask, port })
             }
         }
     }
