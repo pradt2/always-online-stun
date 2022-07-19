@@ -31,17 +31,17 @@ Legend:
 
 | Attribute            | Reader  | Writer  |
 |:---------------------|:-------:|:-------:|
-| `MAPPED-ADDRESS`     | &check; | &cross; |
-| `RESPONSE-ADDRESS`   | &check; | &cross; |
+| `MAPPED-ADDRESS`     | &check; | &check; |
+| `RESPONSE-ADDRESS`   | &check; | &check; |
 | `CHANGE-REQUEST`     | &check; | &cross; |
-| `SOURCE-ADDRESS`     | &check; | &cross; |
-| `CHANGED-ADDRESS`    | &check; | &cross; |
+| `SOURCE-ADDRESS`     | &check; | &check; |
+| `CHANGED-ADDRESS`    | &check; | &check; |
 | `USERNAME`           | &check; | &cross; |
 | `PASSWORD`           | &check; | &cross; |
 | `MESSAGE-INTEGRITY`  | &check; | &cross; |
 | `ERROR-CODE`         | &check; | &cross; |
 | `UNKNOWN-ATTRIBUTES` | &check; | &cross; |
-| `REFLECTED-FROM`     | &check; | &cross; |
+| `REFLECTED-FROM`     | &check; | &check; |
 
 
 ### Error codes

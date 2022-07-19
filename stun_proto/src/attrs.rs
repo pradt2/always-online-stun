@@ -70,11 +70,34 @@ impl<'a> SocketAddrWriter<'a> {
         }
     }
 
-    pub fn write(addr: &SocketAddr) -> u16 {
-        match addr {
-            SocketAddr::V4 { addr, port } => 0,
-            SocketAddr::V6 { addr, port } => 1
-        }
+    pub fn write_ipv4_addr(&mut self, addr: u32, port: u16) -> Result<u16> {
+        let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
+        addr_family_dest[0] = 0;
+        addr_family_dest[1] = 1;
+
+        let port_dest = self.bytes.get_mut(2..4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let port_bytes = u16::to_be_bytes(port);
+        port_dest.copy_from_slice(&port_bytes);
+
+        let ipv4_addr_dest = self.bytes.get_mut(4..8).ok_or(ReaderErr::NotEnoughBytes)?;
+        let ipv4_addr_bytes = u32::to_be_bytes(addr);
+        ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
+        Ok(8)
+    }
+
+    pub fn write_ipv6_addr(&mut self, addr: u128, port: u16) -> Result<u16> {
+        let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
+        addr_family_dest[0] = 0;
+        addr_family_dest[1] = 2;
+
+        let port_dest = self.bytes.get_mut(2..4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let port_bytes = u16::to_be_bytes(port);
+        port_dest.copy_from_slice(&port_bytes);
+
+        let ipv6_addr_dest = self.bytes.get_mut(4..20).ok_or(ReaderErr::NotEnoughBytes)?;
+        let ipv6_addr_bytes = u128::to_be_bytes(addr);
+        ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
+        Ok(20)
     }
 }
 
@@ -100,9 +123,53 @@ impl<'a> XorSocketAddrReader<'a> {
             }
             Ok(SocketAddr::V6 { addr, port }) => {
                 let mask = 0x2112A442 << 92 | self.transaction_id;
-                Ok(SocketAddr::V6 { addr: addr ^ mask, port })
+                Ok(SocketAddr::V6 { addr: addr ^ self.transaction_id, port })
             }
         }
+    }
+}
+
+pub struct XorSocketAddrWriter<'a> {
+    bytes: &'a mut [u8],
+}
+
+impl<'a> XorSocketAddrWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn write_ipv4_addr(&mut self, addr: u32, port: u16) -> Result<u16> {
+        let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
+        addr_family_dest[0] = 0;
+        addr_family_dest[1] = 1;
+
+        let port_dest = self.bytes.get_mut(2..4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let port_bytes = u16::to_be_bytes(port);
+        port_dest.copy_from_slice(&port_bytes);
+
+        let mask = 0x2112A442;
+        let ipv4_addr_dest = self.bytes.get_mut(4..8).ok_or(ReaderErr::NotEnoughBytes)?;
+        let ipv4_addr_bytes = u32::to_be_bytes(addr ^ mask);
+        ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
+        Ok(8)
+    }
+
+    pub fn write_ipv6_addr(&mut self, addr: u128, port: u16, transaction_id: u128) -> Result<u16> {
+        let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
+        addr_family_dest[0] = 0;
+        addr_family_dest[1] = 1;
+
+        let port_dest = self.bytes.get_mut(2..4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let port_bytes = u16::to_be_bytes(port);
+        port_dest.copy_from_slice(&port_bytes);
+
+        let mask = 0x2112A442 << 92 | transaction_id;
+        let ipv6_addr_dest = self.bytes.get_mut(4..20).ok_or(ReaderErr::NotEnoughBytes)?;
+        let ipv6_addr_bytes = u128::to_be_bytes(addr ^ mask);
+        ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
+        Ok(20)
     }
 }
 
@@ -323,9 +390,9 @@ impl<'a> Iterator for RawAttributeIterator<'a> {
                 }
             };
 
-            let val_len = u16::from_be_bytes(*val_len_raw) as usize;
+            let val_len = u16::from_be_bytes(*val_len_raw);
 
-            let val_raw = self.bytes.get(self.idx + 4..self.idx + 4 + val_len)
+            let val_raw = self.bytes.get(self.idx + 4..self.idx + 4 + val_len as usize)
                 .ok_or(ReaderErr::NotEnoughBytes);
 
             let val_raw = match val_raw {
@@ -341,7 +408,7 @@ impl<'a> Iterator for RawAttributeIterator<'a> {
             // and excludes any padding bits that are added on top
             let val_len_and_padding = get_nearest_greater_multiple_of_4(val_len);
 
-            self.idx += 4 + val_len_and_padding;
+            self.idx += 4 + val_len_and_padding as usize;
 
             Some(Ok((typ_raw, val_len_raw, val_raw)))
         }
@@ -379,7 +446,7 @@ impl<'a> Iterator for BaseAttributeIterator<'a> {
  this bithack gets us the nearest greater multiple of 4
  unless val_len is already a multiple of 4, then it does nothing
 */
-fn get_nearest_greater_multiple_of_4(len: usize) -> usize {
+pub fn get_nearest_greater_multiple_of_4(len: u16) -> u16 {
     (len + 3) & !3
 }
 

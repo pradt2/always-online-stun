@@ -8,4 +8,4 @@ use base::*;
 use attrs::*;
 use msg::*;
 
-pub mod rfc3xxx;
+pub mod rfc3489;
