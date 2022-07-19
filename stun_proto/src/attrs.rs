@@ -3,8 +3,8 @@ use crate::{ReaderErr, Result};
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SocketAddr {
-    V4 { addr: u32, port: u16 },
-    V6 { addr: u128, port: u16 },
+    V4(u32, u16),
+    V6(u128, u16),
 }
 
 pub struct SocketAddrReader<'a> {
@@ -36,11 +36,11 @@ impl<'a> SocketAddrReader<'a> {
                     .map(|b: &[u8; 4]| u32::from_be_bytes(*b))
                     .ok_or(ReaderErr::NotEnoughBytes);
 
-                let addr = if let Ok(b) = b { b } else {
+                let ip = if let Ok(b) = b { b } else {
                     return Err(ReaderErr::NotEnoughBytes);
                 };
 
-                Ok(SocketAddr::V4 { addr, port })
+                Ok(SocketAddr::V4 (ip, port))
             }
             2 => {
                 let b = self.bytes.get(4..20)
@@ -48,11 +48,11 @@ impl<'a> SocketAddrReader<'a> {
                     .map(|b: [u8; 16]| u128::from_be_bytes(b))
                     .ok_or(ReaderErr::NotEnoughBytes);
 
-                let addr = if let Ok(b) = b { b } else {
+                let ip = if let Ok(b) = b { b } else {
                     return Err(ReaderErr::NotEnoughBytes);
                 };
 
-                Ok(SocketAddr::V6 { addr, port })
+                Ok(SocketAddr::V6(ip, port))
             }
             _ => Err(ReaderErr::UnexpectedValue)
         }
@@ -117,13 +117,13 @@ impl<'a> XorSocketAddrReader<'a> {
     pub fn get_address(&self) -> Result<SocketAddr> {
         match self.socket_addr_reader.get_address() {
             Err(err) => Err(err),
-            Ok(SocketAddr::V4 { addr, port }) => {
+            Ok(SocketAddr::V4(ip, port)) => {
                 let mask = 0x2112A442;
-                Ok(SocketAddr::V4 { addr: addr ^ mask, port })
+                Ok(SocketAddr::V4(ip ^ mask, port))
             }
-            Ok(SocketAddr::V6 { addr, port }) => {
+            Ok(SocketAddr::V6(ip, port)) => {
                 let mask = 0x2112A442 << 92 | self.transaction_id;
-                Ok(SocketAddr::V6 { addr: addr ^ mask, port })
+                Ok(SocketAddr::V6(ip ^ mask, port))
             }
         }
     }
@@ -481,9 +481,9 @@ mod tests {
             return;
         };
 
-        if let SocketAddr::V4 { addr, port } = addr {
-            assert_eq!(0x0A << 8 | 0x0B, port);
-            assert_eq!(0x0C0D0E0F, addr);
+        if let SocketAddr::V4(ip, port) = addr {
+            assert_eq!(0x0A0B, port);
+            assert_eq!(0x0C0D0E0F, ip);
         } else {
             assert!(false, "Test address should be a V4 address");
         }
@@ -506,9 +506,9 @@ mod tests {
             return;
         };
 
-        if let SocketAddr::V6 { addr, port } = addr {
+        if let SocketAddr::V6(ip, port) = addr {
             assert_eq!(0x0304, port);
-            assert_eq!(0x05060708090A0B0C0D0E0F1A1B1C1D1E, addr);
+            assert_eq!(0x05060708090A0B0C0D0E0F1A1B1C1D1E, ip);
         } else {
             assert!(false, "Test address should be a V6 address");
         }
@@ -530,9 +530,9 @@ mod tests {
             return;
         };
 
-        if let SocketAddr::V4 { addr, port } = addr {
-            assert_eq!(0x0A << 8 | 0x0B, port);
-            assert_eq!(0x0C0D0E0F ^ 0x2112A442, addr);
+        if let SocketAddr::V4(ip, port) = addr {
+            assert_eq!(0x0A0B, port);
+            assert_eq!(0x0C0D0E0F ^ 0x2112A442, ip);
         } else {
             assert!(false, "Test address should be a V4 address");
         }
@@ -557,9 +557,9 @@ mod tests {
             return;
         };
 
-        if let SocketAddr::V6 { addr, port } = addr {
+        if let SocketAddr::V6(ip, port) = addr {
             assert_eq!(0x0304, port);
-            assert_eq!(0x05060708090A0B0C0D0E0F1A1B1C1D1E ^ (0x2112A442 << 92 | transaction_id), addr);
+            assert_eq!(0x05060708090A0B0C0D0E0F1A1B1C1D1E ^ (0x2112A442 << 92 | transaction_id), ip);
         } else {
             assert!(false, "Test address should be a V6 address");
         }

@@ -168,44 +168,20 @@ impl<'a> Writer<'a> {
         self.header.set_transaction_id(tid)
     }
 
-    pub fn add_mapped_address_ipv4(&mut self, addr: u32, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv4(0x0001, addr, port)
-    }
+    pub fn add_attr(&mut self, attr: WriterAttribute) -> Result<u16> {
+        let (typ, addr) = match attr {
+            WriterAttribute::MappedAddress(addr) => (0x0001, addr),
+            WriterAttribute::ResponseAddress(addr) => (0x0002, addr),
+            WriterAttribute::SourceAddress(addr) => (0x0004, addr),
+            WriterAttribute::ChangedAddress(addr) => (0x0005, addr),
+            WriterAttribute::ReflectedFrom(addr) => (0x0006, addr),
+            _ => todo!()
+        };
 
-    pub fn add_mapped_address_ipv6(&mut self, addr: u128, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv6(0x0001, addr, port)
-    }
-
-    pub fn add_response_address_ipv4(&mut self, addr: u32, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv4(0x0002, addr, port)
-    }
-
-    pub fn add_response_address_ipv6(&mut self, addr: u128, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv6(0x0002, addr, port)
-    }
-
-    pub fn add_source_address_ipv4(&mut self, addr: u32, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv4(0x0004, addr, port)
-    }
-
-    pub fn add_source_address_ipv6(&mut self, addr: u128, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv6(0x0004, addr, port)
-    }
-
-    pub fn add_changed_address_ipv4(&mut self, addr: u32, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv4(0x0005, addr, port)
-    }
-
-    pub fn add_changed_address_ipv6(&mut self, addr: u128, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv6(0x0005, addr, port)
-    }
-
-    pub fn add_reflected_from_ipv4(&mut self, addr: u32, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv4(0x000B, addr, port)
-    }
-
-    pub fn add_reflected_from_ipv6(&mut self, addr: u128, port: u16) -> Result<u16> {
-        self.add_socket_addr_ipv6(0x000B, addr, port)
+        match addr {
+            SocketAddr::V4(ip, port) => self.add_socket_addr_ipv4(typ, ip, port),
+            SocketAddr::V6 (ip, port) => self.add_socket_addr_ipv6(typ, ip, port),
+        }
     }
 
     fn add_socket_addr_ipv4(&mut self, attr_type: u16, addr: u32, port: u16) -> Result<u16> {
@@ -283,7 +259,7 @@ impl<'a> StunErrorReader<'a> {
     }
 }
 
-pub enum Attribute<'a> {
+pub enum ReaderAttribute<'a> {
     MappedAddress(SocketAddrReader<'a>),
     ResponseAddress(SocketAddrReader<'a>),
     ChangeRequest(ChangeRequestReader<'a>),
@@ -295,6 +271,21 @@ pub enum Attribute<'a> {
     ErrorCode(StunErrorReader<'a>),
     UnknownAttributes(UnknownAttrsReader<'a>),
     ReflectedFrom(SocketAddrReader<'a>),
+    OptionalAttribute { typ: u16, value: &'a [u8] },
+}
+
+pub enum WriterAttribute<'a> {
+    MappedAddress(SocketAddr),
+    ResponseAddress(SocketAddr),
+    ChangeRequest(ChangeRequestReader<'a>),
+    SourceAddress(SocketAddr),
+    ChangedAddress(SocketAddr),
+    Username(StringReader<'a>),
+    Password(StringReader<'a>),
+    MessageIntegrity(MessageIntegrityReader<'a>),
+    ErrorCode(StunErrorReader<'a>),
+    UnknownAttributes(UnknownAttrsReader<'a>),
+    ReflectedFrom(SocketAddr),
     OptionalAttribute { typ: u16, value: &'a [u8] },
 }
 
@@ -311,25 +302,25 @@ impl<'a> AttributeIterator<'a> {
 }
 
 impl<'a> Iterator for AttributeIterator<'a> {
-    type Item = Result<Attribute<'a>>;
+    type Item = Result<ReaderAttribute<'a>>;
 
     fn next(&mut self) -> Option<Self::Item> {
         match self.base_iter.next() {
             None => None,
             Some(Err(err)) => Some(Err(err)),
             Some(Ok((typ, value))) => match typ {
-                0x0001 => Some(Ok(Attribute::MappedAddress(SocketAddrReader::new(value)))),
-                0x0002 => Some(Ok(Attribute::ResponseAddress(SocketAddrReader::new(value)))),
-                0x0003 => Some(Ok(Attribute::ChangeRequest(ChangeRequestReader::new(value)))),
-                0x0004 => Some(Ok(Attribute::SourceAddress(SocketAddrReader::new(value)))),
-                0x0005 => Some(Ok(Attribute::ChangedAddress(SocketAddrReader::new(value)))),
-                0x0006 => Some(Ok(Attribute::Username(StringReader::new(value)))),
-                0x0007 => Some(Ok(Attribute::Password(StringReader::new(value)))),
-                0x0008 => Some(Ok(Attribute::MessageIntegrity(MessageIntegrityReader::new(value)))),
-                0x0009 => Some(Ok(Attribute::ErrorCode(StunErrorReader::new(value)))),
-                0x000A => Some(Ok(Attribute::UnknownAttributes(UnknownAttrsReader::new(value)))),
-                0x000B => Some(Ok(Attribute::ReflectedFrom(SocketAddrReader::new(value)))),
-                typ if typ > 0x7FFF => Some(Ok(Attribute::OptionalAttribute { typ, value })),
+                0x0001 => Some(Ok(ReaderAttribute::MappedAddress(SocketAddrReader::new(value)))),
+                0x0002 => Some(Ok(ReaderAttribute::ResponseAddress(SocketAddrReader::new(value)))),
+                0x0003 => Some(Ok(ReaderAttribute::ChangeRequest(ChangeRequestReader::new(value)))),
+                0x0004 => Some(Ok(ReaderAttribute::SourceAddress(SocketAddrReader::new(value)))),
+                0x0005 => Some(Ok(ReaderAttribute::ChangedAddress(SocketAddrReader::new(value)))),
+                0x0006 => Some(Ok(ReaderAttribute::Username(StringReader::new(value)))),
+                0x0007 => Some(Ok(ReaderAttribute::Password(StringReader::new(value)))),
+                0x0008 => Some(Ok(ReaderAttribute::MessageIntegrity(MessageIntegrityReader::new(value)))),
+                0x0009 => Some(Ok(ReaderAttribute::ErrorCode(StunErrorReader::new(value)))),
+                0x000A => Some(Ok(ReaderAttribute::UnknownAttributes(UnknownAttrsReader::new(value)))),
+                0x000B => Some(Ok(ReaderAttribute::ReflectedFrom(SocketAddrReader::new(value)))),
+                typ if typ > 0x7FFF => Some(Ok(ReaderAttribute::OptionalAttribute { typ, value })),
                 _ => Some(Err(ReaderErr::UnexpectedValue))
             }
         }
@@ -381,58 +372,58 @@ mod tests {
 
     #[test]
     fn read_resolve_attrs() {
-        if let Some(Ok(Attribute::MappedAddress(_))) = AttributeIterator::new(&[0x00, 0x01, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::MappedAddress(_))) = AttributeIterator::new(&[0x00, 0x01, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute MAPPED-ADDRESS");
         }
 
-        if let Some(Ok(Attribute::ResponseAddress(_))) = AttributeIterator::new(&[0x00, 0x02, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::ResponseAddress(_))) = AttributeIterator::new(&[0x00, 0x02, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute RESPONSE-ADDRESS");
         }
 
-        if let Some(Ok(Attribute::ChangeRequest(_))) = AttributeIterator::new(&[0x00, 0x03, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::ChangeRequest(_))) = AttributeIterator::new(&[0x00, 0x03, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute CHANGE-REQUEST");
         }
 
-        if let Some(Ok(Attribute::SourceAddress(_))) = AttributeIterator::new(&[0x00, 0x04, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::SourceAddress(_))) = AttributeIterator::new(&[0x00, 0x04, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute SOURCE-ADDRESS");
         }
 
-        if let Some(Ok(Attribute::ChangedAddress(_))) = AttributeIterator::new(&[0x00, 0x05, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::ChangedAddress(_))) = AttributeIterator::new(&[0x00, 0x05, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute CHANGED-ADDRESS");
         }
 
-        if let Some(Ok(Attribute::Username(_))) = AttributeIterator::new(&[0x00, 0x06, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::Username(_))) = AttributeIterator::new(&[0x00, 0x06, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute USERNAME");
         }
 
-        if let Some(Ok(Attribute::Password(_))) = AttributeIterator::new(&[0x00, 0x07, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::Password(_))) = AttributeIterator::new(&[0x00, 0x07, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute PASSWORD");
         }
 
-        if let Some(Ok(Attribute::MessageIntegrity(_))) = AttributeIterator::new(&[0x00, 0x08, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::MessageIntegrity(_))) = AttributeIterator::new(&[0x00, 0x08, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute MESSAGE-INTEGRITY");
         }
 
-        if let Some(Ok(Attribute::ErrorCode(_))) = AttributeIterator::new(&[0x00, 0x09, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::ErrorCode(_))) = AttributeIterator::new(&[0x00, 0x09, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute ERROR-CODE");
         }
 
-        if let Some(Ok(Attribute::UnknownAttributes(_))) = AttributeIterator::new(&[0x00, 0x0A, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::UnknownAttributes(_))) = AttributeIterator::new(&[0x00, 0x0A, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute UNKNOWN-ATTRIBUTES");
         }
 
-        if let Some(Ok(Attribute::ReflectedFrom(_))) = AttributeIterator::new(&[0x00, 0x0B, 0x00, 0x00]).next() {} else {
+        if let Some(Ok(ReaderAttribute::ReflectedFrom(_))) = AttributeIterator::new(&[0x00, 0x0B, 0x00, 0x00]).next() {} else {
             assert!(false, "Expected attribute REFLECTED-FROM");
         }
 
         for optional_attr in 0x0000..=0x7FFF as u16 {
-            if let Some(Ok(Attribute::OptionalAttribute { .. })) = AttributeIterator::new(&u32::to_be_bytes((optional_attr as u32) << 16)).next() {
+            if let Some(Ok(ReaderAttribute::OptionalAttribute { .. })) = AttributeIterator::new(&u32::to_be_bytes((optional_attr as u32) << 16)).next() {
                 assert!(false, "Unexpected generic optional attribute for code {:#06X}", optional_attr);
             }
         }
 
         for optional_attr in 0x8000..=0xFFFF as u16 {
-            if let Attribute::OptionalAttribute { .. } = AttributeIterator::new(&u32::to_be_bytes((optional_attr as u32) << 16)).next().unwrap().unwrap() {} else {
+            if let Some(Ok(ReaderAttribute::OptionalAttribute { .. })) = AttributeIterator::new(&u32::to_be_bytes((optional_attr as u32) << 16)).next() {} else {
                 assert!(false, "Expected generic optional attribute for code {:#06X}", optional_attr);
             }
         }
@@ -452,7 +443,7 @@ mod tests {
 
         let r = AttributeIterator::new(&attr).next();
 
-        let r = if let Some(Ok(Attribute::MappedAddress(r))) = r { r } else {
+        let r = if let Some(Ok(ReaderAttribute::MappedAddress(r))) = r { r } else {
             assert!(false, "Iterator should return a valid MappingAddress attribute");
             return;
         };
@@ -462,9 +453,9 @@ mod tests {
             return;
         };
 
-        if let SocketAddr::V4 { addr, port } = addr {
+        if let SocketAddr::V4(ip, port) = addr {
             assert_eq!(0x0A0B, port);
-            assert_eq!(0x0C0D0E0F, addr);
+            assert_eq!(0x0C0D0E0F, ip);
         } else {
             assert!(false, "Test address should be a V4 address");
         }
@@ -555,11 +546,11 @@ mod tests {
 
         let mut r = r.attrs();
 
-        if let Some(Ok(Attribute::MappedAddress(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::MappedAddress(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V4(ip, port) = addr {
                     assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, addr);
+                    assert_eq!(0x0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V4 address");
                 }
@@ -572,11 +563,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::MappedAddress(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::MappedAddress(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V6(ip, port) = addr {
                     assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, addr);
+                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V6 address");
                 }
@@ -589,11 +580,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::ResponseAddress(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::ResponseAddress(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V4(ip, port) = addr {
                     assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, addr);
+                    assert_eq!(0x0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V4 address");
                 }
@@ -606,11 +597,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::ResponseAddress(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::ResponseAddress(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V6(ip, port) = addr {
                     assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, addr);
+                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V6 address");
                 }
@@ -623,11 +614,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::SourceAddress(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::SourceAddress(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V4(ip, port) = addr {
                     assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, addr);
+                    assert_eq!(0x0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V4 address");
                 }
@@ -640,11 +631,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::SourceAddress(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::SourceAddress(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V6(ip, port) = addr {
                     assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, addr);
+                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V6 address");
                 }
@@ -657,11 +648,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::ChangedAddress(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::ChangedAddress(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V4(ip, port) = addr {
                     assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, addr);
+                    assert_eq!(0x0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V4 address");
                 }
@@ -674,11 +665,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::ChangedAddress(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::ChangedAddress(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V6(ip, port) = addr {
                     assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, addr);
+                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V6 address");
                 }
@@ -691,11 +682,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::ReflectedFrom(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::ReflectedFrom(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V4(ip, port) = addr {
                     assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, addr);
+                    assert_eq!(0x0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V4 address");
                 }
@@ -708,11 +699,11 @@ mod tests {
             return;
         };
 
-        if let Some(Ok(Attribute::ReflectedFrom(r))) = r.next() {
-            let addr = if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6 { addr, port } = addr {
+        if let Some(Ok(ReaderAttribute::ReflectedFrom(r))) = r.next() {
+            if let Ok(addr) = r.get_address() {
+                if let SocketAddr::V6(ip, port) = addr {
                     assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, addr);
+                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
                 } else {
                     assert!(false, "Test address should be a V6 address");
                 }
@@ -735,20 +726,20 @@ mod tests {
         w.set_message_type(MessageType::BindingRequest).unwrap();
         w.set_transaction_id(1).unwrap();
 
-        w.add_mapped_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        w.add_mapped_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_attr(WriterAttribute::MappedAddress(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
+        w.add_attr(WriterAttribute::MappedAddress(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
 
-        w.add_response_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        w.add_response_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_attr(WriterAttribute::ResponseAddress(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
+        w.add_attr(WriterAttribute::ResponseAddress(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
 
-        w.add_source_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        w.add_source_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_attr(WriterAttribute::SourceAddress(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
+        w.add_attr(WriterAttribute::SourceAddress(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
 
-        w.add_changed_address_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        w.add_changed_address_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_attr(WriterAttribute::ChangedAddress(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
+        w.add_attr(WriterAttribute::ChangedAddress(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
 
-        w.add_reflected_from_ipv4(0x0C0D0E0F, 0x0A0B).unwrap();
-        w.add_reflected_from_ipv6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C).unwrap();
+        w.add_attr(WriterAttribute::ReflectedFrom(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
+        w.add_attr(WriterAttribute::ReflectedFrom(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
 
         w.update_message_length().unwrap();
 
