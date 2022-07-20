@@ -33,12 +33,12 @@ Legend:
 |:---------------------|:-------:|:-------:|
 | `MAPPED-ADDRESS`     | &check; | &check; |
 | `RESPONSE-ADDRESS`   | &check; | &check; |
-| `CHANGE-REQUEST`     | &check; | &cross; |
+| `CHANGE-REQUEST`     | &check; | &check; |
 | `SOURCE-ADDRESS`     | &check; | &check; |
 | `CHANGED-ADDRESS`    | &check; | &check; |
 | `USERNAME`           | &check; | &cross; |
 | `PASSWORD`           | &check; | &cross; |
-| `MESSAGE-INTEGRITY`  | &check; | &cross; |
+| `MESSAGE-INTEGRITY`  | &check; | &check; |
 | `ERROR-CODE`         | &check; | &cross; |
 | `UNKNOWN-ATTRIBUTES` | &check; | &cross; |
 | `REFLECTED-FROM`     | &check; | &check; |

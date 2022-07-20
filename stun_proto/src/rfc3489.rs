@@ -141,13 +141,12 @@ impl<'a> Writer<'a> {
                 attr_bytes,
                 attr_bytes_used: 0,
             }
-
         } else {
             let (header_bytes, attr_bytes) = bytes.split_at_mut(20);
             Self {
                 header: RawMsgHeaderWriter::new(header_bytes),
                 attr_bytes,
-                attr_bytes_used: 0
+                attr_bytes_used: 0,
             }
         }
     }
@@ -169,31 +168,62 @@ impl<'a> Writer<'a> {
     }
 
     pub fn add_attr(&mut self, attr: WriterAttribute) -> Result<u16> {
-        let (typ, addr) = match attr {
-            WriterAttribute::MappedAddress(addr) => (0x0001, addr),
-            WriterAttribute::ResponseAddress(addr) => (0x0002, addr),
-            WriterAttribute::SourceAddress(addr) => (0x0004, addr),
-            WriterAttribute::ChangedAddress(addr) => (0x0005, addr),
-            WriterAttribute::ReflectedFrom(addr) => (0x0006, addr),
+        match attr {
+            WriterAttribute::MappedAddress(addr) => self.add_attr_inner(0x0001, |value_dest| {
+                let mut w = SocketAddrWriter::new(value_dest);
+                match addr {
+                    SocketAddr::V4(ip, port) => w.write_ipv4_addr(ip, port),
+                    SocketAddr::V6(ip, port) => w.write_ipv6_addr(ip, port),
+                }
+            }),
+            WriterAttribute::ResponseAddress(addr) => self.add_attr_inner(0x0002, |value_dest| {
+                let mut w = SocketAddrWriter::new(value_dest);
+                match addr {
+                    SocketAddr::V4(ip, port) => w.write_ipv4_addr(ip, port),
+                    SocketAddr::V6(ip, port) => w.write_ipv6_addr(ip, port),
+                }
+            }),
+            WriterAttribute::ChangeRequest { change_ip, change_port } => self.add_attr_inner(0x0003, |value_dest| {
+                ChangeRequestWriter::new(value_dest).write(change_ip, change_port)
+            }),
+            WriterAttribute::SourceAddress(addr) => self.add_attr_inner(0x0004, |value_dest| {
+                let mut w = SocketAddrWriter::new(value_dest);
+                match addr {
+                    SocketAddr::V4(ip, port) => w.write_ipv4_addr(ip, port),
+                    SocketAddr::V6(ip, port) => w.write_ipv6_addr(ip, port),
+                }
+            }),
+            WriterAttribute::ChangedAddress(addr) => self.add_attr_inner(0x0005, |value_dest| {
+                let mut w = SocketAddrWriter::new(value_dest);
+                match addr {
+                    SocketAddr::V4(ip, port) => w.write_ipv4_addr(ip, port),
+                    SocketAddr::V6(ip, port) => w.write_ipv6_addr(ip, port),
+                }
+            }),
+            WriterAttribute::MessageIntegrity(value) => self.add_attr_inner(0x0008, |value_dest| {
+                MessageIntegrityWriter::new(value_dest).write(value)
+            }),
+            WriterAttribute::ReflectedFrom(addr) => self.add_attr_inner(0x000B, |value_dest| {
+                let mut w = SocketAddrWriter::new(value_dest);
+                match addr {
+                    SocketAddr::V4(ip, port) => w.write_ipv4_addr(ip, port),
+                    SocketAddr::V6(ip, port) => w.write_ipv6_addr(ip, port),
+                }
+            }),
             _ => todo!()
-        };
-
-        match addr {
-            SocketAddr::V4(ip, port) => self.add_socket_addr_ipv4(typ, ip, port),
-            SocketAddr::V6 (ip, port) => self.add_socket_addr_ipv6(typ, ip, port),
         }
     }
 
-    fn add_socket_addr_ipv4(&mut self, attr_type: u16, addr: u32, port: u16) -> Result<u16> {
+    fn add_attr_inner<T: Fn(& mut [u8]) -> Result<u16>>(&mut self, attr_type: u16, value_gen: T) -> Result<u16> {
         let idx = self.attr_bytes_used as usize;
 
-        let type_dest = self.attr_bytes.get_mut(idx..idx+2).ok_or(ReaderErr::NotEnoughBytes)?;
+        let type_dest = self.attr_bytes.get_mut(idx..idx + 2).ok_or(ReaderErr::NotEnoughBytes)?;
         let type_bytes = u16::to_be_bytes(attr_type);
         type_dest.copy_from_slice(&type_bytes);
 
         let value_dest = self.attr_bytes.get_mut(idx + 4..).ok_or(ReaderErr::NotEnoughBytes)?;
-        let mut w = SocketAddrWriter::new(value_dest);
-        let value_len = w.write_ipv4_addr(addr, port)?;
+
+        let value_len = value_gen(value_dest)?;
 
         let value_len_dest = self.attr_bytes.get_mut(idx + 2..idx + 4).ok_or(ReaderErr::NotEnoughBytes)?;
         let value_len_bytes = u16::to_be_bytes(value_len);
@@ -207,31 +237,6 @@ impl<'a> Writer<'a> {
         self.attr_bytes_used += 4 + value_len_with_padding;
         Ok(4 + value_len_with_padding)
     }
-
-    fn add_socket_addr_ipv6(&mut self, attr_type: u16, addr: u128, port: u16) -> Result<u16> {
-        let idx = self.attr_bytes_used as usize;
-
-        let type_dest = self.attr_bytes.get_mut(idx..idx+2).ok_or(ReaderErr::NotEnoughBytes)?;
-        let type_bytes = u16::to_be_bytes(attr_type);
-        type_dest.copy_from_slice(&type_bytes);
-
-        let value_dest = self.attr_bytes.get_mut(idx + 4..).ok_or(ReaderErr::NotEnoughBytes)?;
-        let mut w = SocketAddrWriter::new(value_dest);
-        let value_len = w.write_ipv6_addr(addr, port)?;
-
-        let value_len_dest = self.attr_bytes.get_mut(idx + 2..idx + 4).ok_or(ReaderErr::NotEnoughBytes)?;
-        let value_len_bytes = u16::to_be_bytes(value_len);
-        value_len_dest.copy_from_slice(&value_len_bytes);
-
-        let value_len_with_padding = get_nearest_greater_multiple_of_4(value_len);
-
-        let padding_dest = self.attr_bytes.get_mut(idx + 4 + value_len as usize..idx + 4 + value_len_with_padding as usize).ok_or(ReaderErr::NotEnoughBytes)?;
-        padding_dest.fill(0); // setting padding bytes to 0
-
-        self.attr_bytes_used += 4 + value_len_with_padding;
-        Ok(4 + value_len_with_padding)
-    }
-
 }
 
 pub struct StunErrorReader<'a> {
@@ -274,15 +279,15 @@ pub enum ReaderAttribute<'a> {
     OptionalAttribute { typ: u16, value: &'a [u8] },
 }
 
-pub enum WriterAttribute<'a> {
+pub enum WriterAttribute<'a, 'b> {
     MappedAddress(SocketAddr),
     ResponseAddress(SocketAddr),
-    ChangeRequest(ChangeRequestReader<'a>),
+    ChangeRequest { change_ip: bool, change_port: bool },
     SourceAddress(SocketAddr),
     ChangedAddress(SocketAddr),
     Username(StringReader<'a>),
     Password(StringReader<'a>),
-    MessageIntegrity(MessageIntegrityReader<'a>),
+    MessageIntegrity(&'b [u8; 20]),
     ErrorCode(StunErrorReader<'a>),
     UnknownAttributes(UnknownAttrsReader<'a>),
     ReflectedFrom(SocketAddr),
@@ -429,320 +434,506 @@ mod tests {
         }
     }
 
+    const MAPPED_ADDRESS_V4: [u8; 12] = [
+        0x00, 0x01,             // type: MappedAddress
+        0x00, 0x08,             // value length
+        0x00, 0x01,             // address family
+        0x0A, 0x0B,             // port
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
+    ];
+
+    const MOCK_IPV4: u32 = 0xC0D0E0F;
+    const MOCK_IPV4_PORT: u16 = 0x0A0B;
+
     #[test]
-    fn read_mapped_address_attr() {
-        let attr = [
-            0x00, 0x01,             // type (MappedAddress)
-            0x00, 0x08,             // value length
-            0x00, 0x01,             // address family
-            0x0A, 0x0B,             // port
-            0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
-        ];
+    fn read_mapped_address_attr_ipv4() {
+        let mut r = AttributeIterator::new(&MAPPED_ADDRESS_V4);
 
-        assert_eq!(1, AttributeIterator::new(&attr).count());
+        if let Some(Ok(ReaderAttribute::MappedAddress(r))) = r.next() {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
+                assert!(false, "Test address should be a valid address");
+                return;
+            };
 
-        let r = AttributeIterator::new(&attr).next();
-
-        let r = if let Some(Ok(ReaderAttribute::MappedAddress(r))) = r { r } else {
+            if let SocketAddr::V4(ip, port) = addr {
+                assert_eq!(MOCK_IPV4_PORT, port);
+                assert_eq!(MOCK_IPV4, ip);
+            } else {
+                assert!(false, "Test address should be a V4 address");
+            }
+        } else {
             assert!(false, "Iterator should return a valid MappingAddress attribute");
             return;
         };
 
-        let addr = if let Ok(addr) = r.get_address() { addr } else {
-            assert!(false, "Test address should be a valid address");
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_mapped_address_attr_ipv4() {
+        let mut buffer = [0; 32];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::MappedAddress(SocketAddr::V4(MOCK_IPV4, MOCK_IPV4_PORT))).unwrap();
+        assert_eq!(MAPPED_ADDRESS_V4, buffer[20..])
+    }
+
+    const MAPPED_ADDRESS_V6: [u8; 24] = [
+        0x00, 0x01,             // type: MappedAddress
+        0x00, 0x14,             // value length
+        0x00, 0x02,             // address family: IPv6
+        0x0B, 0x0C,             // port
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
+    ];
+
+    const MOCK_IPV6: u128 = 0x000102030405060708090A0B0C0D0E0F;
+    const MOCK_IPV6_PORT: u16 = 0x0B0C;
+
+    #[test]
+    fn read_mapped_address_attr_ipv6() {
+        let mut r = AttributeIterator::new(&MAPPED_ADDRESS_V6);
+
+        if let Some(Ok(ReaderAttribute::MappedAddress(r))) = r.next() {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
+                assert!(false, "Test address should be a valid address");
+                return;
+            };
+
+            if let SocketAddr::V6(ip, port) = addr {
+                assert_eq!(MOCK_IPV6_PORT, port);
+                assert_eq!(MOCK_IPV6, ip);
+            } else {
+                assert!(false, "Test address should be a V6 address");
+            }
+        } else {
+            assert!(false, "Iterator should return a valid MappingAddress attribute");
             return;
         };
 
-        if let SocketAddr::V4(ip, port) = addr {
-            assert_eq!(0x0A0B, port);
-            assert_eq!(0x0C0D0E0F, ip);
-        } else {
-            assert!(false, "Test address should be a V4 address");
-        }
+        assert!(r.next().is_none(), "There should be only one attribute");
     }
 
-    const MESSAGE: [u8; 200] = [
-        0x00, 0x01,             // type: BindingRequest
-        0x00, 0xB4,             // length: 12 (only data after 20-byte header)
-        0x00, 0x00, 0x00, 0x00, // magic cookie (RFC spec constant)
-        0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x00,
-        0x00, 0x00, 0x00, 0x01, // transaction id (12 bytes total)
-        0x00, 0x01,             // type: MappedAddress
-        0x00, 0x08,             // value length
-        0x00, 0x01,             // address family: IPv4
-        0x0A, 0x0B,             // port
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
-        0x00, 0x01,             // type: MappedAddress
-        0x00, 0x14,             // value length
-        0x00, 0x02,             // address family: IPv6
-        0x0B, 0x0C,             // port
-        0x00, 0x01, 0x02, 0x03,
-        0x04, 0x05, 0x06, 0x07,
-        0x08, 0x09, 0x0A, 0x0B,
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
-        0x00, 0x02,             // type: ResponseAddress
-        0x00, 0x08,             // value length
-        0x00, 0x01,             // address family: IPv4
-        0x0A, 0x0B,             // port
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
-        0x00, 0x02,             // type: ResponseAddress
-        0x00, 0x14,             // value length
-        0x00, 0x02,             // address family: IPv6
-        0x0B, 0x0C,             // port
-        0x00, 0x01, 0x02, 0x03,
-        0x04, 0x05, 0x06, 0x07,
-        0x08, 0x09, 0x0A, 0x0B,
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
-        0x00, 0x04,             // type: SourceAddress
-        0x00, 0x08,             // value length
-        0x00, 0x01,             // address family: IPv4
-        0x0A, 0x0B,             // port
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
-        0x00, 0x04,             // type: SourceAddress
-        0x00, 0x14,             // value length
-        0x00, 0x02,             // address family: IPv6
-        0x0B, 0x0C,             // port
-        0x00, 0x01, 0x02, 0x03,
-        0x04, 0x05, 0x06, 0x07,
-        0x08, 0x09, 0x0A, 0x0B,
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
-        0x00, 0x05,             // type: ChangedAddress
-        0x00, 0x08,             // value length
-        0x00, 0x01,             // address family: IPv4
-        0x0A, 0x0B,             // port
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
-        0x00, 0x05,             // type: ChangedAddress
-        0x00, 0x14,             // value length
-        0x00, 0x02,             // address family: IPv6
-        0x0B, 0x0C,             // port
-        0x00, 0x01, 0x02, 0x03,
-        0x04, 0x05, 0x06, 0x07,
-        0x08, 0x09, 0x0A, 0x0B,
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
-        0x00, 0x0B,             // type: ReflectedFrom
-        0x00, 0x08,             // value length
-        0x00, 0x01,             // address family: IPv4
-        0x0A, 0x0B,             // port
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
-        0x00, 0x0B,             // type: ReflectedFrom
-        0x00, 0x14,             // value length
-        0x00, 0x02,             // address family: IPv6
-        0x0B, 0x0C,             // port
-        0x00, 0x01, 0x02, 0x03,
-        0x04, 0x05, 0x06, 0x07,
-        0x08, 0x09, 0x0A, 0x0B,
-        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
+    #[test]
+    fn write_mapped_address_attr_ipv6() {
+        let mut buffer = [0; 44];
+        let mut w = Writer::new(&mut buffer);
 
+        w.add_attr(WriterAttribute::MappedAddress(SocketAddr::V6(MOCK_IPV6, MOCK_IPV6_PORT))).unwrap();
+        assert_eq!(MAPPED_ADDRESS_V6, buffer[20..])
+    }
+
+    const RESPONSE_ADDRESS_V4: [u8; 12] = [
+        0x00, 0x02,             // type: ResponseAddress
+        0x00, 0x08,             // value length
+        0x00, 0x01,             // address family
+        0x0A, 0x0B,             // port
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
     ];
 
     #[test]
-    fn read_message() {
-        let r = Reader::new(&MESSAGE);
-
-        assert_eq!(1u128, r.get_transaction_id().unwrap());
-
-        assert_eq!(10, r.attrs().count());
-
-        let mut r = r.attrs();
-
-        if let Some(Ok(ReaderAttribute::MappedAddress(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4(ip, port) = addr {
-                    assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V4 address");
-                }
-            } else {
-                assert!(false, "Test address should be a valid address");
-                return;
-            };
-        } else {
-            assert!(false, "Iterator should return a valid MappingAddress attribute");
-            return;
-        };
-
-        if let Some(Ok(ReaderAttribute::MappedAddress(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6(ip, port) = addr {
-                    assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V6 address");
-                }
-            } else {
-                assert!(false, "Test address should be a valid address");
-                return;
-            };
-        } else {
-            assert!(false, "Iterator should return a valid MappingAddress attribute");
-            return;
-        };
+    fn read_response_address_attr_ipv4() {
+        let mut r = AttributeIterator::new(&RESPONSE_ADDRESS_V4);
 
         if let Some(Ok(ReaderAttribute::ResponseAddress(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4(ip, port) = addr {
-                    assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V4 address");
-                }
-            } else {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
                 assert!(false, "Test address should be a valid address");
                 return;
             };
+
+            if let SocketAddr::V4(ip, port) = addr {
+                assert_eq!(MOCK_IPV4_PORT, port);
+                assert_eq!(MOCK_IPV4, ip);
+            } else {
+                assert!(false, "Test address should be a V4 address");
+            }
         } else {
             assert!(false, "Iterator should return a valid ResponseAddress attribute");
             return;
         };
 
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_response_address_attr_ipv4() {
+        let mut buffer = [0; 32];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::ResponseAddress(SocketAddr::V4(MOCK_IPV4, MOCK_IPV4_PORT))).unwrap();
+        assert_eq!(RESPONSE_ADDRESS_V4, buffer[20..])
+    }
+
+    const RESPONSE_ADDRESS_V6: [u8; 24] = [
+        0x00, 0x02,             // type: ResponseAddress
+        0x00, 0x14,             // value length
+        0x00, 0x02,             // address family: IPv6
+        0x0B, 0x0C,             // port
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
+    ];
+
+    #[test]
+    fn read_response_address_attr_ipv6() {
+        let mut r = AttributeIterator::new(&RESPONSE_ADDRESS_V6);
+
         if let Some(Ok(ReaderAttribute::ResponseAddress(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6(ip, port) = addr {
-                    assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V6 address");
-                }
-            } else {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
                 assert!(false, "Test address should be a valid address");
                 return;
             };
+
+            if let SocketAddr::V6(ip, port) = addr {
+                assert_eq!(MOCK_IPV6_PORT, port);
+                assert_eq!(MOCK_IPV6, ip);
+            } else {
+                assert!(false, "Test address should be a V6 address");
+            }
         } else {
             assert!(false, "Iterator should return a valid ResponseAddress attribute");
             return;
         };
 
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_response_address_attr_ipv6() {
+        let mut buffer = [0; 44];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::ResponseAddress(SocketAddr::V6(MOCK_IPV6, MOCK_IPV6_PORT))).unwrap();
+        assert_eq!(RESPONSE_ADDRESS_V6, buffer[20..])
+    }
+
+    const CHANGE_REQUEST: [u8; 8] = [
+        0x00, 0x03,                     // type: ChangeRequest
+        0x00, 0x04,                     // value length
+        0x00, 0x00, 0x00, 0x04 | 0x02,  // change both ip and port
+    ];
+
+    #[test]
+    fn read_change_request_attr() {
+        let mut r = AttributeIterator::new(&CHANGE_REQUEST);
+
+        if let Some(Ok(ReaderAttribute::ChangeRequest(r))) = r.next() {
+            assert!(r.get_change_ip().unwrap(), "Test flag change_ip should be true");
+            assert!(r.get_change_port().unwrap(), "Test flag change_port should be true");
+        } else {
+            assert!(false, "Iterator should return a valid ChangeRequest attribute");
+            return;
+        };
+
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_change_request_attr() {
+        let mut buffer = [0; 28];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::ChangeRequest { change_ip: true, change_port: true }).unwrap();
+
+        assert_eq!(CHANGE_REQUEST, buffer[20..]);
+    }
+
+    const SOURCE_ADDRESS_V4: [u8; 12] = [
+        0x00, 0x04,             // type: SourceAddress
+        0x00, 0x08,             // value length
+        0x00, 0x01,             // address family
+        0x0A, 0x0B,             // port
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
+    ];
+
+    #[test]
+    fn read_source_address_attr_ipv4() {
+        let mut r = AttributeIterator::new(&SOURCE_ADDRESS_V4);
+
         if let Some(Ok(ReaderAttribute::SourceAddress(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4(ip, port) = addr {
-                    assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V4 address");
-                }
-            } else {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
                 assert!(false, "Test address should be a valid address");
                 return;
             };
+
+            if let SocketAddr::V4(ip, port) = addr {
+                assert_eq!(MOCK_IPV4_PORT, port);
+                assert_eq!(MOCK_IPV4, ip);
+            } else {
+                assert!(false, "Test address should be a V4 address");
+            }
         } else {
             assert!(false, "Iterator should return a valid SourceAddress attribute");
             return;
         };
 
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_source_address_attr_ipv4() {
+        let mut buffer = [0; 32];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::SourceAddress(SocketAddr::V4(MOCK_IPV4, MOCK_IPV4_PORT))).unwrap();
+        assert_eq!(SOURCE_ADDRESS_V4, buffer[20..])
+    }
+
+    const SOURCE_ADDRESS_V6: [u8; 24] = [
+        0x00, 0x04,             // type: SourceAddress
+        0x00, 0x14,             // value length
+        0x00, 0x02,             // address family: IPv6
+        0x0B, 0x0C,             // port
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
+    ];
+
+    #[test]
+    fn read_source_address_attr_ipv6() {
+        let mut r = AttributeIterator::new(&SOURCE_ADDRESS_V6);
+
         if let Some(Ok(ReaderAttribute::SourceAddress(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6(ip, port) = addr {
-                    assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V6 address");
-                }
-            } else {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
                 assert!(false, "Test address should be a valid address");
                 return;
             };
+
+            if let SocketAddr::V6(ip, port) = addr {
+                assert_eq!(MOCK_IPV6_PORT, port);
+                assert_eq!(MOCK_IPV6, ip);
+            } else {
+                assert!(false, "Test address should be a V6 address");
+            }
         } else {
             assert!(false, "Iterator should return a valid SourceAddress attribute");
             return;
         };
 
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_source_address_attr_ipv6() {
+        let mut buffer = [0; 44];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::SourceAddress(SocketAddr::V6(MOCK_IPV6, MOCK_IPV6_PORT))).unwrap();
+        assert_eq!(SOURCE_ADDRESS_V6, buffer[20..])
+    }
+
+    const CHANGED_ADDRESS_V4: [u8; 12] = [
+        0x00, 0x05,             // type: ChangedAddress
+        0x00, 0x08,             // value length
+        0x00, 0x01,             // address family
+        0x0A, 0x0B,             // port
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
+    ];
+
+    #[test]
+    fn read_changed_address_attr_ipv4() {
+        let mut r = AttributeIterator::new(&CHANGED_ADDRESS_V4);
+
         if let Some(Ok(ReaderAttribute::ChangedAddress(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4(ip, port) = addr {
-                    assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V4 address");
-                }
-            } else {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
                 assert!(false, "Test address should be a valid address");
                 return;
             };
+
+            if let SocketAddr::V4(ip, port) = addr {
+                assert_eq!(MOCK_IPV4_PORT, port);
+                assert_eq!(MOCK_IPV4, ip);
+            } else {
+                assert!(false, "Test address should be a V4 address");
+            }
         } else {
             assert!(false, "Iterator should return a valid ChangedAddress attribute");
             return;
         };
 
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_changed_address_attr_ipv4() {
+        let mut buffer = [0; 32];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::ChangedAddress(SocketAddr::V4(MOCK_IPV4, MOCK_IPV4_PORT))).unwrap();
+        assert_eq!(CHANGED_ADDRESS_V4, buffer[20..])
+    }
+
+    const CHANGED_ADDRESS_V6: [u8; 24] = [
+        0x00, 0x05,             // type: ChangedAddress
+        0x00, 0x14,             // value length
+        0x00, 0x02,             // address family: IPv6
+        0x0B, 0x0C,             // port
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
+    ];
+
+    #[test]
+    fn read_changed_address_attr_ipv6() {
+        let mut r = AttributeIterator::new(&CHANGED_ADDRESS_V6);
+
         if let Some(Ok(ReaderAttribute::ChangedAddress(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6(ip, port) = addr {
-                    assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V6 address");
-                }
-            } else {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
                 assert!(false, "Test address should be a valid address");
                 return;
             };
+
+            if let SocketAddr::V6(ip, port) = addr {
+                assert_eq!(MOCK_IPV6_PORT, port);
+                assert_eq!(MOCK_IPV6, ip);
+            } else {
+                assert!(false, "Test address should be a V6 address");
+            }
         } else {
             assert!(false, "Iterator should return a valid ChangedAddress attribute");
             return;
         };
 
-        if let Some(Ok(ReaderAttribute::ReflectedFrom(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V4(ip, port) = addr {
-                    assert_eq!(0x0A0B, port);
-                    assert_eq!(0x0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V4 address");
-                }
-            } else {
-                assert!(false, "Test address should be a valid address");
-                return;
-            };
-        } else {
-            assert!(false, "Iterator should return a valid ReflectedFrom attribute");
-            return;
-        };
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
 
-        if let Some(Ok(ReaderAttribute::ReflectedFrom(r))) = r.next() {
-            if let Ok(addr) = r.get_address() {
-                if let SocketAddr::V6(ip, port) = addr {
-                    assert_eq!(0x0B0C, port);
-                    assert_eq!(0x000102030405060708090A0B0C0D0E0F, ip);
-                } else {
-                    assert!(false, "Test address should be a V6 address");
-                }
-            } else {
-                assert!(false, "Test address should be a valid address");
-                return;
-            };
+    #[test]
+    fn write_changed_address_attr_ipv6() {
+        let mut buffer = [0; 44];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::ChangedAddress(SocketAddr::V6(MOCK_IPV6, MOCK_IPV6_PORT))).unwrap();
+        assert_eq!(CHANGED_ADDRESS_V6, buffer[20..])
+    }
+
+    const MESSAGE_INTEGRITY: [u8; 24] = [
+        0x00, 0x08,             // type: MessageIntegrity
+        0x00, 0x14,             // value length
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F,
+        0x10, 0x11, 0x12, 0x13, // hash
+    ];
+
+    #[test]
+    fn read_message_integrity_addr() {
+        let mut r = AttributeIterator::new(&MESSAGE_INTEGRITY);
+
+        if let Some(Ok(ReaderAttribute::MessageIntegrity(r))) = r.next() {
+            assert_eq!([0x00, 0x01, 0x02, 0x03,
+                        0x04, 0x05, 0x06, 0x07,
+                        0x08, 0x09, 0x0A, 0x0B,
+                        0x0C, 0x0D, 0x0E, 0x0F,
+                        0x10, 0x11, 0x12, 0x13] as [u8; 20], *r.get_value().unwrap());
         } else {
-            assert!(false, "Iterator should return a valid ReflectedFrom attribute");
-            return;
-        };
+            assert!(false, "Iterator should return a valid MessageIntegrity attribute");
+        }
+
+        assert!(r.next().is_none(), "There should be only one attribute");
 
     }
 
     #[test]
-    fn write_message() {
-        let mut buffer = [0; 200];
-
+    fn write_message_integrity_addr() {
+        let mut buffer = [0; 44];
         let mut w = Writer::new(&mut buffer);
-        w.set_message_type(MessageType::BindingRequest).unwrap();
-        w.set_transaction_id(1).unwrap();
-
-        w.add_attr(WriterAttribute::MappedAddress(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
-        w.add_attr(WriterAttribute::MappedAddress(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
-
-        w.add_attr(WriterAttribute::ResponseAddress(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
-        w.add_attr(WriterAttribute::ResponseAddress(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
-
-        w.add_attr(WriterAttribute::SourceAddress(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
-        w.add_attr(WriterAttribute::SourceAddress(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
-
-        w.add_attr(WriterAttribute::ChangedAddress(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
-        w.add_attr(WriterAttribute::ChangedAddress(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
-
-        w.add_attr(WriterAttribute::ReflectedFrom(SocketAddr::V4(0x0C0D0E0F, 0x0A0B))).unwrap();
-        w.add_attr(WriterAttribute::ReflectedFrom(SocketAddr::V6(0x000102030405060708090A0B0C0D0E0F, 0x0B0C))).unwrap();
-
-        w.update_message_length().unwrap();
-
-        assert_eq!(MESSAGE, buffer);
+        w.add_attr(WriterAttribute::MessageIntegrity(&[0x00, 0x01, 0x02, 0x03,
+                                                           0x04, 0x05, 0x06, 0x07,
+                                                           0x08, 0x09, 0x0A, 0x0B,
+                                                           0x0C, 0x0D, 0x0E, 0x0F,
+                                                           0x10, 0x11, 0x12, 0x13])).unwrap();
+        assert_eq!(MESSAGE_INTEGRITY, buffer[20..]);
     }
+
+    const REFLECTED_FROM_V4: [u8; 12] = [
+        0x00, 0x0B,             // type: ReflectedFrom
+        0x00, 0x08,             // value length
+        0x00, 0x01,             // address family
+        0x0A, 0x0B,             // port
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
+    ];
+
+    #[test]
+    fn read_reflected_from_attr_ipv4() {
+        let mut r = AttributeIterator::new(&REFLECTED_FROM_V4);
+
+        if let Some(Ok(ReaderAttribute::ReflectedFrom(r))) = r.next() {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
+                assert!(false, "Test address should be a valid address");
+                return;
+            };
+
+            if let SocketAddr::V4(ip, port) = addr {
+                assert_eq!(MOCK_IPV4_PORT, port);
+                assert_eq!(MOCK_IPV4, ip);
+            } else {
+                assert!(false, "Test address should be a V4 address");
+            }
+        } else {
+            assert!(false, "Iterator should return a valid ReflectedFrom attribute");
+            return;
+        };
+
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_reflected_from_attr_ipv4() {
+        let mut buffer = [0; 32];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::ReflectedFrom(SocketAddr::V4(MOCK_IPV4, MOCK_IPV4_PORT))).unwrap();
+        assert_eq!(REFLECTED_FROM_V4, buffer[20..])
+    }
+
+    const REFLECTED_FROM_V6: [u8; 24] = [
+        0x00, 0x0B,             // type: ReflectedFrom
+        0x00, 0x14,             // value length
+        0x00, 0x02,             // address family: IPv6
+        0x0B, 0x0C,             // port
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F, // ipv6 address
+    ];
+
+    #[test]
+    fn read_reflected_from_attr_ipv6() {
+        let mut r = AttributeIterator::new(&REFLECTED_FROM_V6);
+
+        if let Some(Ok(ReaderAttribute::ReflectedFrom(r))) = r.next() {
+            let addr = if let Ok(addr) = r.get_address() { addr } else {
+                assert!(false, "Test address should be a valid address");
+                return;
+            };
+
+            if let SocketAddr::V6(ip, port) = addr {
+                assert_eq!(MOCK_IPV6_PORT, port);
+                assert_eq!(MOCK_IPV6, ip);
+            } else {
+                assert!(false, "Test address should be a V6 address");
+            }
+        } else {
+            assert!(false, "Iterator should return a valid ReflectedFrom attribute");
+            return;
+        };
+
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_reflected_from_attr_ipv6() {
+        let mut buffer = [0; 44];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::ReflectedFrom(SocketAddr::V6(MOCK_IPV6, MOCK_IPV6_PORT))).unwrap();
+        assert_eq!(REFLECTED_FROM_V6, buffer[20..])
+    }
+
 }

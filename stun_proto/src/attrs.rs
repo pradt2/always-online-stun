@@ -70,7 +70,7 @@ impl<'a> SocketAddrWriter<'a> {
         }
     }
 
-    pub fn write_ipv4_addr(&mut self, addr: u32, port: u16) -> Result<u16> {
+    pub fn write_ipv4_addr(&mut self, ip: u32, port: u16) -> Result<u16> {
         let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
         addr_family_dest[0] = 0;
         addr_family_dest[1] = 1;
@@ -80,12 +80,12 @@ impl<'a> SocketAddrWriter<'a> {
         port_dest.copy_from_slice(&port_bytes);
 
         let ipv4_addr_dest = self.bytes.get_mut(4..8).ok_or(ReaderErr::NotEnoughBytes)?;
-        let ipv4_addr_bytes = u32::to_be_bytes(addr);
+        let ipv4_addr_bytes = u32::to_be_bytes(ip);
         ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
         Ok(8)
     }
 
-    pub fn write_ipv6_addr(&mut self, addr: u128, port: u16) -> Result<u16> {
+    pub fn write_ipv6_addr(&mut self, ip: u128, port: u16) -> Result<u16> {
         let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
         addr_family_dest[0] = 0;
         addr_family_dest[1] = 2;
@@ -95,7 +95,7 @@ impl<'a> SocketAddrWriter<'a> {
         port_dest.copy_from_slice(&port_bytes);
 
         let ipv6_addr_dest = self.bytes.get_mut(4..20).ok_or(ReaderErr::NotEnoughBytes)?;
-        let ipv6_addr_bytes = u128::to_be_bytes(addr);
+        let ipv6_addr_bytes = u128::to_be_bytes(ip);
         ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
         Ok(20)
     }
@@ -169,6 +169,23 @@ impl<'a> XorSocketAddrWriter<'a> {
         let ipv6_addr_dest = self.bytes.get_mut(4..20).ok_or(ReaderErr::NotEnoughBytes)?;
         let ipv6_addr_bytes = u128::to_be_bytes(addr ^ mask);
         ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
+        Ok(20)
+    }
+}
+
+pub struct MessageIntegrityWriter<'a> {
+    bytes: &'a mut [u8]
+}
+
+impl<'a> MessageIntegrityWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn write(&mut self, value: &[u8; 20]) -> Result<u16> {
+        self.bytes.get_mut(0..20).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(value);
         Ok(20)
     }
 }
@@ -336,12 +353,30 @@ impl<'a> ChangeRequestReader<'a> {
         }
     }
 
-    pub fn change_ip(&self) -> Result<bool> {
+    pub fn get_change_ip(&self) -> Result<bool> {
         Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 4 > 0)
     }
 
-    pub fn change_port(&self) -> Result<bool> {
+    pub fn get_change_port(&self) -> Result<bool> {
         Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 2 > 0)
+    }
+}
+
+pub struct ChangeRequestWriter<'a> {
+    bytes: &'a mut [u8]
+}
+
+impl<'a> ChangeRequestWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn write(&mut self, change_ip: bool, change_port: bool) -> Result<u16> {
+        let bytes = if change_ip { 4 } else { 0 } | if change_port { 2 } else { 0 } as u32;
+        self.bytes.get_mut(0..4).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(&u32::to_be_bytes(bytes));
+        Ok(4)
     }
 }
 
@@ -631,23 +666,23 @@ mod tests {
     fn change_request() {
         let change_ip   = u32::to_be_bytes(0b00000000000000000000000000000100);
         let r = ChangeRequestReader::new(&change_ip);
-        assert!(r.change_ip().unwrap());
-        assert!(!r.change_port().unwrap());
+        assert!(r.get_change_ip().unwrap());
+        assert!(!r.get_change_port().unwrap());
 
         let change_port = u32::to_be_bytes(0b00000000000000000000000000000010);
         let r = ChangeRequestReader::new(&change_port);
-        assert!(!r.change_ip().unwrap());
-        assert!(r.change_port().unwrap());
+        assert!(!r.get_change_ip().unwrap());
+        assert!(r.get_change_port().unwrap());
 
         let change_both = u32::to_be_bytes(0b00000000000000000000000000000110);
         let r = ChangeRequestReader::new(&change_both);
-        assert!(r.change_ip().unwrap());
-        assert!(r.change_port().unwrap());
+        assert!(r.get_change_ip().unwrap());
+        assert!(r.get_change_port().unwrap());
 
         let change_none = u32::to_be_bytes(0b00000000000000000000000000000000);
         let r = ChangeRequestReader::new(&change_none);
-        assert!(!r.change_ip().unwrap());
-        assert!(!r.change_port().unwrap());
+        assert!(!r.get_change_ip().unwrap());
+        assert!(!r.get_change_port().unwrap());
     }
 
     #[test]
