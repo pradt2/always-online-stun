@@ -10,6 +10,7 @@ Legend:
 
 ## [RFC 3489](https://datatracker.ietf.org/doc/html/rfc3489)
 
+
 ### Message types
 | Type                           | Reader  | Writer  |
 |:-------------------------------|:-------:|:-------:|
@@ -20,12 +21,14 @@ Legend:
 | `Shared Secret Response`       | &check; | &check; |
 | `Shared Secret Error Response` | &check; | &check; |
 
+
 ### Header features
 
 | Feature        | Reader  | Writer  |
 |:---------------|:-------:|:-------:|
 | Message length | &check; | &check; |
 | Transaction ID | &check; | &check; |
+
 
 ### Attributes
 
@@ -36,8 +39,8 @@ Legend:
 | `CHANGE-REQUEST`     | &check; | &check; |
 | `SOURCE-ADDRESS`     | &check; | &check; |
 | `CHANGED-ADDRESS`    | &check; | &check; |
-| `USERNAME`           | &check; | &cross; |
-| `PASSWORD`           | &check; | &cross; |
+| `USERNAME`           | &check; | &check; |
+| `PASSWORD`           | &check; | &check; |
 | `MESSAGE-INTEGRITY`  | &check; | &check; |
 | `ERROR-CODE`         | &check; | &cross; |
 | `UNKNOWN-ATTRIBUTES` | &check; | &cross; |

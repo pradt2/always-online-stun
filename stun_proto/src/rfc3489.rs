@@ -200,6 +200,12 @@ impl<'a> Writer<'a> {
                     SocketAddr::V6(ip, port) => w.write_ipv6_addr(ip, port),
                 }
             }),
+            WriterAttribute::Username(username) => self.add_attr_inner(0x0006, |value_dest| {
+               StringWriter::new(value_dest).write(username)
+            }),
+            WriterAttribute::Password(password) => self.add_attr_inner(0x0007, |value_dest| {
+               StringWriter::new(value_dest).write(password)
+            }),
             WriterAttribute::MessageIntegrity(value) => self.add_attr_inner(0x0008, |value_dest| {
                 MessageIntegrityWriter::new(value_dest).write(value)
             }),
@@ -285,8 +291,8 @@ pub enum WriterAttribute<'a, 'b> {
     ChangeRequest { change_ip: bool, change_port: bool },
     SourceAddress(SocketAddr),
     ChangedAddress(SocketAddr),
-    Username(StringReader<'a>),
-    Password(StringReader<'a>),
+    Username(&'b str),
+    Password(&'b str),
     MessageIntegrity(&'b [u8; 20]),
     ErrorCode(StunErrorReader<'a>),
     UnknownAttributes(UnknownAttrsReader<'a>),
@@ -836,7 +842,6 @@ mod tests {
         }
 
         assert!(r.next().is_none(), "There should be only one attribute");
-
     }
 
     #[test]
@@ -849,6 +854,70 @@ mod tests {
                                                            0x0C, 0x0D, 0x0E, 0x0F,
                                                            0x10, 0x11, 0x12, 0x13])).unwrap();
         assert_eq!(MESSAGE_INTEGRITY, buffer[20..]);
+    }
+
+    const USERNAME: [u8; 12] = [
+        0x00, 0x06, // type: Username
+        0x00, 0x06, // value length
+        0x75, 0x73,
+        0x65, 0x72,
+        0x31, 0x32, // 'user12'
+        0x00, 0x00, // padding
+    ];
+
+    const MOCK_USERNAME: &'static str = "user12";
+
+    #[test]
+    fn read_username_attr() {
+        let mut r = AttributeIterator::new(&USERNAME);
+
+        if let Some(Ok(ReaderAttribute::Username(r))) = r.next() {
+            assert_eq!(MOCK_USERNAME, r.get_value().unwrap());
+        } else {
+            assert!(false, "Iterator should return a valid Username attribute");
+        }
+
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_username_addr() {
+        let mut buffer = [0; 32];
+        let mut w = Writer::new(&mut buffer);
+        w.add_attr(WriterAttribute::Username(MOCK_USERNAME)).unwrap();
+        assert_eq!(USERNAME, buffer[20..]);
+    }
+
+    const PASSWORD: [u8; 12] = [
+        0x00, 0x07, // type: Password
+        0x00, 0x06, // value length
+        0x70, 0x61,
+        0x73, 0x73,
+        0x31, 0x32, // 'pass12'
+        0x00, 0x00, // padding
+    ];
+
+    const MOCK_PASSWORD: &'static str = "pass12";
+
+    #[test]
+    fn read_password_attr() {
+        let mut r = AttributeIterator::new(&PASSWORD);
+
+        if let Some(Ok(ReaderAttribute::Password(r))) = r.next() {
+            assert_eq!(MOCK_PASSWORD, r.get_value().unwrap());
+        } else {
+            assert!(false, "Iterator should return a valid Password attribute");
+        }
+
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_password_addr() {
+        let mut buffer = [0; 32];
+        let mut w = Writer::new(&mut buffer);
+        w.add_attr(WriterAttribute::Password(MOCK_PASSWORD)).unwrap();
+        assert_eq!(PASSWORD, buffer[20..]);
     }
 
     const REFLECTED_FROM_V4: [u8; 12] = [

@@ -40,7 +40,7 @@ impl<'a> SocketAddrReader<'a> {
                     return Err(ReaderErr::NotEnoughBytes);
                 };
 
-                Ok(SocketAddr::V4 (ip, port))
+                Ok(SocketAddr::V4(ip, port))
             }
             2 => {
                 let b = self.bytes.get(4..20)
@@ -174,7 +174,7 @@ impl<'a> XorSocketAddrWriter<'a> {
 }
 
 pub struct MessageIntegrityWriter<'a> {
-    bytes: &'a mut [u8]
+    bytes: &'a mut [u8],
 }
 
 impl<'a> MessageIntegrityWriter<'a> {
@@ -208,6 +208,25 @@ impl<'a> StringReader<'a> {
     pub fn get_value(&self) -> Result<&'a str> {
         core::str::from_utf8(self.bytes)
             .map_err(|_| ReaderErr::UnexpectedValue)
+    }
+}
+
+pub struct StringWriter<'a> {
+    bytes: &'a mut [u8],
+}
+
+impl<'a> StringWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn write(&mut self, value: &str) -> Result<u16> {
+        let value_bytes = value.as_bytes();
+        let val_len = value_bytes.len();
+        self.bytes.get_mut(0..val_len).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(value_bytes);
+        Ok(val_len as u16)
     }
 }
 
@@ -343,7 +362,7 @@ impl<'a> ErrorCodeReader<'a> {
 }
 
 pub struct ChangeRequestReader<'a> {
-    bytes: &'a [u8]
+    bytes: &'a [u8],
 }
 
 impl<'a> ChangeRequestReader<'a> {
@@ -363,7 +382,7 @@ impl<'a> ChangeRequestReader<'a> {
 }
 
 pub struct ChangeRequestWriter<'a> {
-    bytes: &'a mut [u8]
+    bytes: &'a mut [u8],
 }
 
 impl<'a> ChangeRequestWriter<'a> {
@@ -664,7 +683,7 @@ mod tests {
 
     #[test]
     fn change_request() {
-        let change_ip   = u32::to_be_bytes(0b00000000000000000000000000000100);
+        let change_ip = u32::to_be_bytes(0b00000000000000000000000000000100);
         let r = ChangeRequestReader::new(&change_ip);
         assert!(r.get_change_ip().unwrap());
         assert!(!r.get_change_port().unwrap());
