@@ -209,6 +209,13 @@ impl<'a> Writer<'a> {
             WriterAttribute::MessageIntegrity(value) => self.add_attr_inner(0x0008, |value_dest| {
                 MessageIntegrityWriter::new(value_dest).write(value)
             }),
+            WriterAttribute::ErrorCode(error) => self.add_attr_inner(0x0009, |value_dest| {
+                let mut writer = ErrorCodeWriter::new(value_dest);
+                Ok(writer.set_code(error as u16)? + writer.set_reason(error.get_reason())?)
+            }),
+            WriterAttribute::UnknownAttributes(attrs) => self.add_attr_inner(0x000A, |value_dest| {
+                UnknownAttrsWriter::new(value_dest).write(attrs, attrs.get(attrs.len() - 1).map(|val| *val))
+            }),
             WriterAttribute::ReflectedFrom(addr) => self.add_attr_inner(0x000B, |value_dest| {
                 let mut w = SocketAddrWriter::new(value_dest);
                 match addr {
@@ -216,7 +223,11 @@ impl<'a> Writer<'a> {
                     SocketAddr::V6(ip, port) => w.write_ipv6_addr(ip, port),
                 }
             }),
-            _ => todo!()
+            WriterAttribute::OptionalAttribute {typ, value} => self.add_attr_inner(typ, |value_dest| {
+                value_dest.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(&typ.to_be_bytes());
+                value_dest.get_mut(2..value.len()).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(value);
+                Ok(2 + value.len() as u16)
+            })
         }
     }
 
@@ -294,8 +305,8 @@ pub enum WriterAttribute<'a, 'b> {
     Username(&'b str),
     Password(&'b str),
     MessageIntegrity(&'b [u8; 20]),
-    ErrorCode(StunErrorReader<'a>),
-    UnknownAttributes(UnknownAttrsReader<'a>),
+    ErrorCode(StunError),
+    UnknownAttributes(&'a [u16]),
     ReflectedFrom(SocketAddr),
     OptionalAttribute { typ: u16, value: &'a [u8] },
 }

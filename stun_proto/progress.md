@@ -42,8 +42,8 @@ Legend:
 | `USERNAME`           | &check; | &check; |
 | `PASSWORD`           | &check; | &check; |
 | `MESSAGE-INTEGRITY`  | &check; | &check; |
-| `ERROR-CODE`         | &check; | &cross; |
-| `UNKNOWN-ATTRIBUTES` | &check; | &cross; |
+| `ERROR-CODE`         | &check; | &check; |
+| `UNKNOWN-ATTRIBUTES` | &check; | &check; |
 | `REFLECTED-FROM`     | &check; | &check; |
 
 
@@ -51,15 +51,15 @@ Legend:
 
 | Error code | Reader  | Writer  |
 |:-----------|:-------:|:-------:|
-| `400`      | &check; | &cross; |
-| `401`      | &check; | &cross; |
-| `420`      | &check; | &cross; |
-| `430`      | &check; | &cross; |
-| `431`      | &check; | &cross; |
-| `432`      | &check; | &cross; |
-| `433`      | &check; | &cross; |
-| `500`      | &check; | &cross; |
-| `600`      | &check; | &cross; |
+| `400`      | &check; | &check; |
+| `401`      | &check; | &check; |
+| `420`      | &check; | &check; |
+| `430`      | &check; | &check; |
+| `431`      | &check; | &check; |
+| `432`      | &check; | &check; |
+| `433`      | &check; | &check; |
+| `500`      | &check; | &check; |
+| `600`      | &check; | &check; |
 
 
 ## [RFC 5389](https://datatracker.ietf.org/doc/html/rfc5389)

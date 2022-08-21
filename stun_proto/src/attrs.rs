@@ -1,6 +1,5 @@
 use crate::{ReaderErr, Result};
 
-
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum SocketAddr {
     V4(u32, u16),
@@ -71,30 +70,42 @@ impl<'a> SocketAddrWriter<'a> {
     }
 
     pub fn write_ipv4_addr(&mut self, ip: u32, port: u16) -> Result<u16> {
-        let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
+        let addr_family_dest = self.bytes.get_mut(0..2)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         addr_family_dest[0] = 0;
         addr_family_dest[1] = 1;
 
-        let port_dest = self.bytes.get_mut(2..4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let port_dest = self.bytes.get_mut(2..4)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let port_bytes = u16::to_be_bytes(port);
         port_dest.copy_from_slice(&port_bytes);
 
-        let ipv4_addr_dest = self.bytes.get_mut(4..8).ok_or(ReaderErr::NotEnoughBytes)?;
+        let ipv4_addr_dest = self.bytes.get_mut(4..8)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let ipv4_addr_bytes = u32::to_be_bytes(ip);
         ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
         Ok(8)
     }
 
     pub fn write_ipv6_addr(&mut self, ip: u128, port: u16) -> Result<u16> {
-        let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
+        let addr_family_dest = self.bytes.get_mut(0..2)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         addr_family_dest[0] = 0;
         addr_family_dest[1] = 2;
 
-        let port_dest = self.bytes.get_mut(2..4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let port_dest = self.bytes.get_mut(2..4)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let port_bytes = u16::to_be_bytes(port);
         port_dest.copy_from_slice(&port_bytes);
 
-        let ipv6_addr_dest = self.bytes.get_mut(4..20).ok_or(ReaderErr::NotEnoughBytes)?;
+        let ipv6_addr_dest = self.bytes.get_mut(4..20)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let ipv6_addr_bytes = u128::to_be_bytes(ip);
         ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
         Ok(20)
@@ -141,32 +152,44 @@ impl<'a> XorSocketAddrWriter<'a> {
     }
 
     pub fn write_ipv4_addr(&mut self, addr: u32, port: u16) -> Result<u16> {
-        let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
+        let addr_family_dest = self.bytes.get_mut(0..2)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         addr_family_dest[0] = 0;
         addr_family_dest[1] = 1;
 
-        let port_dest = self.bytes.get_mut(2..4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let port_dest = self.bytes.get_mut(2..4)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let port_bytes = u16::to_be_bytes(port);
         port_dest.copy_from_slice(&port_bytes);
 
         let mask = 0x2112A442;
-        let ipv4_addr_dest = self.bytes.get_mut(4..8).ok_or(ReaderErr::NotEnoughBytes)?;
+        let ipv4_addr_dest = self.bytes.get_mut(4..8)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let ipv4_addr_bytes = u32::to_be_bytes(addr ^ mask);
         ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
         Ok(8)
     }
 
     pub fn write_ipv6_addr(&mut self, addr: u128, port: u16, transaction_id: u128) -> Result<u16> {
-        let addr_family_dest = self.bytes.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?;
+        let addr_family_dest = self.bytes.get_mut(0..2)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         addr_family_dest[0] = 0;
         addr_family_dest[1] = 1;
 
-        let port_dest = self.bytes.get_mut(2..4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let port_dest = self.bytes.get_mut(2..4)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let port_bytes = u16::to_be_bytes(port);
         port_dest.copy_from_slice(&port_bytes);
 
         let mask = 0x2112A442 << 92 | transaction_id;
-        let ipv6_addr_dest = self.bytes.get_mut(4..20).ok_or(ReaderErr::NotEnoughBytes)?;
+        let ipv6_addr_dest = self.bytes.get_mut(4..20)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let ipv6_addr_bytes = u128::to_be_bytes(addr ^ mask);
         ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
         Ok(20)
@@ -185,7 +208,10 @@ impl<'a> MessageIntegrityWriter<'a> {
     }
 
     pub fn write(&mut self, value: &[u8; 20]) -> Result<u16> {
-        self.bytes.get_mut(0..20).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(value);
+        self.bytes.get_mut(0..20)
+            .ok_or(ReaderErr::NotEnoughBytes)?
+            .copy_from_slice(value);
+
         Ok(20)
     }
 }
@@ -225,7 +251,11 @@ impl<'a> StringWriter<'a> {
     pub fn write(&mut self, value: &str) -> Result<u16> {
         let value_bytes = value.as_bytes();
         let val_len = value_bytes.len();
-        self.bytes.get_mut(0..val_len).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(value_bytes);
+
+        self.bytes.get_mut(0..val_len)
+            .ok_or(ReaderErr::NotEnoughBytes)?
+            .copy_from_slice(value_bytes);
+
         Ok(val_len as u16)
     }
 }
@@ -312,6 +342,37 @@ impl<'a> UnknownAttrsReader<'a> {
     }
 }
 
+pub struct UnknownAttrsWriter<'a> {
+    bytes: &'a mut [u8],
+}
+
+impl<'a> UnknownAttrsWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> UnknownAttrsWriter {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn write(&'a mut self, attrs: &[u16], padding_val: Option<u16>) -> Result<u16> {
+        let attrs_len = attrs.len();
+
+        for idx in 0..attrs_len {
+            self.bytes.get_mut(idx * 2..idx * 2 + 2)
+                .ok_or(ReaderErr::NotEnoughBytes)?
+                .copy_from_slice(&attrs[idx].to_be_bytes())
+        }
+
+        let attrs_len_with_padding = if attrs_len & 1 == 0 { attrs_len } else { attrs_len + 1 };
+        if attrs_len_with_padding > attrs_len {
+            self.bytes.get_mut(attrs_len_with_padding * 2..attrs_len_with_padding * 2 + 2) // each attr is 2 bytes long
+                .ok_or(ReaderErr::NotEnoughBytes)?
+                .copy_from_slice(&padding_val.unwrap_or(0).to_be_bytes());
+        }
+
+        Ok(attrs_len_with_padding as u16)
+    }
+}
+
 pub struct ErrorCodeReader<'a> {
     bytes: &'a [u8],
 }
@@ -361,6 +422,37 @@ impl<'a> ErrorCodeReader<'a> {
     }
 }
 
+pub struct ErrorCodeWriter<'a> {
+    bytes: &'a mut [u8],
+}
+
+impl<'a> ErrorCodeWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn set_code(&mut self, code: u16) -> Result<u16> {
+        let class = code / 100;
+        let num = code - class;
+        let code = class << 8 | num;
+
+        self.bytes.get_mut(0..2)
+            .ok_or(ReaderErr::NotEnoughBytes)?
+            .copy_from_slice(&code.to_be_bytes());
+
+        Ok(2)
+    }
+
+    pub fn set_reason(&'a mut self, reason: &str) -> Result<u16> {
+        let dest = self.bytes.get_mut(2..)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
+        StringWriter::new(dest).write(reason)
+    }
+}
+
 pub struct ChangeRequestReader<'a> {
     bytes: &'a [u8],
 }
@@ -394,7 +486,11 @@ impl<'a> ChangeRequestWriter<'a> {
 
     pub fn write(&mut self, change_ip: bool, change_port: bool) -> Result<u16> {
         let bytes = if change_ip { 4 } else { 0 } | if change_port { 2 } else { 0 } as u32;
-        self.bytes.get_mut(0..4).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(&u32::to_be_bytes(bytes));
+
+        self.bytes.get_mut(0..4)
+            .ok_or(ReaderErr::NotEnoughBytes)?
+            .copy_from_slice(&u32::to_be_bytes(bytes));
+
         Ok(4)
     }
 }
@@ -420,7 +516,8 @@ impl<'a> Iterator for RawAttributeIterator<'a> {
         if self.idx >= self.bytes.len() {
             None
         } else {
-            let typ_raw = self.bytes.get(self.idx..self.idx + 2)
+            let typ_raw = self.bytes
+                .get(self.idx..self.idx + 2)
                 .map(|b| b.try_into().unwrap())
                 .ok_or(ReaderErr::NotEnoughBytes);
 
