@@ -243,7 +243,7 @@ impl<'a> Writer<'a> {
         let type_dest = self.attr_bytes.get_mut(idx..idx + 2)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let type_bytes = u16::to_be_bytes(attr_type);
+        let type_bytes = attr_type.to_be_bytes();
         type_dest.copy_from_slice(&type_bytes);
 
         let value_dest = self.attr_bytes.get_mut(idx + 4..)
@@ -254,7 +254,7 @@ impl<'a> Writer<'a> {
         let value_len_dest = self.attr_bytes.get_mut(idx + 2..idx + 4)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let value_len_bytes = u16::to_be_bytes(value_len);
+        let value_len_bytes = value_len.to_be_bytes();
         value_len_dest.copy_from_slice(&value_len_bytes);
 
         let value_len_with_padding = get_nearest_greater_multiple_of_4(value_len);
@@ -452,13 +452,13 @@ mod tests {
         }
 
         for optional_attr in 0x0000..=0x7FFF as u16 {
-            if let Some(Ok(ReaderAttribute::OptionalAttribute { .. })) = AttributeIterator::new(&u32::to_be_bytes((optional_attr as u32) << 16)).next() {
+            if let Some(Ok(ReaderAttribute::OptionalAttribute { .. })) = AttributeIterator::new(&((optional_attr as u32) << 16).to_be_bytes()).next() {
                 assert!(false, "Unexpected generic optional attribute for code {:#06X}", optional_attr);
             }
         }
 
         for optional_attr in 0x8000..=0xFFFF as u16 {
-            if let Some(Ok(ReaderAttribute::OptionalAttribute { .. })) = AttributeIterator::new(&u32::to_be_bytes((optional_attr as u32) << 16)).next() {} else {
+            if let Some(Ok(ReaderAttribute::OptionalAttribute { .. })) = AttributeIterator::new(&((optional_attr as u32) << 16).to_be_bytes()).next() {} else {
                 assert!(false, "Expected generic optional attribute for code {:#06X}", optional_attr);
             }
         }

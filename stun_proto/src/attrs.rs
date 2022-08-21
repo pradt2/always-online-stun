@@ -79,13 +79,13 @@ impl<'a> SocketAddrWriter<'a> {
         let port_dest = self.bytes.get_mut(2..4)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let port_bytes = u16::to_be_bytes(port);
+        let port_bytes = port.to_be_bytes();
         port_dest.copy_from_slice(&port_bytes);
 
         let ipv4_addr_dest = self.bytes.get_mut(4..8)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let ipv4_addr_bytes = u32::to_be_bytes(ip);
+        let ipv4_addr_bytes = ip.to_be_bytes();
         ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
         Ok(8)
     }
@@ -100,13 +100,13 @@ impl<'a> SocketAddrWriter<'a> {
         let port_dest = self.bytes.get_mut(2..4)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let port_bytes = u16::to_be_bytes(port);
+        let port_bytes = port.to_be_bytes();
         port_dest.copy_from_slice(&port_bytes);
 
         let ipv6_addr_dest = self.bytes.get_mut(4..20)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let ipv6_addr_bytes = u128::to_be_bytes(ip);
+        let ipv6_addr_bytes = ip.to_be_bytes();
         ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
         Ok(20)
     }
@@ -161,14 +161,14 @@ impl<'a> XorSocketAddrWriter<'a> {
         let port_dest = self.bytes.get_mut(2..4)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let port_bytes = u16::to_be_bytes(port);
+        let port_bytes = port.to_be_bytes();
         port_dest.copy_from_slice(&port_bytes);
 
         let mask = 0x2112A442;
         let ipv4_addr_dest = self.bytes.get_mut(4..8)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let ipv4_addr_bytes = u32::to_be_bytes(addr ^ mask);
+        let ipv4_addr_bytes = (addr ^ mask).to_be_bytes();
         ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
         Ok(8)
     }
@@ -183,14 +183,14 @@ impl<'a> XorSocketAddrWriter<'a> {
         let port_dest = self.bytes.get_mut(2..4)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let port_bytes = u16::to_be_bytes(port);
+        let port_bytes = port.to_be_bytes();
         port_dest.copy_from_slice(&port_bytes);
 
         let mask = 0x2112A442 << 92 | transaction_id;
         let ipv6_addr_dest = self.bytes.get_mut(4..20)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
-        let ipv6_addr_bytes = u128::to_be_bytes(addr ^ mask);
+        let ipv6_addr_bytes = (addr ^ mask).to_be_bytes();
         ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
         Ok(20)
     }
@@ -489,7 +489,7 @@ impl<'a> ChangeRequestWriter<'a> {
 
         self.bytes.get_mut(0..4)
             .ok_or(ReaderErr::NotEnoughBytes)?
-            .copy_from_slice(&u32::to_be_bytes(bytes));
+            .copy_from_slice(&bytes.to_be_bytes());
 
         Ok(4)
     }
@@ -780,22 +780,22 @@ mod tests {
 
     #[test]
     fn change_request() {
-        let change_ip = u32::to_be_bytes(0b00000000000000000000000000000100);
+        let change_ip = 0b00000000000000000000000000000100.to_be_bytes();
         let r = ChangeRequestReader::new(&change_ip);
         assert!(r.get_change_ip().unwrap());
         assert!(!r.get_change_port().unwrap());
 
-        let change_port = u32::to_be_bytes(0b00000000000000000000000000000010);
+        let change_port = 0b00000000000000000000000000000010.to_be_bytes();
         let r = ChangeRequestReader::new(&change_port);
         assert!(!r.get_change_ip().unwrap());
         assert!(r.get_change_port().unwrap());
 
-        let change_both = u32::to_be_bytes(0b00000000000000000000000000000110);
+        let change_both = 0b00000000000000000000000000000110.to_be_bytes();
         let r = ChangeRequestReader::new(&change_both);
         assert!(r.get_change_ip().unwrap());
         assert!(r.get_change_port().unwrap());
 
-        let change_none = u32::to_be_bytes(0b00000000000000000000000000000000);
+        let change_none = 0b00000000000000000000000000000000.to_be_bytes();
         let r = ChangeRequestReader::new(&change_none);
         assert!(!r.get_change_ip().unwrap());
         assert!(!r.get_change_port().unwrap());
