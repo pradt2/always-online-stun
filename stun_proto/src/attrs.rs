@@ -178,7 +178,7 @@ impl<'a> XorSocketAddrWriter<'a> {
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
         addr_family_dest[0] = 0;
-        addr_family_dest[1] = 1;
+        addr_family_dest[1] = 2;
 
         let port_dest = self.bytes.get_mut(2..4)
             .ok_or(ReaderErr::NotEnoughBytes)?;
@@ -297,6 +297,25 @@ impl<'a> FingerprintReader<'a> {
     }
 }
 
+pub struct FingerprintWriter<'a> {
+    bytes: &'a mut [u8],
+}
+
+impl <'a> FingerprintWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn write(&mut self, value: u32) -> Result<u16> {
+        self.bytes.get_mut(0..4)
+            .ok_or(ReaderErr::NotEnoughBytes)?
+            .copy_from_slice(&(value ^ 0x5354554E).to_be_bytes());
+        Ok(4)
+    }
+}
+
 pub struct UnknownAttrsIterator<'a> {
     bytes: &'a [u8],
     idx: usize,
@@ -359,17 +378,17 @@ impl<'a> UnknownAttrsWriter<'a> {
         for idx in 0..attrs_len {
             self.bytes.get_mut(idx * 2..idx * 2 + 2)
                 .ok_or(ReaderErr::NotEnoughBytes)?
-                .copy_from_slice(&attrs[idx].to_be_bytes())
+                .copy_from_slice(&attrs[idx].to_be_bytes());
         }
 
         let attrs_len_with_padding = if attrs_len & 1 == 0 { attrs_len } else { attrs_len + 1 };
         if attrs_len_with_padding > attrs_len {
-            self.bytes.get_mut(attrs_len_with_padding * 2..attrs_len_with_padding * 2 + 2) // each attr is 2 bytes long
+            self.bytes.get_mut(attrs_len * 2..attrs_len * 2 + 2)
                 .ok_or(ReaderErr::NotEnoughBytes)?
                 .copy_from_slice(&padding_val.unwrap_or(0).to_be_bytes());
         }
 
-        Ok(attrs_len_with_padding as u16)
+        Ok((attrs_len_with_padding * 2) as u16)
     }
 }
 
@@ -433,20 +452,24 @@ impl<'a> ErrorCodeWriter<'a> {
         }
     }
 
-    pub fn set_code(&mut self, code: u16) -> Result<u16> {
-        let class = code / 100;
-        let num = code - class;
-        let code = class << 8 | num;
+    pub fn write_code(&mut self, code: u16) -> Result<u16> {
+        let class = (code / 100) as u8;
+        let num= (code - code / 100 * 100) as u8;
 
-        self.bytes.get_mut(0..2)
+        let bytes = [
+            class << 5,
+            num,
+        ];
+
+        self.bytes.get_mut(2..4)
             .ok_or(ReaderErr::NotEnoughBytes)?
-            .copy_from_slice(&code.to_be_bytes());
+            .copy_from_slice(&bytes);
 
-        Ok(2)
+        Ok(4)
     }
 
-    pub fn set_reason(&'a mut self, reason: &str) -> Result<u16> {
-        let dest = self.bytes.get_mut(2..)
+    pub fn write_reason(&'a mut self, reason: &str) -> Result<u16> {
+        let dest = self.bytes.get_mut(4..)
             .ok_or(ReaderErr::NotEnoughBytes)?;
 
         StringWriter::new(dest).write(reason)
@@ -626,18 +649,22 @@ mod tests {
             0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
         ];
 
+        let mut attr_buf = [0u8; 8];
+
         let r = SocketAddrReader::new(&attr_val);
-        let addr = if let Ok(addr) = r.get_address() { addr } else {
-            assert!(false, "Test address should be a valid address");
-            return;
-        };
+        let addr = r.get_address()
+            .expect("Address is unreadable");
 
         if let SocketAddr::V4(ip, port) = addr {
-            assert_eq!(0x0A0B, port);
-            assert_eq!(0x0C0D0E0F, ip);
-        } else {
-            assert!(false, "Test address should be a V4 address");
-        }
+
+            let mut w = SocketAddrWriter::new(&mut attr_buf);
+            let bytes_written = w.write_ipv4_addr(ip, port)
+                .expect("Buffer is too small");
+
+            assert_eq!(8, bytes_written);
+            assert_eq!(attr_val, attr_buf);
+
+        } else { assert!(false, "Address is not IPv4"); }
     }
 
     #[test]
@@ -651,18 +678,22 @@ mod tests {
             0x1B, 0x1C, 0x1D, 0x1E, // ipv6 address
         ];
 
+        let mut attr_buf = [0u8; 20];
+
         let r = SocketAddrReader::new(&attr_val);
-        let addr = if let Ok(addr) = r.get_address() { addr } else {
-            assert!(false, "Test address should be a valid address");
-            return;
-        };
+        let addr = r.get_address()
+            .expect("Address is unreadable");
 
         if let SocketAddr::V6(ip, port) = addr {
-            assert_eq!(0x0304, port);
-            assert_eq!(0x05060708090A0B0C0D0E0F1A1B1C1D1E, ip);
-        } else {
-            assert!(false, "Test address should be a V6 address");
-        }
+
+            let mut w = SocketAddrWriter::new(&mut attr_buf);
+            let bytes_written = w.write_ipv6_addr(ip, port)
+                .expect("Buffer is too small");
+
+            assert_eq!(20, bytes_written);
+            assert_eq!(attr_val, attr_buf);
+
+        } else { assert!(false, "Address is not IPv6"); }
     }
 
     #[test]
@@ -673,20 +704,24 @@ mod tests {
             0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
         ];
 
+        let mut attr_buf = [0u8; 8];
+
         let transaction_id = 0xFF;
 
         let r = XorSocketAddrReader::new(&attr_val, transaction_id);
-        let addr = if let Ok(addr) = r.get_address() { addr } else {
-            assert!(false, "Test address should be a valid address");
-            return;
-        };
+        let addr = r.get_address()
+            .expect("Address is unreadable");
 
         if let SocketAddr::V4(ip, port) = addr {
-            assert_eq!(0x0A0B, port);
-            assert_eq!(0x0C0D0E0F ^ 0x2112A442, ip);
-        } else {
-            assert!(false, "Test address should be a V4 address");
-        }
+
+            let mut w = XorSocketAddrWriter::new(&mut attr_buf);
+            let bytes_written = w.write_ipv4_addr(ip, port)
+                .expect("Buffer is too small");
+
+            assert_eq!(8, bytes_written);
+            assert_eq!(attr_val, attr_buf);
+
+        } else { assert!(false, "Address is not IPv4"); }
     }
 
     #[test]
@@ -700,20 +735,24 @@ mod tests {
             0x1B, 0x1C, 0x1D, 0x1E, // ipv6 address
         ];
 
+        let mut attr_buf = [0u8; 20];
+
         let transaction_id = 0xFF;
 
         let r = XorSocketAddrReader::new(&attr_val, transaction_id);
-        let addr = if let Ok(addr) = r.get_address() { addr } else {
-            assert!(false, "Test address should be a valid address");
-            return;
-        };
+        let addr = r.get_address()
+            .expect("Address is unreadable");
 
         if let SocketAddr::V6(ip, port) = addr {
-            assert_eq!(0x0304, port);
-            assert_eq!(0x05060708090A0B0C0D0E0F1A1B1C1D1E ^ (0x2112A442 << 92 | transaction_id), ip);
-        } else {
-            assert!(false, "Test address should be a V6 address");
-        }
+
+            let mut w = XorSocketAddrWriter::new(&mut attr_buf);
+            let bytes_written = w.write_ipv6_addr(ip, port, transaction_id)
+                .expect("Buffer is too small");
+
+            assert_eq!(20, bytes_written);
+            assert_eq!(attr_val, attr_buf);
+
+        } else { assert!(false, "Address is not IPv6"); }
     }
 
     #[test]
@@ -722,9 +761,16 @@ mod tests {
             0x68, 0x65, 0x6C, 0x6C, 0x6F, // hello
         ];
 
+        let mut attr_buf = [0u8; 5];
+
         let r = StringReader::new(&attr_val);
-        assert_eq!("hello", r.get_value().unwrap());
-        unsafe { assert_eq!("hello", r.get_value_unchecked()); }
+
+        let mut w = StringWriter::new(&mut attr_buf);
+        let bytes_written = w.write(r.get_value().expect("String is unreadable"))
+            .expect("Buffer is too small");
+
+        assert_eq!(5, bytes_written);
+        assert_eq!(attr_val, attr_buf);
     }
 
     #[test]
@@ -733,8 +779,16 @@ mod tests {
             0x0A, 0x0B, 0x0C, 0x0D
         ];
 
+        let mut attr_buf = [0u8; 4];
+
         let r = FingerprintReader::new(&attr_val);
-        assert_eq!(0x0A0B0C0D ^ 0x5354554E, r.get_value().unwrap())
+
+        let mut w = FingerprintWriter::new(&mut attr_buf);
+        let bytes_written = w.write(r.get_value().expect("Value is unreadable"))
+            .expect("Buffer is too small");
+
+        assert_eq!(4, bytes_written);
+        assert_eq!(attr_val, attr_buf);
     }
 
     #[test]
@@ -747,20 +801,43 @@ mod tests {
             0x1A, 0x1B, 0x1C, 0x1D,
         ];
 
+        let mut attr_buf = [0u8; 20];
+
         let r = MessageIntegrityReader::new(&attr_val);
-        assert_eq!(&attr_val, r.get_value().unwrap())
+
+        let mut w = MessageIntegrityWriter::new(&mut attr_buf);
+        let bytes_written = w.write(r.get_value().expect("Value is unreadable"))
+            .expect("Buffer is too small");
+
+        assert_eq!(20, bytes_written);
+        assert_eq!(attr_val, attr_buf);
     }
 
     #[test]
     fn unknown_attrs() {
         let attr_val = [
-            0x01, 0x02,
+            0x01, 0x02, // we give only one value to the reader
+            0x01, 0x02, // this value is here to only check that the writer does padding correctly
         ];
 
-        assert_eq!(1, UnknownAttrsReader::new(&attr_val).unknown_type_codes().count());
+        let mut types = [0u16; 1];
 
-        let code = UnknownAttrsReader::new(&attr_val).unknown_type_codes().next().unwrap().unwrap();
-        assert_eq!(0x0102, code);
+        let mut attr_buf = [0u8; 4];
+
+        let r = UnknownAttrsReader::new(&attr_val[0..2]);
+        let mut idx = 0;
+        for attr in r.unknown_type_codes() {
+            let attr = attr.expect("Attribute type is unreadable");
+            types[idx] = attr;
+            idx += 1;
+        }
+
+        let mut w = UnknownAttrsWriter::new(&mut attr_buf);
+        let bytes_written = w.write(&types, Some(types[0]))
+            .expect("Buffer is too small");
+
+        assert_eq!(4, bytes_written);
+        assert_eq!(attr_val, attr_buf);
     }
 
     #[test]
@@ -771,34 +848,77 @@ mod tests {
             0x68, 0x65, 0x6C, 0x6C, 0x6F,   // reason 'hello'
         ];
 
+        let mut attr_buf = [0u8; 9];
+
         let r = ErrorCodeReader::new(&attr_val);
 
-        assert_eq!(222, r.get_code().unwrap());
-        assert_eq!("hello", r.get_reason().unwrap());
-        unsafe { assert_eq!("hello", r.get_reason_unchecked().unwrap()); }
+        let mut w = ErrorCodeWriter::new(&mut attr_buf);
+        let bytes_written_code = w.write_code(r.get_code().expect("Code is unreadable"))
+            .expect("Buffer is too small");
+        let bytes_written_reason = w.write_reason(r.get_reason().expect("Reason value is unreadable"))
+            .expect("Buffer is too small");
+
+        assert_eq!(9, bytes_written_code + bytes_written_reason);
+        assert_eq!(attr_val, attr_buf);
     }
 
     #[test]
     fn change_request() {
-        let change_ip = 0b00000000000000000000000000000100i32.to_be_bytes();
-        let r = ChangeRequestReader::new(&change_ip);
-        assert!(r.get_change_ip().unwrap());
-        assert!(!r.get_change_port().unwrap());
+        let attr_val = 0b00000000000000000000000000000000i32.to_be_bytes();
+        let mut attr_buf = [0u8; 4];
 
-        let change_port = 0b00000000000000000000000000000010i32.to_be_bytes();
-        let r = ChangeRequestReader::new(&change_port);
-        assert!(!r.get_change_ip().unwrap());
-        assert!(r.get_change_port().unwrap());
+        let r = ChangeRequestReader::new(&attr_val);
 
-        let change_both = 0b00000000000000000000000000000110i32.to_be_bytes();
-        let r = ChangeRequestReader::new(&change_both);
-        assert!(r.get_change_ip().unwrap());
-        assert!(r.get_change_port().unwrap());
+        let mut w = ChangeRequestWriter::new(&mut attr_buf);
+        let bytes_written = w.write(
+            r.get_change_ip().expect("Change IP value is unreadable"),
+            r.get_change_port().expect("Change port value is unreadable")
+        ).expect("Buffer is too small");
 
-        let change_none = 0b00000000000000000000000000000000i32.to_be_bytes();
-        let r = ChangeRequestReader::new(&change_none);
-        assert!(!r.get_change_ip().unwrap());
-        assert!(!r.get_change_port().unwrap());
+        assert_eq!(4, bytes_written);
+        assert_eq!(attr_val, attr_buf);
+
+        let attr_val = 0b0000000000000000000000000000010i32.to_be_bytes();
+        let mut attr_buf = [0u8; 4];
+
+        let r = ChangeRequestReader::new(&attr_val);
+
+        let mut w = ChangeRequestWriter::new(&mut attr_buf);
+        let bytes_written = w.write(
+            r.get_change_ip().expect("Change IP value is unreadable"),
+        r.get_change_port().expect("Change port value is unreadable")
+        ).expect("Buffer is too small");
+
+        assert_eq!(4, bytes_written);
+        assert_eq!(attr_val, attr_buf);
+
+        let attr_val = 0b0000000000000000000000000000100i32.to_be_bytes();
+        let mut attr_buf = [0u8; 4];
+
+        let r = ChangeRequestReader::new(&attr_val);
+
+        let mut w = ChangeRequestWriter::new(&mut attr_buf);
+        let bytes_written = w.write(
+            r.get_change_ip().expect("Change IP value is unreadable"),
+            r.get_change_port().expect("Change port value is unreadable")
+        ).expect("Buffer is too small");
+
+        assert_eq!(4, bytes_written);
+        assert_eq!(attr_val, attr_buf);
+
+        let attr_val = 0b0000000000000000000000000000110i32.to_be_bytes();
+        let mut attr_buf = [0u8; 4];
+
+        let r = ChangeRequestReader::new(&attr_val);
+
+        let mut w = ChangeRequestWriter::new(&mut attr_buf);
+        let bytes_written = w.write(
+            r.get_change_ip().expect("Change IP value is unreadable"),
+            r.get_change_port().expect("Change port value is unreadable")
+        ).expect("Buffer is too small");
+
+        assert_eq!(4, bytes_written);
+        assert_eq!(attr_val, attr_buf);
     }
 
     #[test]

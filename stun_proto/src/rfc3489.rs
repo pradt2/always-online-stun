@@ -211,7 +211,7 @@ impl<'a> Writer<'a> {
             }),
             WriterAttribute::ErrorCode(error) => self.add_attr_inner(0x0009, |value_dest| {
                 let mut writer = ErrorCodeWriter::new(value_dest);
-                Ok(writer.set_code(error as u16)? + writer.set_reason(error.get_reason())?)
+                Ok(writer.write_code(error as u16)? + writer.write_reason(error.get_reason())?)
             }),
             WriterAttribute::UnknownAttributes(attrs) => self.add_attr_inner(0x000A, |value_dest| {
                 UnknownAttrsWriter::new(value_dest).write(attrs, attrs.get(attrs.len() - 1).map(|val| *val))
