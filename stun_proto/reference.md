@@ -59,8 +59,8 @@ The following types are defined:
 0x0007: PASSWORD
 0x0008: MESSAGE-INTEGRITY
 0x0009: ERROR-CODE
-0x000a: UNKNOWN-ATTRIBUTES
-0x000b: REFLECTED-FROM
+0x000A: UNKNOWN-ATTRIBUTES
+0x000B: REFLECTED-FROM
 ```
 
 Attributes with values greater than `0x7fff` are optional, which
