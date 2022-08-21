@@ -63,10 +63,10 @@ The following types are defined:
 0x000B: REFLECTED-FROM
 ```
 
-Attributes with values greater than `0x7fff` are optional, which
+Attributes with values greater than `0x7FFF` are optional, which
 means that the message can be processed by the client or server even
 though the attribute is not understood. Attributes with values less
-than or equal to `0x7fff` are mandatory to understand, which means that
+than or equal to `0x7FFF` are mandatory to understand, which means that
 the client or server cannot process the message unless it understands
 the attribute.
 
