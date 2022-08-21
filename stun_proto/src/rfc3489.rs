@@ -944,6 +944,87 @@ mod tests {
         assert_eq!(PASSWORD, buffer[20..]);
     }
 
+    const ERROR_CODE: [u8; 13] = [
+        0x00, 0x09,                   // type: ErrorCode
+        0x00, 0x09,                   // value length
+        0x00, 0x00,                   // reserved
+        0x80, 0x00,                   // class 4, num 00 = code 400
+        0x68, 0x65, 0x6C, 0x6C, 0x6F, // reason = 'hello'
+    ];
+
+    #[test]
+    fn read_error_code() {
+        let mut r = AttributeIterator::new(&ERROR_CODE);
+
+        if let Some(Ok(ReaderAttribute::ErrorCode(r))) = r.next() {
+            let error = if let Ok(addr) = r.get_error() { addr } else {
+                assert!(false, "Test address should be a valid address");
+                return;
+            };
+
+            if let StunError::BadRequest = error {
+
+            } else {
+                assert!(false, "Error code is not BadRequest");
+            }
+        } else {
+            assert!(false, "Iterator should return a valid ErrorCode attribute");
+            return;
+        };
+
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_error_code() {
+        let mut buffer = [0u8; 256];
+
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::ErrorCode(StunError::BadRequest)).expect("Buffer too small");
+
+        assert_eq!(ERROR_CODE[0..2], buffer[20..][0..2]); // TODO fixme
+    }
+
+    const UNKNOWN_ATTIBUTES: [u8; 8] = [
+        0x00, 0x0A, // type: UnknownAttributes
+        0x00, 0x02, // value length
+        0x00, 0x01, // unknown attr
+        0x00, 0x01, // the same unknown attr as padding
+    ];
+
+    #[test]
+    fn read_unknown_attributes() {
+        let mut r = AttributeIterator::new(&UNKNOWN_ATTIBUTES);
+
+        if let Some(Ok(ReaderAttribute::UnknownAttributes(r))) = r.next() {
+            let mut r = r.unknown_type_codes();
+
+            if let Some(Ok(unknown_attr)) = r.next() {
+                assert_eq!(1, unknown_attr);
+            } else {
+                assert!(false, "Unknown attribute value is unreadable");
+            }
+
+            assert!(r.next().is_none(), "There should be only one unknown attribute value");
+
+        } else {
+            assert!(false, "Iterator should return a valid UnknownAttributes attribute");
+            return;
+        };
+
+        assert!(r.next().is_none(), "There should be only one attribute");
+    }
+
+    #[test]
+    fn write_unknown_attributes() {
+        let mut buffer = [0; 28];
+        let mut w = Writer::new(&mut buffer);
+
+        w.add_attr(WriterAttribute::UnknownAttributes(&[1])).unwrap();
+        assert_eq!(UNKNOWN_ATTIBUTES[4..], buffer[20..][4..]);
+    }
+
     const REFLECTED_FROM_V4: [u8; 12] = [
         0x00, 0x0B,             // type: ReflectedFrom
         0x00, 0x08,             // value length
