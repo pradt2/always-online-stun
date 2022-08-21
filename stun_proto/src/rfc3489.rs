@@ -224,8 +224,14 @@ impl<'a> Writer<'a> {
                 }
             }),
             WriterAttribute::OptionalAttribute {typ, value} => self.add_attr_inner(typ, |value_dest| {
-                value_dest.get_mut(0..2).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(&typ.to_be_bytes());
-                value_dest.get_mut(2..value.len()).ok_or(ReaderErr::NotEnoughBytes)?.copy_from_slice(value);
+                value_dest.get_mut(0..2)
+                    .ok_or(ReaderErr::NotEnoughBytes)?
+                    .copy_from_slice(&typ.to_be_bytes());
+
+                value_dest.get_mut(2..value.len())
+                    .ok_or(ReaderErr::NotEnoughBytes)?
+                    .copy_from_slice(value);
+
                 Ok(2 + value.len() as u16)
             })
         }
@@ -234,21 +240,28 @@ impl<'a> Writer<'a> {
     fn add_attr_inner<T: Fn(& mut [u8]) -> Result<u16>>(&mut self, attr_type: u16, value_gen: T) -> Result<u16> {
         let idx = self.attr_bytes_used as usize;
 
-        let type_dest = self.attr_bytes.get_mut(idx..idx + 2).ok_or(ReaderErr::NotEnoughBytes)?;
+        let type_dest = self.attr_bytes.get_mut(idx..idx + 2)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let type_bytes = u16::to_be_bytes(attr_type);
         type_dest.copy_from_slice(&type_bytes);
 
-        let value_dest = self.attr_bytes.get_mut(idx + 4..).ok_or(ReaderErr::NotEnoughBytes)?;
+        let value_dest = self.attr_bytes.get_mut(idx + 4..)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
 
         let value_len = value_gen(value_dest)?;
 
-        let value_len_dest = self.attr_bytes.get_mut(idx + 2..idx + 4).ok_or(ReaderErr::NotEnoughBytes)?;
+        let value_len_dest = self.attr_bytes.get_mut(idx + 2..idx + 4)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         let value_len_bytes = u16::to_be_bytes(value_len);
         value_len_dest.copy_from_slice(&value_len_bytes);
 
         let value_len_with_padding = get_nearest_greater_multiple_of_4(value_len);
 
-        let padding_dest = self.attr_bytes.get_mut(idx + 4 + value_len as usize..idx + 4 + value_len_with_padding as usize).ok_or(ReaderErr::NotEnoughBytes)?;
+        let padding_dest = self.attr_bytes.get_mut(idx + 4 + value_len as usize..idx + 4 + value_len_with_padding as usize)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
         padding_dest.fill(0); // setting padding bytes to 0
 
         self.attr_bytes_used += 4 + value_len_with_padding;
