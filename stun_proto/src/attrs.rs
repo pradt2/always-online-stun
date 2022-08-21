@@ -780,22 +780,22 @@ mod tests {
 
     #[test]
     fn change_request() {
-        let change_ip = 0b00000000000000000000000000000100.to_be_bytes();
+        let change_ip = 0b00000000000000000000000000000100i32.to_be_bytes();
         let r = ChangeRequestReader::new(&change_ip);
         assert!(r.get_change_ip().unwrap());
         assert!(!r.get_change_port().unwrap());
 
-        let change_port = 0b00000000000000000000000000000010.to_be_bytes();
+        let change_port = 0b00000000000000000000000000000010i32.to_be_bytes();
         let r = ChangeRequestReader::new(&change_port);
         assert!(!r.get_change_ip().unwrap());
         assert!(r.get_change_port().unwrap());
 
-        let change_both = 0b00000000000000000000000000000110.to_be_bytes();
+        let change_both = 0b00000000000000000000000000000110i32.to_be_bytes();
         let r = ChangeRequestReader::new(&change_both);
         assert!(r.get_change_ip().unwrap());
         assert!(r.get_change_port().unwrap());
 
-        let change_none = 0b00000000000000000000000000000000.to_be_bytes();
+        let change_none = 0b00000000000000000000000000000000i32.to_be_bytes();
         let r = ChangeRequestReader::new(&change_none);
         assert!(!r.get_change_ip().unwrap());
         assert!(!r.get_change_port().unwrap());
