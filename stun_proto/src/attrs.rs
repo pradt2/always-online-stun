@@ -488,11 +488,11 @@ impl<'a> ChangeRequestReader<'a> {
     }
 
     pub fn get_change_ip(&self) -> Result<bool> {
-        Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 4 > 0)
+        Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 0x40 > 0)
     }
 
     pub fn get_change_port(&self) -> Result<bool> {
-        Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 2 > 0)
+        Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 0x20 > 0)
     }
 }
 
@@ -508,7 +508,7 @@ impl<'a> ChangeRequestWriter<'a> {
     }
 
     pub fn write(&mut self, change_ip: bool, change_port: bool) -> Result<u16> {
-        let bytes = if change_ip { 4 } else { 0 } | if change_port { 2 } else { 0 } as u32;
+        let bytes = if change_ip { 0x40 } else { 0x00 } | if change_port { 0x20 } else { 0x00 } as u32;
 
         self.bytes.get_mut(0..4)
             .ok_or(ReaderErr::NotEnoughBytes)?
@@ -864,7 +864,7 @@ mod tests {
 
     #[test]
     fn change_request() {
-        let attr_val = 0b00000000000000000000000000000000i32.to_be_bytes();
+        let attr_val = 0b00000000000000000000000000000000i32.reverse_bits().to_ne_bytes();
         let mut attr_buf = [0u8; 4];
 
         let r = ChangeRequestReader::new(&attr_val);
@@ -878,7 +878,7 @@ mod tests {
         assert_eq!(4, bytes_written);
         assert_eq!(attr_val, attr_buf);
 
-        let attr_val = 0b0000000000000000000000000000010i32.to_be_bytes();
+        let attr_val = 0b0000000000000000000000000000010i32.reverse_bits().to_ne_bytes();
         let mut attr_buf = [0u8; 4];
 
         let r = ChangeRequestReader::new(&attr_val);
@@ -892,7 +892,7 @@ mod tests {
         assert_eq!(4, bytes_written);
         assert_eq!(attr_val, attr_buf);
 
-        let attr_val = 0b0000000000000000000000000000100i32.to_be_bytes();
+        let attr_val = 0b0000000000000000000000000000100i32.reverse_bits().to_ne_bytes();
         let mut attr_buf = [0u8; 4];
 
         let r = ChangeRequestReader::new(&attr_val);
@@ -906,7 +906,7 @@ mod tests {
         assert_eq!(4, bytes_written);
         assert_eq!(attr_val, attr_buf);
 
-        let attr_val = 0b0000000000000000000000000000110i32.to_be_bytes();
+        let attr_val = 0b0000000000000000000000000000110i32.reverse_bits().to_ne_bytes();
         let mut attr_buf = [0u8; 4];
 
         let r = ChangeRequestReader::new(&attr_val);

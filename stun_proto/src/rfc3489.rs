@@ -118,7 +118,7 @@ impl<'a> Reader<'a> {
         self.header.get_transaction_id()
     }
 
-    pub fn attrs(&self) -> AttributeIterator {
+    pub fn get_attributes(&self) -> AttributeIterator {
         AttributeIterator::new(self.attr_bytes)
     }
 }
@@ -161,6 +161,11 @@ impl<'a> Writer<'a> {
 
     pub fn update_message_length(&mut self) -> Result<()> {
         self.set_message_length(self.attr_bytes_used)
+    }
+
+    pub fn finish(mut self) -> Result<u16> {
+        self.update_message_length()?;
+        Ok(20 + self.attr_bytes_used)
     }
 
     pub fn set_transaction_id(&mut self, tid: u128) -> Result<()> {
@@ -643,7 +648,7 @@ mod tests {
     const CHANGE_REQUEST: [u8; 8] = [
         0x00, 0x03,                     // type: ChangeRequest
         0x00, 0x04,                     // value length
-        0x00, 0x00, 0x00, 0x04 | 0x02,  // change both ip and port
+        0x00, 0x00, 0x00, 0x40 | 0x20,  // change both ip and port
     ];
 
     #[test]
