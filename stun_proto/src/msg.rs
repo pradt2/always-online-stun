@@ -1,5 +1,3 @@
-use super::{ReaderErr, Result};
-
 pub struct RawMsgHeaderReader<'a> {
     bytes: &'a [u8],
 }
@@ -11,25 +9,22 @@ impl<'a> RawMsgHeaderReader<'a> {
         }
     }
 
-    pub fn get_message_type(&self) -> Result<u16> {
+    pub fn get_message_type(&self) -> Option<u16> {
         self.bytes.get(0..2)
             .map(|b| b.try_into().unwrap())
             .map(|b| u16::from_be_bytes(b))
-            .ok_or(ReaderErr::NotEnoughBytes)
     }
 
-    pub fn get_message_length(&self) -> Result<u16> {
+    pub fn get_message_length(&self) -> Option<u16> {
         self.bytes.get(2..4)
             .map(|b| b.try_into().unwrap())
             .map(|b| u16::from_be_bytes(b))
-            .ok_or(ReaderErr::NotEnoughBytes)
     }
 
-    pub fn get_transaction_id(&self) -> Result<u128> {
+    pub fn get_transaction_id(&self) -> Option<u128> {
         self.bytes.get(4..20)
             .map(|b| b.try_into().unwrap())
             .map(|b| u128::from_be_bytes(b))
-            .ok_or(ReaderErr::NotEnoughBytes)
     }
 
 }
@@ -45,25 +40,22 @@ impl<'a> RawMsgHeaderWriter<'a> {
         }
     }
 
-    pub fn set_message_type(&mut self, typ: u16) -> Result<()> {
+    pub fn set_message_type(&mut self, typ: u16) -> Option<()> {
         let typ_bytes = typ.to_be_bytes();
-        self.bytes.get_mut(0..2)
-            .map(|b| b.copy_from_slice(&typ_bytes))
-            .ok_or(ReaderErr::NotEnoughBytes)
+        self.bytes.get_mut(0..2)?.copy_from_slice(&typ_bytes);
+        Some(())
     }
 
-    pub fn set_message_length(&mut self, len: u16) -> Result<()> {
+    pub fn set_message_length(&mut self, len: u16) -> Option<()> {
         let len_bytes = len.to_be_bytes();
-        self.bytes.get_mut(2..4)
-            .map(|b| b.copy_from_slice(&len_bytes))
-            .ok_or(ReaderErr::NotEnoughBytes)
+        self.bytes.get_mut(2..4)?.copy_from_slice(&len_bytes);
+        Some(())
     }
 
-    pub fn set_transaction_id(&mut self, tid: u128) -> Result<()> {
+    pub fn set_transaction_id(&mut self, tid: u128) -> Option<()> {
         let tid_bytes = tid.to_be_bytes();
-        self.bytes.get_mut(4..20)
-            .map(|b| b.copy_from_slice(&tid_bytes))
-            .ok_or(ReaderErr::NotEnoughBytes)
+        self.bytes.get_mut(4..20)?.copy_from_slice(&tid_bytes);
+        Some(())
     }
 }
 

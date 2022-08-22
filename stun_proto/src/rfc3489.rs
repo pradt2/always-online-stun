@@ -107,14 +107,16 @@ impl<'a> Reader<'a> {
     }
 
     pub fn get_message_type(&self) -> Result<MessageType> {
-        self.header.get_message_type()?.try_into()
+        self.header.get_message_type()
+            .ok_or(ReaderErr::NotEnoughBytes)?
+            .try_into()
     }
 
-    pub fn get_message_length(&self) -> Result<u16> {
+    pub fn get_message_length(&self) -> Option<u16> {
         self.header.get_message_length()
     }
 
-    pub fn get_transaction_id(&self) -> Result<u128> {
+    pub fn get_transaction_id(&self) -> Option<u128> {
         self.header.get_transaction_id()
     }
 
@@ -151,28 +153,28 @@ impl<'a> Writer<'a> {
         }
     }
 
-    pub fn set_message_type(&mut self, typ: MessageType) -> Result<()> {
+    pub fn set_message_type(&mut self, typ: MessageType) -> Option<()> {
         self.header.set_message_type(typ as u16)
     }
 
-    pub fn set_message_length(&mut self, len: u16) -> Result<()> {
+    pub fn set_message_length(&mut self, len: u16) -> Option<()> {
         self.header.set_message_length(len)
     }
 
-    pub fn update_message_length(&mut self) -> Result<()> {
+    pub fn update_message_length(&mut self) -> Option<()> {
         self.set_message_length(self.attr_bytes_used)
     }
 
-    pub fn finish(mut self) -> Result<u16> {
+    pub fn finish(mut self) -> Option<u16> {
         self.update_message_length()?;
-        Ok(20 + self.attr_bytes_used)
+        Some(20 + self.attr_bytes_used)
     }
 
-    pub fn set_transaction_id(&mut self, tid: u128) -> Result<()> {
+    pub fn set_transaction_id(&mut self, tid: u128) -> Option<()> {
         self.header.set_transaction_id(tid)
     }
 
-    pub fn add_attr(&mut self, attr: WriterAttribute) -> Result<u16> {
+    pub fn add_attr(&mut self, attr: WriterAttribute) -> Option<()> {
         match attr {
             WriterAttribute::MappedAddress(addr) => self.add_attr_inner(0x0001, |value_dest| {
                 let mut w = SocketAddrWriter::new(value_dest);
@@ -216,7 +218,7 @@ impl<'a> Writer<'a> {
             }),
             WriterAttribute::ErrorCode(error) => self.add_attr_inner(0x0009, |value_dest| {
                 let mut writer = ErrorCodeWriter::new(value_dest);
-                Ok(writer.write_code(error as u16)? + writer.write_reason(error.get_reason())?)
+                Some(writer.write_code(error as u16)? + writer.write_reason(error.get_reason())?)
             }),
             WriterAttribute::UnknownAttributes(attrs) => self.add_attr_inner(0x000A, |value_dest| {
                 UnknownAttrsWriter::new(value_dest).write(attrs, attrs.get(attrs.len() - 1).map(|val| *val))
@@ -229,48 +231,41 @@ impl<'a> Writer<'a> {
                 }
             }),
             WriterAttribute::OptionalAttribute {typ, value} => self.add_attr_inner(typ, |value_dest| {
-                value_dest.get_mut(0..2)
-                    .ok_or(ReaderErr::NotEnoughBytes)?
-                    .copy_from_slice(&typ.to_be_bytes());
-
-                value_dest.get_mut(2..value.len())
-                    .ok_or(ReaderErr::NotEnoughBytes)?
+                value_dest.get_mut(0..value.len())?
                     .copy_from_slice(value);
 
-                Ok(2 + value.len() as u16)
+                Some(value.len() as u16)
             })
-        }
+        }?;
+        Some(())
     }
 
-    fn add_attr_inner<T: Fn(& mut [u8]) -> Result<u16>>(&mut self, attr_type: u16, value_gen: T) -> Result<u16> {
+    fn add_attr_inner<T: Fn(& mut [u8]) -> Option<u16>>(&mut self, attr_type: u16, value_gen: T) -> Option<u16> {
         let idx = self.attr_bytes_used as usize;
 
-        let type_dest = self.attr_bytes.get_mut(idx..idx + 2)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+        let value_buf = if let Some(buf) = self.attr_bytes
+            .get_mut(idx + 4..) { buf } else { return None; };
+
+        let value_len = value_gen(value_buf)?;
+
+        let header_buf = if let Some(buf) = self.attr_bytes
+            .get_mut(idx..idx + 4) { buf } else { return None; };
 
         let type_bytes = attr_type.to_be_bytes();
-        type_dest.copy_from_slice(&type_bytes);
-
-        let value_dest = self.attr_bytes.get_mut(idx + 4..)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
-
-        let value_len = value_gen(value_dest)?;
-
-        let value_len_dest = self.attr_bytes.get_mut(idx + 2..idx + 4)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+        header_buf[0..2].copy_from_slice(&type_bytes);
 
         let value_len_bytes = value_len.to_be_bytes();
-        value_len_dest.copy_from_slice(&value_len_bytes);
+        header_buf[2..4].copy_from_slice(&value_len_bytes);
 
         let value_len_with_padding = get_nearest_greater_multiple_of_4(value_len);
 
-        let padding_dest = self.attr_bytes.get_mut(idx + 4 + value_len as usize..idx + 4 + value_len_with_padding as usize)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+        let padding_dest = self.attr_bytes
+            .get_mut(idx + 4 + value_len as usize..idx + 4 + value_len_with_padding as usize)?;
 
         padding_dest.fill(0); // setting padding bytes to 0
 
         self.attr_bytes_used += 4 + value_len_with_padding;
-        Ok(4 + value_len_with_padding)
+        Some(4 + value_len_with_padding)
     }
 }
 
@@ -286,7 +281,9 @@ impl<'a> StunErrorReader<'a> {
     }
 
     pub fn get_error(&self) -> Result<StunError> {
-        let error = self.base_reader.get_code()?.try_into()?;
+        let error = self.base_reader.get_code()
+            .ok_or(ReaderErr::NotEnoughBytes)?
+            .try_into()?;
         Ok(error)
     }
 
@@ -294,7 +291,7 @@ impl<'a> StunErrorReader<'a> {
         self.base_reader.get_reason()
     }
 
-    pub unsafe fn get_reason_unchecked(&self) -> Result<&str> {
+    pub unsafe fn get_reason_unchecked(&self) -> Option<&str> {
         self.base_reader.get_reason_unchecked()
     }
 }

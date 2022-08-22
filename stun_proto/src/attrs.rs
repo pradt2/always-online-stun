@@ -69,46 +69,34 @@ impl<'a> SocketAddrWriter<'a> {
         }
     }
 
-    pub fn write_ipv4_addr(&mut self, ip: u32, port: u16) -> Result<u16> {
-        let addr_family_dest = self.bytes.get_mut(0..2)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+    pub fn write_ipv4_addr(&mut self, ip: u32, port: u16) -> Option<u16> {
+        let buf = self.bytes.get_mut(0..8)?;
 
-        addr_family_dest[0] = 0;
-        addr_family_dest[1] = 1;
-
-        let port_dest = self.bytes.get_mut(2..4)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+        buf[0] = 0;
+        buf[1] = 1;                                         // address family
 
         let port_bytes = port.to_be_bytes();
-        port_dest.copy_from_slice(&port_bytes);
-
-        let ipv4_addr_dest = self.bytes.get_mut(4..8)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+        buf[2..4].copy_from_slice(&port_bytes);         // port
 
         let ipv4_addr_bytes = ip.to_be_bytes();
-        ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
-        Ok(8)
+        buf[4..8].copy_from_slice(&ipv4_addr_bytes);    // IP address
+
+        Some(8)
     }
 
-    pub fn write_ipv6_addr(&mut self, ip: u128, port: u16) -> Result<u16> {
-        let addr_family_dest = self.bytes.get_mut(0..2)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+    pub fn write_ipv6_addr(&mut self, ip: u128, port: u16) -> Option<u16> {
+        let buf = self.bytes.get_mut(0..20)?;
 
-        addr_family_dest[0] = 0;
-        addr_family_dest[1] = 2;
-
-        let port_dest = self.bytes.get_mut(2..4)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+        buf[0] = 0;
+        buf[1] = 2;                                         // address family
 
         let port_bytes = port.to_be_bytes();
-        port_dest.copy_from_slice(&port_bytes);
-
-        let ipv6_addr_dest = self.bytes.get_mut(4..20)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
+        buf[2..4].copy_from_slice(&port_bytes);         // port
 
         let ipv6_addr_bytes = ip.to_be_bytes();
-        ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
-        Ok(20)
+        buf[4..20].copy_from_slice(&ipv6_addr_bytes);   // IP address
+
+        Some(20)
     }
 }
 
@@ -133,7 +121,7 @@ impl<'a> XorSocketAddrReader<'a> {
                 Ok(SocketAddr::V4(ip ^ mask, port))
             }
             Ok(SocketAddr::V6(ip, port)) => {
-                let mask = 0x2112A442 << 92 | self.transaction_id;
+                let mask = self.transaction_id;
                 Ok(SocketAddr::V6(ip ^ mask, port))
             }
         }
@@ -141,78 +129,24 @@ impl<'a> XorSocketAddrReader<'a> {
 }
 
 pub struct XorSocketAddrWriter<'a> {
-    bytes: &'a mut [u8],
+    writer: SocketAddrWriter<'a>,
 }
 
 impl<'a> XorSocketAddrWriter<'a> {
     pub fn new(bytes: &'a mut [u8]) -> Self {
         Self {
-            bytes
+            writer: SocketAddrWriter::new(bytes)
         }
     }
 
-    pub fn write_ipv4_addr(&mut self, addr: u32, port: u16) -> Result<u16> {
-        let addr_family_dest = self.bytes.get_mut(0..2)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
-
-        addr_family_dest[0] = 0;
-        addr_family_dest[1] = 1;
-
-        let port_dest = self.bytes.get_mut(2..4)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
-
-        let port_bytes = port.to_be_bytes();
-        port_dest.copy_from_slice(&port_bytes);
-
+    pub fn write_ipv4_addr(&mut self, ip: u32, port: u16) -> Option<u16> {
         let mask = 0x2112A442;
-        let ipv4_addr_dest = self.bytes.get_mut(4..8)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
-
-        let ipv4_addr_bytes = (addr ^ mask).to_be_bytes();
-        ipv4_addr_dest.copy_from_slice(&ipv4_addr_bytes);
-        Ok(8)
+        self.writer.write_ipv4_addr(ip ^ mask, port)
     }
 
-    pub fn write_ipv6_addr(&mut self, addr: u128, port: u16, transaction_id: u128) -> Result<u16> {
-        let addr_family_dest = self.bytes.get_mut(0..2)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
-
-        addr_family_dest[0] = 0;
-        addr_family_dest[1] = 2;
-
-        let port_dest = self.bytes.get_mut(2..4)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
-
-        let port_bytes = port.to_be_bytes();
-        port_dest.copy_from_slice(&port_bytes);
-
-        let mask = 0x2112A442 << 92 | transaction_id;
-        let ipv6_addr_dest = self.bytes.get_mut(4..20)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
-
-        let ipv6_addr_bytes = (addr ^ mask).to_be_bytes();
-        ipv6_addr_dest.copy_from_slice(&ipv6_addr_bytes);
-        Ok(20)
-    }
-}
-
-pub struct MessageIntegrityWriter<'a> {
-    bytes: &'a mut [u8],
-}
-
-impl<'a> MessageIntegrityWriter<'a> {
-    pub fn new(bytes: &'a mut [u8]) -> Self {
-        Self {
-            bytes
-        }
-    }
-
-    pub fn write(&mut self, value: &[u8; 20]) -> Result<u16> {
-        self.bytes.get_mut(0..20)
-            .ok_or(ReaderErr::NotEnoughBytes)?
-            .copy_from_slice(value);
-
-        Ok(20)
+    pub fn write_ipv6_addr(&mut self, ip: u128, port: u16, transaction_id: u128) -> Option<u16> {
+        let mask = transaction_id;
+        self.writer.write_ipv6_addr(ip ^ mask, port)
     }
 }
 
@@ -248,15 +182,15 @@ impl<'a> StringWriter<'a> {
         }
     }
 
-    pub fn write(&mut self, value: &str) -> Result<u16> {
+    pub fn write(&mut self, value: &str) -> Option<u16> {
         let value_bytes = value.as_bytes();
         let val_len = value_bytes.len();
 
-        self.bytes.get_mut(0..val_len)
-            .ok_or(ReaderErr::NotEnoughBytes)?
-            .copy_from_slice(value_bytes);
+        let buf = self.bytes.get_mut(0..val_len)?;
 
-        Ok(val_len as u16)
+        buf.copy_from_slice(value_bytes);
+
+        Some(val_len as u16)
     }
 }
 
@@ -271,10 +205,26 @@ impl<'a> MessageIntegrityReader<'a> {
         }
     }
 
-    pub fn get_value(&self) -> Result<&[u8; 20]> {
-        self.bytes.get(0..20)
-            .map(|b| b.try_into().unwrap())
-            .ok_or(ReaderErr::NotEnoughBytes)
+    pub fn get_value(&self) -> Option<&[u8; 20]> {
+        Some(self.bytes.get(0..20)?.try_into().unwrap())
+    }
+}
+
+pub struct MessageIntegrityWriter<'a> {
+    bytes: &'a mut [u8],
+}
+
+impl<'a> MessageIntegrityWriter<'a> {
+    pub fn new(bytes: &'a mut [u8]) -> Self {
+        Self {
+            bytes
+        }
+    }
+
+    pub fn write(&mut self, value: &[u8; 20]) -> Option<u16> {
+        let buf = self.bytes.get_mut(0..20)?;
+        buf.copy_from_slice(value);
+        Some(20)
     }
 }
 
@@ -289,11 +239,10 @@ impl<'a> FingerprintReader<'a> {
         }
     }
 
-    pub fn get_value(&self) -> Result<u32> {
+    pub fn get_value(&self) -> Option<u32> {
         self.bytes.get(0..4)
             .map(|b| b.try_into().unwrap())
             .map(|b: &[u8; 4]| u32::from_be_bytes(*b) ^ 0x5354554E)
-            .ok_or(ReaderErr::NotEnoughBytes)
     }
 }
 
@@ -301,18 +250,17 @@ pub struct FingerprintWriter<'a> {
     bytes: &'a mut [u8],
 }
 
-impl <'a> FingerprintWriter<'a> {
+impl<'a> FingerprintWriter<'a> {
     pub fn new(bytes: &'a mut [u8]) -> Self {
         Self {
             bytes
         }
     }
 
-    pub fn write(&mut self, value: u32) -> Result<u16> {
-        self.bytes.get_mut(0..4)
-            .ok_or(ReaderErr::NotEnoughBytes)?
-            .copy_from_slice(&(value ^ 0x5354554E).to_be_bytes());
-        Ok(4)
+    pub fn write(&mut self, value: u32) -> Option<u16> {
+        let buf = self.bytes.get_mut(0..4)?;
+        buf.copy_from_slice(&(value ^ 0x5354554E).to_be_bytes());
+        Some(4)
     }
 }
 
@@ -372,23 +320,21 @@ impl<'a> UnknownAttrsWriter<'a> {
         }
     }
 
-    pub fn write(&'a mut self, attrs: &[u16], padding_val: Option<u16>) -> Result<u16> {
+    pub fn write(&'a mut self, attrs: &[u16], padding_val: Option<u16>) -> Option<u16> {
         let attrs_len = attrs.len();
+        let attrs_len_with_padding = if attrs_len & 1 == 0 { attrs_len } else { attrs_len + 1 };
+
+        let buf = self.bytes.get_mut(0..attrs_len_with_padding * 2)?;
 
         for idx in 0..attrs_len {
-            self.bytes.get_mut(idx * 2..idx * 2 + 2)
-                .ok_or(ReaderErr::NotEnoughBytes)?
-                .copy_from_slice(&attrs[idx].to_be_bytes());
+            buf[idx * 2..idx * 2 + 2].copy_from_slice(&attrs[idx].to_be_bytes());
         }
 
-        let attrs_len_with_padding = if attrs_len & 1 == 0 { attrs_len } else { attrs_len + 1 };
         if attrs_len_with_padding > attrs_len {
-            self.bytes.get_mut(attrs_len * 2..attrs_len * 2 + 2)
-                .ok_or(ReaderErr::NotEnoughBytes)?
-                .copy_from_slice(&padding_val.unwrap_or(0).to_be_bytes());
+            buf[attrs_len * 2..attrs_len * 2 + 2].copy_from_slice(&padding_val.unwrap_or(0).to_be_bytes());
         }
 
-        Ok((attrs_len_with_padding * 2) as u16)
+        Some((attrs_len_with_padding * 2) as u16)
     }
 }
 
@@ -403,41 +349,26 @@ impl<'a> ErrorCodeReader<'a> {
         }
     }
 
-    pub fn get_code(&self) -> Result<u16> {
-        let class = if let Ok(class) = self.bytes
-            .get(2)
-            .map(|b| b >> 5) // we only care about 3 MSB
-            .ok_or(ReaderErr::NotEnoughBytes) { class as u16 } else {
-            return Err(ReaderErr::NotEnoughBytes);
-        };
+    pub fn get_code(&self) -> Option<u16> {
+        let buf = self.bytes.get(0..4)?;
 
-        let num = if let Ok(num) = self.bytes
-            .get(3)
-            .map(|b| *b)
-            .ok_or(ReaderErr::NotEnoughBytes) { num as u16 } else {
-            return Err(ReaderErr::NotEnoughBytes);
-        };
+        let class = buf[2] as u16 >> 5; // we only care about 3 MSB
+        let num = buf[3] as u16;
 
         let code = class * 100 + num;
-        Ok(code)
+        Some(code)
     }
 
     pub fn get_reason(&self) -> Result<&str> {
-        let b = if let Ok(b) = self.bytes
-            .get(4..)
-            .ok_or(ReaderErr::NotEnoughBytes) { b } else {
-            return Err(ReaderErr::NotEnoughBytes);
-        };
-        StringReader::new(b).get_value()
+        let buf = self.bytes.get(4..)
+            .ok_or(ReaderErr::NotEnoughBytes)?;
+
+        StringReader::new(buf).get_value()
     }
 
-    pub unsafe fn get_reason_unchecked(&self) -> Result<&str> {
-        let b = if let Ok(b) = self.bytes
-            .get(4..)
-            .ok_or(ReaderErr::NotEnoughBytes) { b } else {
-            return Err(ReaderErr::NotEnoughBytes);
-        };
-        Ok(StringReader::new(b).get_value_unchecked())
+    pub unsafe fn get_reason_unchecked(&self) -> Option<&str> {
+        let buf = self.bytes.get(4..)?;
+        Some(StringReader::new(buf).get_value_unchecked())
     }
 }
 
@@ -452,27 +383,27 @@ impl<'a> ErrorCodeWriter<'a> {
         }
     }
 
-    pub fn write_code(&mut self, code: u16) -> Result<u16> {
+    pub fn write_code(&mut self, code: u16) -> Option<u16> {
+        let buf = self.bytes.get_mut(0..4)?;
+
         let class = (code / 100) as u8;
-        let num= (code - code / 100 * 100) as u8;
+        let num = (code - code / 100 * 100) as u8;
 
         let bytes = [
             class << 5,
             num,
         ];
 
-        self.bytes.get_mut(2..4)
-            .ok_or(ReaderErr::NotEnoughBytes)?
-            .copy_from_slice(&bytes);
+        buf[0] = 0;
+        buf[1] = 0; // reserved
+        buf[2..4].copy_from_slice(&bytes);
 
-        Ok(4)
+        Some(4)
     }
 
-    pub fn write_reason(&'a mut self, reason: &str) -> Result<u16> {
-        let dest = self.bytes.get_mut(4..)
-            .ok_or(ReaderErr::NotEnoughBytes)?;
-
-        StringWriter::new(dest).write(reason)
+    pub fn write_reason(&'a mut self, reason: &str) -> Option<u16> {
+        let buf = self.bytes.get_mut(4..)?;
+        StringWriter::new(buf).write(reason)
     }
 }
 
@@ -487,12 +418,12 @@ impl<'a> ChangeRequestReader<'a> {
         }
     }
 
-    pub fn get_change_ip(&self) -> Result<bool> {
-        Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 0x40 > 0)
+    pub fn get_change_ip(&self) -> Option<bool> {
+        self.bytes.get(3).map(|b| b & 0x40 > 0)
     }
 
-    pub fn get_change_port(&self) -> Result<bool> {
-        Ok(self.bytes.get(3).ok_or(ReaderErr::NotEnoughBytes)? & 0x20 > 0)
+    pub fn get_change_port(&self) -> Option<bool> {
+        self.bytes.get(3).map(|b| b & 0x20 > 0)
     }
 }
 
@@ -507,14 +438,13 @@ impl<'a> ChangeRequestWriter<'a> {
         }
     }
 
-    pub fn write(&mut self, change_ip: bool, change_port: bool) -> Result<u16> {
+    pub fn write(&mut self, change_ip: bool, change_port: bool) -> Option<u16> {
+        let buf = self.bytes.get_mut(0..4)?;
+
         let bytes = if change_ip { 0x40 } else { 0x00 } | if change_port { 0x20 } else { 0x00 } as u32;
+        buf.copy_from_slice(&bytes.to_be_bytes());
 
-        self.bytes.get_mut(0..4)
-            .ok_or(ReaderErr::NotEnoughBytes)?
-            .copy_from_slice(&bytes.to_be_bytes());
-
-        Ok(4)
+        Some(4)
     }
 }
 
@@ -656,14 +586,12 @@ mod tests {
             .expect("Address is unreadable");
 
         if let SocketAddr::V4(ip, port) = addr {
-
             let mut w = SocketAddrWriter::new(&mut attr_buf);
             let bytes_written = w.write_ipv4_addr(ip, port)
                 .expect("Buffer is too small");
 
             assert_eq!(8, bytes_written);
             assert_eq!(attr_val, attr_buf);
-
         } else { assert!(false, "Address is not IPv4"); }
     }
 
@@ -685,14 +613,12 @@ mod tests {
             .expect("Address is unreadable");
 
         if let SocketAddr::V6(ip, port) = addr {
-
             let mut w = SocketAddrWriter::new(&mut attr_buf);
             let bytes_written = w.write_ipv6_addr(ip, port)
                 .expect("Buffer is too small");
 
             assert_eq!(20, bytes_written);
             assert_eq!(attr_val, attr_buf);
-
         } else { assert!(false, "Address is not IPv6"); }
     }
 
@@ -713,14 +639,12 @@ mod tests {
             .expect("Address is unreadable");
 
         if let SocketAddr::V4(ip, port) = addr {
-
             let mut w = XorSocketAddrWriter::new(&mut attr_buf);
             let bytes_written = w.write_ipv4_addr(ip, port)
                 .expect("Buffer is too small");
 
             assert_eq!(8, bytes_written);
             assert_eq!(attr_val, attr_buf);
-
         } else { assert!(false, "Address is not IPv4"); }
     }
 
@@ -744,14 +668,12 @@ mod tests {
             .expect("Address is unreadable");
 
         if let SocketAddr::V6(ip, port) = addr {
-
             let mut w = XorSocketAddrWriter::new(&mut attr_buf);
             let bytes_written = w.write_ipv6_addr(ip, port, transaction_id)
                 .expect("Buffer is too small");
 
             assert_eq!(20, bytes_written);
             assert_eq!(attr_val, attr_buf);
-
         } else { assert!(false, "Address is not IPv6"); }
     }
 
@@ -872,7 +794,7 @@ mod tests {
         let mut w = ChangeRequestWriter::new(&mut attr_buf);
         let bytes_written = w.write(
             r.get_change_ip().expect("Change IP value is unreadable"),
-            r.get_change_port().expect("Change port value is unreadable")
+            r.get_change_port().expect("Change port value is unreadable"),
         ).expect("Buffer is too small");
 
         assert_eq!(4, bytes_written);
@@ -886,7 +808,7 @@ mod tests {
         let mut w = ChangeRequestWriter::new(&mut attr_buf);
         let bytes_written = w.write(
             r.get_change_ip().expect("Change IP value is unreadable"),
-        r.get_change_port().expect("Change port value is unreadable")
+            r.get_change_port().expect("Change port value is unreadable"),
         ).expect("Buffer is too small");
 
         assert_eq!(4, bytes_written);
@@ -900,7 +822,7 @@ mod tests {
         let mut w = ChangeRequestWriter::new(&mut attr_buf);
         let bytes_written = w.write(
             r.get_change_ip().expect("Change IP value is unreadable"),
-            r.get_change_port().expect("Change port value is unreadable")
+            r.get_change_port().expect("Change port value is unreadable"),
         ).expect("Buffer is too small");
 
         assert_eq!(4, bytes_written);
@@ -914,7 +836,7 @@ mod tests {
         let mut w = ChangeRequestWriter::new(&mut attr_buf);
         let bytes_written = w.write(
             r.get_change_ip().expect("Change IP value is unreadable"),
-            r.get_change_port().expect("Change port value is unreadable")
+            r.get_change_port().expect("Change port value is unreadable"),
         ).expect("Buffer is too small");
 
         assert_eq!(4, bytes_written);
