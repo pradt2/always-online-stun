@@ -243,13 +243,11 @@ impl<'a> Writer<'a> {
     fn add_attr_inner<T: Fn(& mut [u8]) -> Option<u16>>(&mut self, attr_type: u16, value_gen: T) -> Option<u16> {
         let idx = self.attr_bytes_used as usize;
 
-        let value_buf = if let Some(buf) = self.attr_bytes
-            .get_mut(idx + 4..) { buf } else { return None; };
+        let value_buf = self.attr_bytes.get_mut(idx + 4..)?;
 
         let value_len = value_gen(value_buf)?;
 
-        let header_buf = if let Some(buf) = self.attr_bytes
-            .get_mut(idx..idx + 4) { buf } else { return None; };
+        let header_buf = self.attr_bytes.get_mut(idx..idx + 4)?;
 
         let type_bytes = attr_type.to_be_bytes();
         header_buf[0..2].copy_from_slice(&type_bytes);
