@@ -8,9 +8,9 @@ fn main() {
     let mut buf = [0u8; 28];
 
     let mut writer = rfc3489::Writer::new(&mut buf);
-    writer.set_message_type(rfc3489::MessageType::BindingRequest).unwrap();
-    writer.set_transaction_id(1).unwrap();
-    writer.add_attr(rfc3489::WriterAttribute::ChangeRequest {change_ip: true, change_port: true}).unwrap();
+    writer.set_message_type(rfc3489::MessageType::BindingRequest);
+    writer.set_transaction_id(1);
+    writer.add_attr(rfc3489::WriterAttribute::ChangeRequest {change_ip: true, change_port: true});
     let bytes_used = writer.finish().unwrap();
 
     // this is the same attribute as in the read.rs example
