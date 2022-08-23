@@ -289,7 +289,7 @@ async fn test_socket_addr_against_trusted_party_tcp(
             hostname,
             stream.local_addr().unwrap(),
             return_addr,
-            stream.peer_addr().unwrap(),
+            stream.peer_addr().ok(),
             deadline,
         )
     } else {
@@ -299,7 +299,7 @@ async fn test_socket_addr_against_trusted_party_tcp(
             hostname,
             stream.local_addr().unwrap(),
             stream.peer_addr().unwrap(), // doesn't matter since the STUN server didn't return a valid address
-            stream.peer_addr().unwrap(),
+            stream.peer_addr().ok(),
             deadline,
         )
     }
@@ -324,7 +324,7 @@ async fn test_socket_udp(hostname: &str,
         hostname,
         local_socket.local_addr().unwrap(),
         expected_addr,
-        stun_server_addr,
+        Some(stun_server_addr),
         deadline,
     )
 }
@@ -347,7 +347,7 @@ async fn test_socket_tcp(hostname: &str,
         hostname,
         stream.local_addr().unwrap(),
         stream.local_addr().unwrap(),
-        stream.peer_addr().unwrap(),
+        stream.peer_addr().ok(),
         deadline,
     )
 }
@@ -358,9 +358,11 @@ fn process_result(
     hostname: &str,
     local_addr: SocketAddr,
     expected_addr: SocketAddr,
-    stun_server_addr: SocketAddr,
+    stun_server_addr: Option<SocketAddr>,
     deadline: Duration,
 ) -> StunSocketTestResult {
+    let stun_server_addr = stun_server_addr.unwrap_or(SocketAddr::new(IpAddr::from([0,0,0,0]), 0));
+
     return match result {
         Ok(Some(return_addr)) => if return_addr.port() == expected_addr.port() {
             debug!("{:<25} -> Socket {:<21} returned a healthy response", hostname, &stun_server_addr);
