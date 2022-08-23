@@ -22,6 +22,7 @@ dependencies = [
  "rand",
  "reqwest",
  "serde_json",
+ "stun_proto",
  "stunclient",
  "tokio",
  "tokio-stream",
@@ -799,6 +800,10 @@ dependencies = [
  "md5",
  "trackable 0.2.24",
 ]
+
+[[package]]
+name = "stun_proto"
+version = "0.1.0"
 
 [[package]]
 name = "stunclient"
