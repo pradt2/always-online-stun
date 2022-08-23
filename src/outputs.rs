@@ -10,10 +10,17 @@ pub(crate) struct ValidHosts<'a> {
 }
 
 impl ValidHosts<'_> {
-    pub(crate) fn default(server_test_results: &Vec<StunServerTestResult>) -> ValidHosts {
+    pub(crate) fn udp(server_test_results: &Vec<StunServerTestResult>) -> ValidHosts {
         ValidHosts {
             server_test_results,
             file_path: String::from("valid_hosts.txt")
+        }
+    }
+
+    pub(crate) fn tcp(server_test_results: &Vec<StunServerTestResult>) -> ValidHosts {
+        ValidHosts {
+            server_test_results,
+            file_path: String::from("valid_hosts_tcp.txt")
         }
     }
 
@@ -45,10 +52,17 @@ pub(crate) struct ValidIpV4s<'a> {
 }
 
 impl ValidIpV4s<'_> {
-    pub(crate) fn default(server_test_results: &Vec<StunServerTestResult>) -> ValidIpV4s {
+    pub(crate) fn udp(server_test_results: &Vec<StunServerTestResult>) -> ValidIpV4s {
         ValidIpV4s {
             server_test_results,
             file_path: String::from("valid_ipv4s.txt")
+        }
+    }
+
+    pub(crate) fn tcp(server_test_results: &Vec<StunServerTestResult>) -> ValidIpV4s {
+        ValidIpV4s {
+            server_test_results,
+            file_path: String::from("valid_ipv4s_tcp.txt")
         }
     }
 
@@ -80,10 +94,17 @@ pub(crate) struct ValidIpV6s<'a> {
 }
 
 impl ValidIpV6s<'_> {
-    pub(crate) fn default(server_test_results: &Vec<StunServerTestResult>) -> ValidIpV6s {
+    pub(crate) fn udp(server_test_results: &Vec<StunServerTestResult>) -> ValidIpV6s {
         ValidIpV6s {
             server_test_results,
             file_path: String::from("valid_ipv6s.txt")
+        }
+    }
+
+    pub(crate) fn tcp(server_test_results: &Vec<StunServerTestResult>) -> ValidIpV6s {
+        ValidIpV6s {
+            server_test_results,
+            file_path: String::from("valid_ipv6s_tcp.txt")
         }
     }
 

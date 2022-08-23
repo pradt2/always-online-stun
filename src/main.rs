@@ -24,7 +24,11 @@ const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
     pretty_env_logger::init();
+    test_udp_servers()?;
+    test_tcp_servers()
+}
 
+async fn test_udp_servers() -> io::Result<()> {
     let is_behind_nat: bool = std::env::var("IS_BEHIND_NAT")
         .unwrap_or(String::from("false"))
         .parse()
@@ -48,9 +52,9 @@ async fn main() -> io::Result<()> {
     let timestamp = Instant::now();
     let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), CONCURRENT_SOCKETS_USED_LIMIT).await;
 
-    ValidHosts::default(&stun_server_test_results).save().await?;
-    ValidIpV4s::default(&stun_server_test_results).save().await?;
-    ValidIpV6s::default(&stun_server_test_results).save().await?;
+    ValidHosts::udp(&stun_server_test_results).save().await?;
+    ValidIpV4s::udp(&stun_server_test_results).save().await?;
+    ValidIpV6s::udp(&stun_server_test_results).save().await?;
 
     write_stun_server_summary(stun_servers_count, &stun_server_test_results,timestamp.elapsed());
 
@@ -61,9 +65,56 @@ async fn main() -> io::Result<()> {
         .map(|test_result| test_result.socket)
         .for_each(|socket| {
             let client = client.clone();
-                async move {
-                    client.borrow_mut().get_ip_geoip_info(socket.ip()).await.expect("GeoIP IP info must be available");
-                }
+            async move {
+                client.borrow_mut().get_ip_geoip_info(socket.ip()).await.expect("GeoIP IP info must be available");
+            }
+        }).await;
+
+    client.borrow_mut().save().await?;
+
+    Ok(())
+}
+
+async fn test_tcp_servers() -> io::Result<()> {
+    let is_behind_nat: bool = std::env::var("IS_BEHIND_NAT")
+        .unwrap_or(String::from("false"))
+        .parse()
+        .expect("IS_BEHIND_NAT must be true or false");
+
+    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::<GeolocationDbClient>::default().await?));
+
+    let stun_servers = servers::get_stun_servers().await?;
+
+    let stun_servers_count = stun_servers.len();
+    info!("Loaded {} stun server hosts", stun_servers.len());
+
+    let stun_server_test_results = stun_servers.into_iter()
+        .map(|candidate| async move {
+            let test_result = stun::test_tcp_stun_server(candidate, is_behind_nat).await;
+            print_stun_server_status(&test_result);
+            test_result
+        })
+        .collect::<Vec<_>>();
+
+    let timestamp = Instant::now();
+    let stun_server_test_results = join_all_with_semaphore(stun_server_test_results.into_iter(), CONCURRENT_SOCKETS_USED_LIMIT).await;
+
+    ValidHosts::tcp(&stun_server_test_results).save().await?;
+    ValidIpV4s::tcp(&stun_server_test_results).save().await?;
+    ValidIpV6s::tcp(&stun_server_test_results).save().await?;
+
+    write_stun_server_summary(stun_servers_count, &stun_server_test_results,timestamp.elapsed());
+
+    futures::stream::iter(stun_server_test_results.iter())
+        .filter_map(|test_result| async move { if test_result.is_healthy() { Some(test_result) } else { None } })
+        .map(|test_result| futures::stream::iter(test_result.socket_tests.iter()))
+        .flatten()
+        .map(|test_result| test_result.socket)
+        .for_each(|socket| {
+            let client = client.clone();
+            async move {
+                client.borrow_mut().get_ip_geoip_info(socket.ip()).await.expect("GeoIP IP info must be available");
+            }
         }).await;
 
     client.borrow_mut().save().await?;

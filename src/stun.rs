@@ -127,9 +127,9 @@ pub(crate) async fn test_udp_stun_server(
             async move {
                 let stun_socket = SocketAddr::new(addr, port);
                 let res = if behind_nat {
-                    test_socket_addr_against_trusted_party(hostname, stun_socket).await
+                    test_socket_addr_against_trusted_party_udp(hostname, stun_socket).await
                 } else {
-                    test_socket_addr(hostname, stun_socket).await
+                    test_socket_addr_udp(hostname, stun_socket).await
                 };
                 res
             }
@@ -144,7 +144,50 @@ pub(crate) async fn test_udp_stun_server(
     }
 }
 
-async fn test_socket_addr(
+pub(crate) async fn test_tcp_stun_server(
+    server: StunServer,
+    behind_nat: bool,
+) -> StunServerTestResult {
+    let socket_addrs = tokio::net::lookup_host(format!("{}:{}", server.hostname, server.port)).await;
+
+    if socket_addrs.is_err() {
+        let err_str = socket_addrs.as_ref().err().unwrap().to_string();
+        if err_str.contains("Name or service not known") ||
+            err_str.contains("No address associated with hostname") {} else {
+            warn!("{:<21} -> Unexpected DNS failure: {}", server.hostname, socket_addrs.as_ref().err().unwrap().to_string());
+        }
+        return StunServerTestResult {
+            server,
+            socket_tests: vec![],
+        };
+    }
+
+    let results = socket_addrs.unwrap()
+        .map(|addr| addr.ip())
+        .map(|addr| {
+            let port = server.port;
+            let hostname = server.hostname.as_str();
+            async move {
+                let stun_socket = SocketAddr::new(addr, port);
+                let res = if behind_nat {
+                    test_socket_addr_against_trusted_party_tcp(hostname, stun_socket).await
+                } else {
+                    test_socket_addr_tcp(hostname, stun_socket).await
+                };
+                res
+            }
+        })
+        .collect::<Vec<_>>();
+
+    let results = join_all_with_semaphore(results.into_iter(), 1).await;
+
+    StunServerTestResult {
+        server,
+        socket_tests: results,
+    }
+}
+
+async fn test_socket_addr_udp(
     hostname: &str,
     socket_addr: SocketAddr,
 ) -> StunSocketTestResult {
@@ -155,10 +198,25 @@ async fn test_socket_addr(
         }
     ).await.unwrap();
 
-    test_socket(hostname, socket_addr, local_socket.local_addr().unwrap(), &local_socket).await
+    test_socket_udp(hostname, socket_addr, local_socket.local_addr().unwrap(), &local_socket).await
 }
 
-async fn test_socket_addr_against_trusted_party(
+async fn test_socket_addr_tcp(
+    hostname: &str,
+    socket_addr: SocketAddr,
+) -> StunSocketTestResult {
+    let local_socket = TcpStream::connect(socket_addr).await;
+
+    match local_socket {
+        Ok(stream) => test_socket_tcp(hostname, stream).await,
+        Err(err) => StunSocketTestResult {
+            socket: socket_addr,
+            result: StunSocketResponse::UnexpectedError { err: err.to_string() }
+        }
+    }
+}
+
+async fn test_socket_addr_against_trusted_party_udp(
     hostname: &str,
     socket_addr: SocketAddr,
 ) -> StunSocketTestResult {
@@ -192,13 +250,61 @@ async fn test_socket_addr_against_trusted_party(
 
     let local_socket_mapping = local_socket_mapping.expect("Trusted party must provide a valid mapping");
 
-    test_socket(hostname, socket_addr, local_socket_mapping, &local_socket).await
+    test_socket_udp(hostname, socket_addr, local_socket_mapping, &local_socket).await
 }
 
-async fn test_socket(hostname: &str,
-                     stun_server_addr: SocketAddr,
-                     expected_addr: SocketAddr,
-                     local_socket: &UdpSocket,
+/**
+    Until I figure out the SO_REUSEADDR,
+    Any returned address is regarded as valid
+*/
+async fn test_socket_addr_against_trusted_party_tcp(
+    hostname: &str,
+    socket_addr: SocketAddr,
+) -> StunSocketTestResult {
+    let start = Instant::now();
+    let deadline = Duration::from_secs(5);
+
+    let local_socket = TcpStream::connect(socket_addr).await;
+
+    let mut stream = match local_socket {
+        Ok(stream) => stream,
+        Err(err) => return StunSocketTestResult {
+            socket: socket_addr,
+            result: StunSocketResponse::UnexpectedError { err: err.to_string() }
+        }
+    };
+
+    let result = query_stun_server_tcp(&mut stream, deadline).await;
+
+    let request_duration = Instant::now() - start;
+
+    if let Ok(Some(return_addr)) = result {
+        process_result(
+            result,
+            request_duration,
+            hostname,
+            stream.local_addr().unwrap(),
+            return_addr,
+            stream.peer_addr().unwrap(),
+            deadline,
+        )
+    } else {
+        process_result(
+            result,
+            request_duration,
+            hostname,
+            stream.local_addr().unwrap(),
+            stream.peer_addr().unwrap(), // doesn't matter since the STUN server didn't return a valid address
+            stream.peer_addr().unwrap(),
+            deadline,
+        )
+    }
+}
+
+async fn test_socket_udp(hostname: &str,
+                         stun_server_addr: SocketAddr,
+                         expected_addr: SocketAddr,
+                         local_socket: &UdpSocket,
 ) -> StunSocketTestResult {
     let deadline = Duration::from_secs(5);
 
@@ -208,6 +314,49 @@ async fn test_socket(hostname: &str,
 
     let request_duration = Instant::now() - start;
 
+    process_result(
+        result,
+        request_duration,
+        hostname,
+        local_socket.local_addr().unwrap(),
+        expected_addr,
+        stun_server_addr,
+        deadline,
+    )
+}
+
+async fn test_socket_tcp(hostname: &str,
+                         mut stream: TcpStream,
+) -> StunSocketTestResult {
+    let deadline = Duration::from_secs(5);
+
+    let start = Instant::now();
+
+    let result = query_stun_server_tcp(&mut stream,deadline).await;
+
+    let request_duration = Instant::now() - start;
+
+
+    process_result(
+        result,
+        request_duration,
+        hostname,
+        stream.local_addr().unwrap(),
+        stream.local_addr().unwrap(),
+        stream.peer_addr().unwrap(),
+        deadline,
+    )
+}
+
+fn process_result(
+    result: io::Result<Option<SocketAddr>>,
+    request_duration: Duration,
+    hostname: &str,
+    local_addr: SocketAddr,
+    expected_addr: SocketAddr,
+    stun_server_addr: SocketAddr,
+    deadline: Duration,
+) -> StunSocketTestResult {
     return match result {
         Ok(Some(return_addr)) => if return_addr.port() == expected_addr.port() {
             debug!("{:<25} -> Socket {:<21} returned a healthy response", hostname, &stun_server_addr);
@@ -219,14 +368,14 @@ async fn test_socket(hostname: &str,
             debug!("{:<25} -> Socket {:<21} returned an invalid mapping: expected={}, actual={}", hostname, &stun_server_addr, expected_addr, return_addr);
             StunSocketTestResult {
                 socket: stun_server_addr,
-                result: StunSocketResponse::InvalidMappingResponse { expected: local_socket.local_addr().unwrap(), actual: return_addr, rtt: request_duration },
+                result: StunSocketResponse::InvalidMappingResponse { expected: local_addr, actual: return_addr, rtt: request_duration },
             }
         },
         Ok(None) => {
             debug!("{:<25} -> Socket {:<21} returned an a response but no mapping: expected={}", hostname, &stun_server_addr, expected_addr);
             StunSocketTestResult {
                 socket: stun_server_addr,
-                result: StunSocketResponse::InvalidMappingResponse { expected: local_socket.local_addr().unwrap(), actual: SocketAddr::new(IpAddr::from([0,0,0,0]), 0), rtt: request_duration },
+                result: StunSocketResponse::InvalidMappingResponse { expected: local_addr, actual: SocketAddr::new(IpAddr::from([0,0,0,0]), 0), rtt: request_duration },
             }
         }
         Err(err) => {
