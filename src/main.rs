@@ -24,8 +24,8 @@ const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
     pretty_env_logger::init();
-    test_udp_servers()?;
-    test_tcp_servers()
+    test_udp_servers().await;
+    test_tcp_servers().await
 }
 
 async fn test_udp_servers() -> io::Result<()> {

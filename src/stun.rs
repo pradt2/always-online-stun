@@ -262,12 +262,16 @@ async fn test_socket_addr_against_trusted_party_tcp(
     socket_addr: SocketAddr,
 ) -> StunSocketTestResult {
     let start = Instant::now();
-    let deadline = Duration::from_secs(5);
+    let deadline = Duration::from_secs(1);
 
-    let local_socket = TcpStream::connect(socket_addr).await;
+    let local_socket = tokio::time::timeout(deadline, TcpStream::connect(socket_addr)).await;
 
     let mut stream = match local_socket {
-        Ok(stream) => stream,
+        Ok(Ok(stream)) => stream,
+        Ok(Err(err)) => return StunSocketTestResult {
+            socket: socket_addr,
+            result: StunSocketResponse::UnexpectedError { err: err.to_string() }
+        },
         Err(err) => return StunSocketTestResult {
             socket: socket_addr,
             result: StunSocketResponse::UnexpectedError { err: err.to_string() }
@@ -306,7 +310,7 @@ async fn test_socket_udp(hostname: &str,
                          expected_addr: SocketAddr,
                          local_socket: &UdpSocket,
 ) -> StunSocketTestResult {
-    let deadline = Duration::from_secs(5);
+    let deadline = Duration::from_secs(1);
 
     let start = Instant::now();
 
@@ -328,7 +332,7 @@ async fn test_socket_udp(hostname: &str,
 async fn test_socket_tcp(hostname: &str,
                          mut stream: TcpStream,
 ) -> StunSocketTestResult {
-    let deadline = Duration::from_secs(5);
+    let deadline = Duration::from_secs(1);
 
     let start = Instant::now();
 
@@ -425,19 +429,19 @@ async fn query_stun_server_udp(
             })
             .filter(|opt| opt.is_some())
             .map(|opt| opt.unwrap())
-            .next()
-            .unwrap();
+            .map(|external_addr| {
+                match external_addr {
+                    stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
+                        SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                    },
+                    stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
+                        SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                    },
+                }
+            })
+            .next();
 
-        let std_external_addr = match external_addr {
-            stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
-                SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-            },
-            stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
-                SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-            },
-        };
-
-        return Ok(Some(std_external_addr));
+        return Ok(external_addr);
     }
 
     return Ok(None);
@@ -454,7 +458,7 @@ async fn query_stun_server_tcp(
     writer.set_transaction_id(1).unwrap();
     let bytes_written = writer.finish().unwrap();
 
-    local_socket.write_all(&buf[0..bytes_written as usize]).await?;
+    tokio::time::timeout(timeout, local_socket.write_all(&buf[0..bytes_written as usize])).await??;
 
     let bytes_read = tokio::time::timeout(timeout, local_socket.read(&mut buf)).await??;
 
@@ -471,19 +475,19 @@ async fn query_stun_server_tcp(
             })
             .filter(|opt| opt.is_some())
             .map(|opt| opt.unwrap())
-            .next()
-            .unwrap();
+            .map(|external_addr| {
+                match external_addr {
+                    stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
+                        SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                    },
+                    stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
+                        SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                    },
+                }
+            })
+            .next();
 
-        let std_external_addr = match external_addr {
-            stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
-                SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-            },
-            stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
-                SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-            },
-        };
-
-        return Ok(Some(std_external_addr));
+        return Ok(external_addr);
     }
 
     return Ok(None);
