@@ -1,4 +1,4 @@
-use std::collections::{BTreeMap, HashMap};
+use std::collections::{BTreeMap};
 use std::io;
 use std::io::{ErrorKind};
 use std::io::ErrorKind::Other;

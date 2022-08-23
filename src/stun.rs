@@ -1,7 +1,9 @@
-use std::net::{SocketAddr};
+use std::io;
+use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
-use stunclient::Error;
-use tokio::net::UdpSocket;
+use stun_proto::rfc5389::*;
+use tokio::io::{AsyncReadExt, AsyncWriteExt};
+use tokio::net::{TcpStream, UdpSocket};
 use crate::utils::join_all_with_semaphore;
 use crate::StunServer;
 
@@ -182,12 +184,9 @@ async fn test_socket_addr_against_trusted_party(
 
     let mut local_socket_mapping = None;
     for _ in 0..3 {
-        let mut client = stunclient::StunClient::new(trusted_party_addr);
-        let deadline = Duration::from_secs(5);
-        client.set_timeout(deadline);
-        match client.query_external_address_async(&local_socket).await {
-            Ok(addr) => {local_socket_mapping = Some(addr); break},
-            Err(_) => continue
+        match query_stun_server_udp(&local_socket, trusted_party_addr, Duration::from_secs(5)).await.ok().flatten() {
+            Some(addr) => {local_socket_mapping = Some(addr); break},
+            None => continue
         }
     };
 
@@ -201,18 +200,16 @@ async fn test_socket(hostname: &str,
                      expected_addr: SocketAddr,
                      local_socket: &UdpSocket,
 ) -> StunSocketTestResult {
-    let mut client = stunclient::StunClient::new(stun_server_addr);
-    let deadline = Duration::from_secs(1);
-    client.set_timeout(deadline);
+    let deadline = Duration::from_secs(5);
 
     let start = Instant::now();
 
-    let result = client.query_external_address_async(local_socket).await;
+    let result = query_stun_server_udp(&local_socket, stun_server_addr, deadline).await;
 
     let request_duration = Instant::now() - start;
 
     return match result {
-        Ok(return_addr) => if return_addr.port() == expected_addr.port() {
+        Ok(Some(return_addr)) => if return_addr.port() == expected_addr.port() {
             debug!("{:<25} -> Socket {:<21} returned a healthy response", hostname, &stun_server_addr);
             StunSocketTestResult {
                 socket: stun_server_addr,
@@ -225,6 +222,13 @@ async fn test_socket(hostname: &str,
                 result: StunSocketResponse::InvalidMappingResponse { expected: local_socket.local_addr().unwrap(), actual: return_addr, rtt: request_duration },
             }
         },
+        Ok(None) => {
+            debug!("{:<25} -> Socket {:<21} returned an a response but no mapping: expected={}", hostname, &stun_server_addr, expected_addr);
+            StunSocketTestResult {
+                socket: stun_server_addr,
+                result: StunSocketResponse::InvalidMappingResponse { expected: local_socket.local_addr().unwrap(), actual: SocketAddr::new(IpAddr::from([0,0,0,0]), 0), rtt: request_duration },
+            }
+        }
         Err(err) => {
             if err.to_string() == "Timed out waiting for STUN server reply" {
                 debug!("{:<25} -> Socket {:<21} timed out after {:?}", hostname, &stun_server_addr, deadline);
@@ -241,4 +245,97 @@ async fn test_socket(hostname: &str,
             }
         }
     };
+}
+
+async fn query_stun_server_udp(
+    local_socket: &UdpSocket,
+    server_addr: SocketAddr,
+    timeout: Duration,
+) -> io::Result<Option<SocketAddr>> {
+    let mut buf = [0u8; 32];
+
+    let mut writer = Writer::new(&mut buf);
+    writer.set_message_type(MessageType::BindingRequest).unwrap();
+    writer.set_transaction_id(1).unwrap();
+    let bytes_written = writer.finish().unwrap();
+
+    local_socket.send_to(&buf[0..bytes_written as usize], server_addr).await?;
+
+    let bytes_read = tokio::time::timeout(timeout, local_socket.recv(&mut buf)).await??;
+
+    let reader = Reader::new(&buf[0..bytes_read]);
+    if let Ok(MessageType::BindingResponse) = reader.get_message_type() {
+        assert_eq!(1u128, reader.get_transaction_id().unwrap());
+        let external_addr = reader.get_attributes()
+            .map(|attr| {
+                match attr {
+                    Ok(ReaderAttribute::MappedAddress(addr)) => Some(addr.get_address().unwrap()),
+                    Ok(ReaderAttribute::XorMappedAddress(addr)) => Some(addr.get_address().unwrap()),
+                    _ => None,
+                }
+            })
+            .filter(|opt| opt.is_some())
+            .map(|opt| opt.unwrap())
+            .next()
+            .unwrap();
+
+        let std_external_addr = match external_addr {
+            stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
+                SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+            },
+            stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
+                SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+            },
+        };
+
+        return Ok(Some(std_external_addr));
+    }
+
+    return Ok(None);
+}
+
+async fn query_stun_server_tcp(
+    local_socket: &mut TcpStream,
+    timeout: Duration,
+) -> io::Result<Option<SocketAddr>> {
+    let mut buf = [0u8; 32];
+
+    let mut writer = Writer::new(&mut buf);
+    writer.set_message_type(MessageType::BindingRequest).unwrap();
+    writer.set_transaction_id(1).unwrap();
+    let bytes_written = writer.finish().unwrap();
+
+    local_socket.write_all(&buf[0..bytes_written as usize]).await?;
+
+    let bytes_read = tokio::time::timeout(timeout, local_socket.read(&mut buf)).await??;
+
+    let reader = Reader::new(&buf[0..bytes_read]);
+    if let Ok(MessageType::BindingResponse) = reader.get_message_type() {
+        assert_eq!(1u128, reader.get_transaction_id().unwrap());
+        let external_addr = reader.get_attributes()
+            .map(|attr| {
+                match attr {
+                    Ok(ReaderAttribute::MappedAddress(addr)) => Some(addr.get_address().unwrap()),
+                    Ok(ReaderAttribute::XorMappedAddress(addr)) => Some(addr.get_address().unwrap()),
+                    _ => None,
+                }
+            })
+            .filter(|opt| opt.is_some())
+            .map(|opt| opt.unwrap())
+            .next()
+            .unwrap();
+
+        let std_external_addr = match external_addr {
+            stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
+                SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+            },
+            stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
+                SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+            },
+        };
+
+        return Ok(Some(std_external_addr));
+    }
+
+    return Ok(None);
 }
