@@ -1,18 +1,14 @@
 use std::cell::RefCell;
-use std::convert::TryInto;
-use std::fmt::format;
 use std::io;
-use std::net::{IpAddr, Ipv4Addr, Ipv6Addr, SocketAddr};
 use std::rc::Rc;
 use std::time::Duration;
 use futures::StreamExt;
-use tokio::net::UdpSocket;
 use tokio::time::Instant;
+use crate::geoip::GeolocationDbClient;
 use crate::utils::join_all_with_semaphore;
 use crate::outputs::{ValidHosts, ValidIpV4s, ValidIpV6s};
 use crate::servers::StunServer;
 use crate::stun::{StunServerTestResult, StunSocketResponse};
-// use crate::stun_codec::{Attribute, NonParsableAttribute};
 
 extern crate pretty_env_logger;
 #[macro_use] extern crate log;
@@ -22,96 +18,30 @@ mod stun;
 mod utils;
 mod outputs;
 mod geoip;
-mod git;
 
 const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
-
-async fn get_stun_response(addr: &str) -> io::Result<()> {
-    let sock = UdpSocket::bind("0.0.0.0:0").await?;
-    sock.connect(addr).await?;
-    let cookie =  0x2112A442_u32.to_be_bytes();
-    let req = [0, 1u8.to_be(), 0, 0, cookie[0], cookie[1], cookie[2], cookie[3], 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12 ];
-    sock.send(&req).await?;
-
-    let mut buf = [0u8; 120];
-    let bytes_read = tokio::time::timeout(Duration::from_secs(1), sock.recv(&mut buf)).await?;
-
-    if bytes_read.is_err() {
-        info!("Addr {} timed out", addr);
-        return Ok(());
-    }
-
-    let bytes_read = bytes_read.unwrap();
-
-    // let r = stun_codec::StunMessageReader { bytes: buf[0..bytes_read].as_ref() };
-    // info!("Method {:?} , Class {:?}", r.get_method().unwrap(), r.get_class());
-    // r.get_attrs().for_each(|attr| {
-    //     match &attr {
-    //         Ok(attr) => {
-    //             match attr {
-    //                 Attribute::MappedAddress(r) => info!("MappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::ResponseAddress(r) => info!("ResponseAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::ChangeAddress(r) => info!("ChangeAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::SourceAddress(r) => info!("SourceAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::ChangedAddress(r) => info!("ChangedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::XorMappedAddress(r) => info!("XorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::OptXorMappedAddress(r) => info!("OptXorMappedAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::OtherAddress(r) => info!("OtherAddress {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::ResponseOrigin(r) => info!("ResponseOrigin {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::AlternateServer(r) => info!("AlternateServer {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::Software(r) => info!("Software {}", r.get_software().unwrap()),
-    //                 Attribute::ReflectedFrom(r) => info!("ReflectedFrom {:?}", SocketAddr::new(r.get_address().unwrap(), r.get_port())),
-    //                 Attribute::ErrorCode(r) => info!("ErrorCode {:?}", r.get_error().unwrap()),
-    //                 Attribute::Fingerprint(r) => info!("Fingerprint {}", r.get_checksum()),
-    //                 Attribute::MessageIntegrity(r) => info!("MessageIntegrity {:?}", r.get_digest()),
-    //                 Attribute::Realm(r) => info!("Realm {}", r.get_realm().unwrap()),
-    //                 Attribute::Nonce(r) => info!("Nonce {}", r.get_nonce().unwrap()),
-    //                 Attribute::Password(r) => info!("Password {}", r.get_password().unwrap()),
-    //                 Attribute::UnknownAttributes(r) => {
-    //                     for attr_code in r.get_attr_codes() {
-    //                         info!("Unknown attribute {}", attr_code)
-    //                     }
-    //                 },
-    //                 Attribute::Username(r) => info!("Username {}", r.get_username().unwrap()),
-    //             }
-    //         }
-    //         Err(attr) => {
-    //             match &attr {
-    //                 NonParsableAttribute::Unknown(r) => warn!("UnknownAttr type {:04x} len {}", r.get_type_raw(), r.get_total_length()),
-    //                 NonParsableAttribute::Malformed(r) => warn!("MalformedAttr type {:04x} len {}", r.get_type_raw(), r.get_value_length_raw()),
-    //             }
-    //         }
-    //     }
-    // });
-    Ok(())
-}
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
     pretty_env_logger::init();
 
-    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::default().await?));
+    let is_behind_nat: bool = std::env::var("IS_BEHIND_NAT")
+        .unwrap_or(String::from("false"))
+        .parse()
+        .expect("IS_BEHIND_NAT must be true or false");
+
+    let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::<GeolocationDbClient>::default().await?));
 
     let stun_servers = servers::get_stun_servers().await?;
 
     let stun_servers_count = stun_servers.len();
     info!("Loaded {} stun server hosts", stun_servers.len());
 
-    let f = stun_servers.iter().map(|server| {
-        async move {
-            let addr = format!("{}:{}", server.hostname, server.port);
-            get_stun_response(addr.as_str()).await;
-        }
-    }).collect::<Vec<_>>();
-    join_all_with_semaphore(f.into_iter(), 1).await;
-
     let stun_server_test_results = stun_servers.into_iter()
-        .map(|candidate| {
-            async move {
-                let test_result = stun::test_udp_stun_server(candidate).await;
-                print_stun_server_status(&test_result);
-                test_result
-            }
+        .map(|candidate| async move {
+            let test_result = stun::test_udp_stun_server(candidate, is_behind_nat).await;
+            print_stun_server_status(&test_result);
+            test_result
         })
         .collect::<Vec<_>>();
 
