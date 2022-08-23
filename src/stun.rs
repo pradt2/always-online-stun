@@ -205,6 +205,7 @@ async fn test_socket_addr_tcp(
     hostname: &str,
     socket_addr: SocketAddr,
 ) -> StunSocketTestResult {
+    let deadline = Duration::from_secs(1);
     let local_socket = tokio::time::timeout(deadline, TcpStream::connect(socket_addr)).await;
 
     match local_socket {
