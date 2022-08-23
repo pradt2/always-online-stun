@@ -17,7 +17,7 @@ env:
   WG_PEER_ALLOWED_IPS: ${{ secrets.WG_PEER_ALLOWED_IPS }}
 
 jobs:
-  build:
+  run-hourly-check:
 
     runs-on: ubuntu-latest
 
