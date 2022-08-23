@@ -205,15 +205,20 @@ async fn test_socket_addr_tcp(
     hostname: &str,
     socket_addr: SocketAddr,
 ) -> StunSocketTestResult {
-    let local_socket = TcpStream::connect(socket_addr).await;
+    let local_socket = tokio::time::timeout(deadline, TcpStream::connect(socket_addr)).await;
 
     match local_socket {
-        Ok(stream) => test_socket_tcp(hostname, stream).await,
-        Err(err) => StunSocketTestResult {
+        Ok(Ok(stream)) => test_socket_tcp(hostname, stream).await,
+        Ok(Err(err)) => return StunSocketTestResult {
+            socket: socket_addr,
+            result: StunSocketResponse::UnexpectedError { err: err.to_string() }
+        },
+        Err(err) => return StunSocketTestResult {
             socket: socket_addr,
             result: StunSocketResponse::UnexpectedError { err: err.to_string() }
         }
     }
+
 }
 
 async fn test_socket_addr_against_trusted_party_udp(
