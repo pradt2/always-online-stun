@@ -852,7 +852,7 @@ mod tests {
     ];
 
     #[test]
-    fn read_message_integrity_addr() {
+    fn read_message_integrity_attr() {
         let mut r = AttributeIterator::new(&MESSAGE_INTEGRITY);
 
         if let Some(Ok(ReaderAttribute::MessageIntegrity(r))) = r.next() {
@@ -869,7 +869,7 @@ mod tests {
     }
 
     #[test]
-    fn write_message_integrity_addr() {
+    fn write_message_integrity_attr() {
         let mut buffer = [0; 44];
         let mut w = Writer::new(&mut buffer);
         w.add_attr(WriterAttribute::MessageIntegrity(&[0x00, 0x01, 0x02, 0x03,
@@ -905,7 +905,7 @@ mod tests {
     }
 
     #[test]
-    fn write_username_addr() {
+    fn write_username_attr() {
         let mut buffer = [0; 32];
         let mut w = Writer::new(&mut buffer);
         w.add_attr(WriterAttribute::Username(MOCK_USERNAME)).unwrap();
@@ -937,7 +937,7 @@ mod tests {
     }
 
     #[test]
-    fn write_password_addr() {
+    fn write_password_attr() {
         let mut buffer = [0; 32];
         let mut w = Writer::new(&mut buffer);
         w.add_attr(WriterAttribute::Password(MOCK_PASSWORD)).unwrap();

@@ -68,18 +68,18 @@ Legend:
 
 | Type                     | Reader  | Writer  |
 |:-------------------------|:-------:|:-------:|                 
-| `Binding Request`        | &cross; | &cross; | 
-| `Binding Response`       | &cross; | &cross; | 
-| `Binding Error Response` | &cross; | &cross; | 
-| `Binding Indication`     | &cross; | &cross; | 
+| `Binding Request`        | &check; | &check; | 
+| `Binding Response`       | &check; | &check; | 
+| `Binding Error Response` | &check; | &check; | 
+| `Binding Indication`     | &check; | &check; | 
 
 ### Header features
 
 | Feature        | Reader  | Writer  |
 |:---------------|:-------:|:-------:|
-| Message length | &cross; | &cross; |
-| Magic cookie   | &cross; | &cross; |
-| Transaction ID | &cross; | &cross; |
+| Message length | &check; | &check; |
+| Magic cookie   | &check; | &check; |
+| Transaction ID | &check; | &check; |
 
 ### Attributes
 
@@ -89,13 +89,13 @@ Legend:
 | `XOR-MAPPED-ADDRESS` | &cross; | &cross; |
 | `USERNAME`           | &cross; | &cross; |
 | `MESSAGE-INTEGRITY`  | &cross; | &cross; |
-| `FINGERPRINT`        | &cross; | &cross; |
 | `ERROR-CODE`         | &cross; | &cross; |
 | `REALM`              | &cross; | &cross; |
 | `NONCE`              | &cross; | &cross; |
 | `UNKNOWN-ATTRIBUTES` | &cross; | &cross; |
 | `SOFTWARE`           | &cross; | &cross; |
 | `ALTERNATE-SERVER`   | &cross; | &cross; |
+| `FINGERPRINT`        | &cross; | &cross; |
 
 ### Error codes
 

@@ -102,13 +102,15 @@ impl<'a> SocketAddrWriter<'a> {
 
 pub struct XorSocketAddrReader<'a> {
     socket_addr_reader: SocketAddrReader<'a>,
+    magic_cookie: u32,
     transaction_id: u128,
 }
 
 impl<'a> XorSocketAddrReader<'a> {
-    pub fn new(bytes: &'a [u8], transaction_id: u128) -> Self {
+    pub fn new(bytes: &'a [u8], magic_cookie: u32, transaction_id: u128) -> Self {
         Self {
             socket_addr_reader: SocketAddrReader::new(bytes),
+            magic_cookie,
             transaction_id,
         }
     }
@@ -117,11 +119,11 @@ impl<'a> XorSocketAddrReader<'a> {
         match self.socket_addr_reader.get_address() {
             Err(err) => Err(err),
             Ok(SocketAddr::V4(ip, port)) => {
-                let mask = 0x2112A442;
+                let mask = self.magic_cookie;
                 Ok(SocketAddr::V4(ip ^ mask, port))
             }
             Ok(SocketAddr::V6(ip, port)) => {
-                let mask = self.transaction_id;
+                let mask = ((self.magic_cookie as u128) << 96) | self.transaction_id;
                 Ok(SocketAddr::V6(ip ^ mask, port))
             }
         }
@@ -139,13 +141,13 @@ impl<'a> XorSocketAddrWriter<'a> {
         }
     }
 
-    pub fn write_ipv4_addr(&mut self, ip: u32, port: u16) -> Option<u16> {
-        let mask = 0x2112A442;
+    pub fn write_ipv4_addr(&mut self, ip: u32, port: u16, magic_cookie: u32) -> Option<u16> {
+        let mask = magic_cookie;
         self.writer.write_ipv4_addr(ip ^ mask, port)
     }
 
-    pub fn write_ipv6_addr(&mut self, ip: u128, port: u16, transaction_id: u128) -> Option<u16> {
-        let mask = transaction_id;
+    pub fn write_ipv6_addr(&mut self, ip: u128, port: u16, magic_cookie: u32, transaction_id: u128) -> Option<u16> {
+        let mask = ((magic_cookie as u128) << 96) | transaction_id;
         self.writer.write_ipv6_addr(ip ^ mask, port)
     }
 }
@@ -632,15 +634,16 @@ mod tests {
 
         let mut attr_buf = [0u8; 8];
 
+        let magic_cookie = 0;
         let transaction_id = 0xFF;
 
-        let r = XorSocketAddrReader::new(&attr_val, transaction_id);
+        let r = XorSocketAddrReader::new(&attr_val, magic_cookie, transaction_id);
         let addr = r.get_address()
             .expect("Address is unreadable");
 
         if let SocketAddr::V4(ip, port) = addr {
             let mut w = XorSocketAddrWriter::new(&mut attr_buf);
-            let bytes_written = w.write_ipv4_addr(ip, port)
+            let bytes_written = w.write_ipv4_addr(ip, port, magic_cookie)
                 .expect("Buffer is too small");
 
             assert_eq!(8, bytes_written);
@@ -661,15 +664,16 @@ mod tests {
 
         let mut attr_buf = [0u8; 20];
 
+        let magic_cookie = 0;
         let transaction_id = 0xFF;
 
-        let r = XorSocketAddrReader::new(&attr_val, transaction_id);
+        let r = XorSocketAddrReader::new(&attr_val, magic_cookie, transaction_id);
         let addr = r.get_address()
             .expect("Address is unreadable");
 
         if let SocketAddr::V6(ip, port) = addr {
             let mut w = XorSocketAddrWriter::new(&mut attr_buf);
-            let bytes_written = w.write_ipv6_addr(ip, port, transaction_id)
+            let bytes_written = w.write_ipv6_addr(ip, port, magic_cookie, transaction_id)
                 .expect("Buffer is too small");
 
             assert_eq!(20, bytes_written);

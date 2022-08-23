@@ -21,6 +21,12 @@ impl<'a> RawMsgHeaderReader<'a> {
             .map(|b| u16::from_be_bytes(b))
     }
 
+    pub fn get_magic_cookie(&self) -> Option<u32> {
+        self.bytes.get(4..8)
+            .map(|b| b.try_into().unwrap())
+            .map(|b| u32::from_be_bytes(b))
+    }
+
     pub fn get_transaction_id(&self) -> Option<u128> {
         self.bytes.get(4..20)
             .map(|b| b.try_into().unwrap())
@@ -49,6 +55,12 @@ impl<'a> RawMsgHeaderWriter<'a> {
     pub fn set_message_length(&mut self, len: u16) -> Option<()> {
         let len_bytes = len.to_be_bytes();
         self.bytes.get_mut(2..4)?.copy_from_slice(&len_bytes);
+        Some(())
+    }
+
+    pub fn set_magic_cookie(&mut self, magic_cookie: u32) -> Option<()> {
+        let cookie_bytes = magic_cookie.to_be_bytes();
+        self.bytes.get_mut(4..8)?.copy_from_slice(&cookie_bytes);
         Some(())
     }
 

@@ -9,3 +9,4 @@ use attrs::*;
 use msg::*;
 
 pub mod rfc3489;
+pub mod rfc5389;
