@@ -1,6 +1,6 @@
 use std::*;
 use std::io::{Read, Write};
-use log::error;
+use log::debug;
 
 mod client;
 
@@ -133,100 +133,100 @@ fn print_stun_msg(buf: &[u8]) {
     }
 
     let reader = Reader::new(buf);
-    error!("Type: {}", message_type_to_str(reader.get_message_type()));
-    error!("Len: {}", match reader.get_message_length() { Some(len) => len.to_string(), None => String::from("<NOT ENOUGH BYTES>") });
-    error!("Cookie: {}", match reader.get_magic_cookie() { Some(cookie) => format!("{:#01x}", cookie), None => String::from("<NOT ENOUGH BYTES>") });
-    error!("Transaction ID: {}", match reader.get_transaction_id() { Some(tid) => format!("{:#01x}", tid), None => String::from("<NOT ENOUGH BYTES>") });
+    debug!("Type: {}", message_type_to_str(reader.get_message_type()));
+    debug!("Len: {}", match reader.get_message_length() { Some(len) => len.to_string(), None => String::from("<NOT ENOUGH BYTES>") });
+    debug!("Cookie: {}", match reader.get_magic_cookie() { Some(cookie) => format!("{:#01X}", cookie), None => String::from("<NOT ENOUGH BYTES>") });
+    debug!("Transaction ID: {}", match reader.get_transaction_id() { Some(tid) => format!("{:#01X}", tid), None => String::from("<NOT ENOUGH BYTES>") });
 
     for attr in reader.get_attributes() {
         match attr {
             Ok(reader) => match reader {
                 ReaderAttribute::MappedAddress(r) => match r.get_address() {
-                    Ok(SocketAddr::V4(ip, port)) => error!("MAPPED-ADDRESS: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
-                    Ok(SocketAddr::V6(ip, port)) => error!("MAPPED-ADDRESS: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
-                    Err(ReaderErr::NotEnoughBytes) => error!("MAPPED-ADDRESS: <NOT ENOUGH BYTES>"),
-                    Err(ReaderErr::UnexpectedValue) => error!("MAPPED-ADDRESS: <UNEXPECTED VALUE>"),
+                    Ok(SocketAddr::V4(ip, port)) => debug!("MAPPED-ADDRESS: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
+                    Ok(SocketAddr::V6(ip, port)) => debug!("MAPPED-ADDRESS: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
+                    Err(ReaderErr::NotEnoughBytes) => debug!("MAPPED-ADDRESS: <NOT ENOUGH BYTES>"),
+                    Err(ReaderErr::UnexpectedValue) => debug!("MAPPED-ADDRESS: <UNEXPECTED VALUE>"),
                 },
                 ReaderAttribute::Username(r) => match r.get_value() {
-                    Ok(val) => error!("USERNAME: {}", val),
-                    Err(ReaderErr::NotEnoughBytes) => error!("USERNAME: <NOT ENOUGH BYTES>"),
-                    Err(ReaderErr::UnexpectedValue) => error!("USERNAME: <UNEXPECTED VALUE>"),
+                    Ok(val) => debug!("USERNAME: {}", val),
+                    Err(ReaderErr::NotEnoughBytes) => debug!("USERNAME: <NOT ENOUGH BYTES>"),
+                    Err(ReaderErr::UnexpectedValue) => debug!("USERNAME: <UNEXPECTED VALUE>"),
                 },
                 ReaderAttribute::MessageIntegrity(r) => match r.get_value() {
-                    Some(val) => error!("MESSAGE-INTEGRITY: {:?}", val),
-                    None => error!("MESSAGE-INTEGRITY: <NOT ENOUGH BYTES>"),
+                    Some(val) => debug!("MESSAGE-INTEGRITY: {:?}", val),
+                    None => debug!("MESSAGE-INTEGRITY: <NOT ENOUGH BYTES>"),
                 },
                 ReaderAttribute::ErrorCode(r) => {
                         let err = match r.get_error() {
                             Ok(code) => code,
                             Err(ReaderErr::NotEnoughBytes) => {
-                                error!("ERROR-CODE: err <NOT ENOUGH BYTES>");
+                                debug!("ERROR-CODE: err <NOT ENOUGH BYTES>");
                                 continue;
                             },
                             Err(ReaderErr::UnexpectedValue) => {
-                                error!("ERROR-CODE: err <UNEXPECTED VALUE>");
+                                debug!("ERROR-CODE: err <UNEXPECTED VALUE>");
                                 continue;
                             },
                         };
                         let reason = match r.get_reason() {
                             Ok(reason) => reason,
                             Err(ReaderErr::NotEnoughBytes) => {
-                                error!("ERROR-CODE: reason <NOT ENOUGH BYTES>");
+                                debug!("ERROR-CODE: reason <NOT ENOUGH BYTES>");
                                 continue;
                             },
                             Err(ReaderErr::UnexpectedValue) => {
-                                error!("ERROR-CODE: reason <UNEXPECTED VALUE>");
+                                debug!("ERROR-CODE: reason <UNEXPECTED VALUE>");
                                 continue;
                             },
                         };
-                        error!("ERROR-CODE: err {} , reason {}", err.get_name(), reason)
+                        debug!("ERROR-CODE: err {} , reason {}", err.get_name(), reason)
                 },
                 ReaderAttribute::UnknownAttributes(r) => for unknown_attr_code in r.unknown_type_codes() {
                     match unknown_attr_code {
-                        Some(code) => error!("UNKNOWN-ATTRIBUTE: {:#04x}", code),
-                        None => error!("UNKNOWN-ATTRIBUTE: <NOT ENOUGH BYTES>"),
+                        Some(code) => debug!("UNKNOWN-ATTRIBUTE: {:#04X}", code),
+                        None => debug!("UNKNOWN-ATTRIBUTE: <NOT ENOUGH BYTES>"),
                     }
                 },
                 ReaderAttribute::Realm(r) => match r.get_value() {
-                    Ok(val) => error!("REALM: {}", val),
-                    Err(ReaderErr::NotEnoughBytes) => error!("REALM: <NOT ENOUGH BYTES>"),
-                    Err(ReaderErr::UnexpectedValue) => error!("REALM: <UNEXPECTED VALUE>"),
+                    Ok(val) => debug!("REALM: {}", val),
+                    Err(ReaderErr::NotEnoughBytes) => debug!("REALM: <NOT ENOUGH BYTES>"),
+                    Err(ReaderErr::UnexpectedValue) => debug!("REALM: <UNEXPECTED VALUE>"),
                 },
                 ReaderAttribute::Nonce(r) => match r.get_value() {
-                    Ok(val) => error!("NONCE: {}", val),
-                    Err(ReaderErr::NotEnoughBytes) => error!("NONCE: <NOT ENOUGH BYTES>"),
-                    Err(ReaderErr::UnexpectedValue) => error!("NONCE: <UNEXPECTED VALUE>"),
+                    Ok(val) => debug!("NONCE: {}", val),
+                    Err(ReaderErr::NotEnoughBytes) => debug!("NONCE: <NOT ENOUGH BYTES>"),
+                    Err(ReaderErr::UnexpectedValue) => debug!("NONCE: <UNEXPECTED VALUE>"),
                 },
                 ReaderAttribute::XorMappedAddress(r) => match r.get_address() {
-                    Ok(SocketAddr::V4(ip, port)) => error!("XOR-MAPPED-ADDRESS: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
-                    Ok(SocketAddr::V6(ip, port)) => error!("XOR-MAPPED-ADDRESS: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
-                    Err(ReaderErr::NotEnoughBytes) => error!("XOR-MAPPED-ADDRESS: <NOT ENOUGH BYTES>"),
-                    Err(ReaderErr::UnexpectedValue) => error!("XOR-MAPPED-ADDRESS: <UNEXPECTED VALUE>"),
+                    Ok(SocketAddr::V4(ip, port)) => debug!("XOR-MAPPED-ADDRESS: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
+                    Ok(SocketAddr::V6(ip, port)) => debug!("XOR-MAPPED-ADDRESS: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
+                    Err(ReaderErr::NotEnoughBytes) => debug!("XOR-MAPPED-ADDRESS: <NOT ENOUGH BYTES>"),
+                    Err(ReaderErr::UnexpectedValue) => debug!("XOR-MAPPED-ADDRESS: <UNEXPECTED VALUE>"),
                 },
                 ReaderAttribute::Software(r) => match r.get_value() {
-                    Ok(val) => error!("SOFTWARE: {}", val),
-                    Err(ReaderErr::NotEnoughBytes) => error!("SOFTWARE: <NOT ENOUGH BYTES>"),
-                    Err(ReaderErr::UnexpectedValue) => error!("SOFTWARE: <UNEXPECTED VALUE>"),
+                    Ok(val) => debug!("SOFTWARE: {}", val),
+                    Err(ReaderErr::NotEnoughBytes) => debug!("SOFTWARE: <NOT ENOUGH BYTES>"),
+                    Err(ReaderErr::UnexpectedValue) => debug!("SOFTWARE: <UNEXPECTED VALUE>"),
                 },
                 ReaderAttribute::AlternateServer(r) => match r.get_address() {
-                    Ok(SocketAddr::V4(ip, port)) => error!("ALTERNATE-SERVER: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
-                    Ok(SocketAddr::V6(ip, port)) => error!("ALTERNATE-SERVER: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
-                    Err(ReaderErr::NotEnoughBytes) => error!("ALTERNATE-SERVER: <NOT ENOUGH BYTES>"),
-                    Err(ReaderErr::UnexpectedValue) => error!("ALTERNATE-SERVER: <UNEXPECTED VALUE>"),
+                    Ok(SocketAddr::V4(ip, port)) => debug!("ALTERNATE-SERVER: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
+                    Ok(SocketAddr::V6(ip, port)) => debug!("ALTERNATE-SERVER: {}", net::SocketAddr::new(net::IpAddr::from(ip.to_be_bytes()), port)),
+                    Err(ReaderErr::NotEnoughBytes) => debug!("ALTERNATE-SERVER: <NOT ENOUGH BYTES>"),
+                    Err(ReaderErr::UnexpectedValue) => debug!("ALTERNATE-SERVER: <UNEXPECTED VALUE>"),
                 },
                 ReaderAttribute::Fingerprint(r) => match r.get_value() {
-                    Some(fingerprint) => error!("FINGERPRINT: {:#08x}", fingerprint),
-                    None => error!("FINGERPRINT: <NOT ENOUGH BYTES>"),
+                    Some(fingerprint) => debug!("FINGERPRINT: {:#08x}", fingerprint),
+                    None => debug!("FINGERPRINT: <NOT ENOUGH BYTES>"),
                 },
                 ReaderAttribute::OptionalAttribute { typ, value } => {
-                    error!("OPTIONAL ATTRIBUTE: typ {:#04x} , value {:?}", typ, value)
+                    debug!("OPTIONAL ATTRIBUTE: typ {:#04x} , val {:?}", typ, value)
                 },
             },
             Err(ReaderErr::NotEnoughBytes) => {
-                error!("Attr decoder: <NOT ENOUGH BYTES>");
+                debug!("Attr decoder: <NOT ENOUGH BYTES>");
             },
             Err(ReaderErr::UnexpectedValue) => {
-                error!("Attr decoder: <UNEXPECTED VALUE>");
+                debug!("Attr decoder: <UNEXPECTED VALUE>");
             }
         }
     }
@@ -239,8 +239,10 @@ mod tests {
 
     #[test]
     fn test_udp_call() {
-        pretty_env_logger::init();
         use stun_proto::rfc5389::*;
+
+        env::set_var("RUST_LOG", "debug");
+        pretty_env_logger::init();
 
         let client = Client::new(time::Duration::from_secs(1));
 
@@ -250,19 +252,19 @@ mod tests {
         w.set_transaction_id(0x1020);
         let bytes_written = w.finish().unwrap() as usize;
 
-        error!(" --- REQUEST BEGIN ---");
+        debug!("--- REQUEST BEGIN ---");
         print_stun_msg(&buf[0..bytes_written]);
-        error!(" --- REQUEST END ---");
+        debug!("--- REQUEST END ---");
 
-        let resp = client.call_addr("stun.stunprotocol.org:3478", Protocol::UDP, &mut buf, bytes_written);
+        let resp = client.call_addr("stun.stunprotocol.org:3478", Protocol::TCP, &mut buf, bytes_written);
         match resp {
             Ok(size) => {
-                error!(" --- RESPONSE BEGIN ---");
+                debug!("--- RESPONSE BEGIN ---");
                 print_stun_msg(&buf[0..size]);
-                error!(" --- RESPONSE END ---");
+                debug!("--- RESPONSE END ---");
             },
             Err(err) => {
-                error!("Could not call STUN server: {:?}", err);
+                debug!("Could not call STUN server: {:?}", err);
             }
         }
     }
