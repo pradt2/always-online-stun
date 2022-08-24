@@ -417,7 +417,7 @@ async fn query_stun_server_udp(
 
     let mut writer = Writer::new(&mut buf);
     writer.set_message_type(MessageType::BindingRequest).unwrap();
-    writer.set_transaction_id(1).unwrap();
+    writer.set_transaction_id(0x10203040).unwrap();
     let bytes_written = writer.finish().unwrap();
 
     local_socket.send_to(&buf[0..bytes_written as usize], server_addr).await?;
@@ -426,7 +426,6 @@ async fn query_stun_server_udp(
 
     let reader = Reader::new(&buf[0..bytes_read]);
     if let Ok(MessageType::BindingResponse) = reader.get_message_type() {
-        assert_eq!(1u128, reader.get_transaction_id().unwrap());
         let external_addr = reader.get_attributes()
             .map(|attr| {
                 match attr {
