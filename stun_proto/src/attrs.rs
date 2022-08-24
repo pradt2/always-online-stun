@@ -272,22 +272,19 @@ pub struct UnknownAttrsIterator<'a> {
 }
 
 impl<'a> Iterator for UnknownAttrsIterator<'a> {
-    type Item = Result<u16>;
+    type Item = Option<u16>;
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.idx >= self.bytes.len() {
             None
         } else {
-            let code = if let Ok(code) = self.bytes
+            let code = self.bytes
                 .get(self.idx..self.idx + 2)
                 .map(|b| b.try_into().unwrap())
-                .map(|b: &[u8; 2]| u16::from_be_bytes(*b))
-                .ok_or(ReaderErr::NotEnoughBytes) { code } else {
-                return Some(Err(ReaderErr::NotEnoughBytes));
-            };
+                .map(|b: &[u8; 2]| u16::from_be_bytes(*b));
 
             self.idx += 2;
-            Some(Ok(code))
+            Some(code)
         }
     }
 }
