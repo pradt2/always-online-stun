@@ -673,7 +673,7 @@ mod tests {
         if let Some(Ok(ReaderAttribute::UnknownAttributes(r))) = r.next() {
             let mut r = r.unknown_type_codes();
 
-            if let Some(Ok(unknown_attr)) = r.next() {
+            if let Some(Some(unknown_attr)) = r.next() {
                 assert_eq!(1, unknown_attr);
             } else {
                 assert!(false, "Unknown attribute value is unreadable");
@@ -770,6 +770,7 @@ mod tests {
         0x0C, 0x0D, 0x0E, 0x0F, // ipv4 address
     ];
 
+    const XOR_MOCK_PORT: u16 = 0x0A0B ^ 0x0;
     const XOR_MOCK_IPV4: u32 = 0xC0D0E0F ^ 0x0;
 
     #[test]
@@ -783,7 +784,7 @@ mod tests {
             };
 
             if let SocketAddr::V4(ip, port) = addr {
-                assert_eq!(MOCK_IPV4_PORT, port);
+                assert_eq!(XOR_MOCK_PORT, port);
                 assert_eq!(XOR_MOCK_IPV4, ip);
             } else {
                 assert!(false, "Test address should be a V4 address");
@@ -801,7 +802,7 @@ mod tests {
         let mut buffer = [0; 32];
         let mut w = Writer::new(&mut buffer);
 
-        w.add_attr(WriterAttribute::XorMappedAddress(SocketAddr::V4(XOR_MOCK_IPV4, MOCK_IPV4_PORT))).unwrap();
+        w.add_attr(WriterAttribute::XorMappedAddress(SocketAddr::V4(XOR_MOCK_IPV4, XOR_MOCK_PORT))).unwrap();
         assert_eq!(XOR_MAPPED_ADDRESS_V4, buffer[20..])
     }
 
@@ -829,7 +830,7 @@ mod tests {
             };
 
             if let SocketAddr::V6(ip, port) = addr {
-                assert_eq!(MOCK_IPV6_PORT, port);
+                assert_eq!(XOR_MOCK_PORT, port);
                 assert_eq!(XOR_MOCK_IPV6, ip);
             } else {
                 assert!(false, "Test address should be a V6 address");
@@ -847,7 +848,7 @@ mod tests {
         let mut buffer = [0; 44];
         let mut w = Writer::new(&mut buffer);
 
-        w.add_attr(WriterAttribute::XorMappedAddress(SocketAddr::V6(XOR_MOCK_IPV6, MOCK_IPV6_PORT))).unwrap();
+        w.add_attr(WriterAttribute::XorMappedAddress(SocketAddr::V6(XOR_MOCK_IPV6, XOR_MOCK_PORT))).unwrap();
         assert_eq!(XOR_MAPPED_ADDRESS_V6, buffer[20..])
     }
 

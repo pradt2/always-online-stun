@@ -1000,7 +1000,7 @@ mod tests {
         if let Some(Ok(ReaderAttribute::UnknownAttributes(r))) = r.next() {
             let mut r = r.unknown_type_codes();
 
-            if let Some(Ok(unknown_attr)) = r.next() {
+            if let Some(Some(unknown_attr)) = r.next() {
                 assert_eq!(1, unknown_attr);
             } else {
                 assert!(false, "Unknown attribute value is unreadable");

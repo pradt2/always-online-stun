@@ -119,12 +119,14 @@ impl<'a> XorSocketAddrReader<'a> {
         match self.socket_addr_reader.get_address() {
             Err(err) => Err(err),
             Ok(SocketAddr::V4(ip, port)) => {
-                let mask = self.magic_cookie;
-                Ok(SocketAddr::V4(ip ^ mask, port))
+                let mask_ip = self.magic_cookie;
+                let mask_port = (self.magic_cookie >> 16) as u16;
+                Ok(SocketAddr::V4(ip ^ mask_ip, port ^ mask_port))
             }
             Ok(SocketAddr::V6(ip, port)) => {
-                let mask = ((self.magic_cookie as u128) << 96) | self.transaction_id;
-                Ok(SocketAddr::V6(ip ^ mask, port))
+                let mask_ip = ((self.magic_cookie as u128) << 96) | self.transaction_id;
+                let mask_port = (self.magic_cookie >> 16) as u16;
+                Ok(SocketAddr::V6(ip ^ mask_ip, port ^ mask_port))
             }
         }
     }
