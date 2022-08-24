@@ -4,6 +4,7 @@ use std::time::{Duration, Instant};
 use stun_proto::rfc5389::*;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
+use stun_client::print_stun_msg;
 use crate::utils::join_all_with_semaphore;
 use crate::StunServer;
 
@@ -425,6 +426,9 @@ async fn query_stun_server_udp(
     let bytes_read = tokio::time::timeout(timeout, local_socket.recv(&mut buf)).await??;
 
     let reader = Reader::new(&buf[0..bytes_read]);
+
+    print_stun_msg(&buf[0..bytes_read]);
+
     if let Ok(MessageType::BindingResponse) = reader.get_message_type() {
         let external_addr = reader.get_attributes()
             .map(|attr| {

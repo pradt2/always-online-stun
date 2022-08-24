@@ -118,7 +118,7 @@ impl Client {
     }
 }
 
-fn print_stun_msg(buf: &[u8]) {
+pub fn print_stun_msg(buf: &[u8]) {
     use stun_proto::rfc5389::*;
 
     fn message_type_to_str(typ: Result<MessageType, ReaderErr>) -> &'static str {
@@ -256,7 +256,7 @@ mod tests {
         print_stun_msg(&buf[0..bytes_written]);
         debug!("--- REQUEST END ---");
 
-        let resp = client.call_addr("stun.stunprotocol.org:3478", Protocol::TCP, &mut buf, bytes_written);
+        let resp = client.call_addr("95.216.145.84:3478", Protocol::UDP, &mut buf, bytes_written);
         match resp {
             Ok(size) => {
                 debug!("--- RESPONSE BEGIN ---");
