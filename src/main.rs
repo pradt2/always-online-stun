@@ -38,6 +38,42 @@ async fn test_udp_servers() -> io::Result<()> {
 
     let stun_servers = servers::get_stun_servers().await?;
 
+    let mut buf = [0u8; 256];
+
+    for server in &stun_servers {
+
+        info!("Calling {}:{}", server.hostname, server.port);
+        let client = stun_client::Client::new(Duration::from_secs(1));
+
+        let mut w = stun_proto::rfc5389::Writer::new(&mut buf);
+        w.set_message_type(stun_proto::rfc5389::MessageType::BindingRequest);
+        w.set_transaction_id(0x1020);
+        let bytes_written = w.finish().unwrap() as usize;
+
+        info!("--- REQUEST BEGIN ---");
+        stun_client::print_stun_msg(&buf[0..bytes_written]);
+        info!("--- REQUEST END ---");
+
+        let resp = client.call_addr(
+            format!("{}:{}", server.hostname, server.port),
+            stun_client::Protocol::UDP,
+            &mut buf,
+            bytes_written
+        );
+        match resp {
+            Ok(size) => {
+                info!("--- RESPONSE BEGIN ---");
+                stun_client::print_stun_msg(&buf[0..size]);
+                info!("--- RESPONSE END ---");
+            },
+            Err(err) => {
+                info!("Could not call STUN server: {:?}", err);
+            }
+        }
+    }
+
+    return Ok(());
+
     let stun_servers_count = stun_servers.len();
     info!("Loaded {} stun server hosts", stun_servers.len());
 
