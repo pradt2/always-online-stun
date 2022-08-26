@@ -255,7 +255,7 @@ mod tests {
         print_stun_msg(&buf[0..bytes_written]);
         debug!("--- REQUEST END ---");
 
-        let resp = client.call_addr("stun.advfn.com:3478", Protocol::UDP, &mut buf, bytes_written);
+        let resp = client.call_addr("stun3.l.google.com:19305", Protocol::UDP, &mut buf, bytes_written);
         match resp {
             Ok(size) => {
                 debug!("--- RESPONSE BEGIN ---");
