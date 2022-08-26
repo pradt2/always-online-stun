@@ -46,7 +46,7 @@ mod tests {
         let result = StunTestResult {
             supports_ipv4: Some(true),
             supports_ipv6: Some(true),
-            highly_available_ipv4: Some(false),
+            highly_available_ipv4: Some(true),
             highly_available_ipv6: Some(true),
             ipv4_addrs: vec![Ipv4Addr::new(127,0,0,1), Ipv4Addr::new(128,11,22,250)],
             ipv6_addrs: vec![Ipv6Addr::from(127 << 96 | 65535), Ipv6Addr::from(65535 << 96 | 127)],
@@ -61,7 +61,8 @@ mod tests {
         };
 
         // subtle emojis ✔ ✘
-        let OK = "✅ ? ✓ ✓ ✓ ✘ ❌ ✖ ✕ ❎ ☓ ✗";
+        // other emojis ? ✓ ✓ ✓ ✘ ❌ ✖ ✕ ❎ ☓ ✗
+        let OK = "✅";
         let FAIL = "❌";
         let BULB = "•";
         let LMARGIN = "   ";
@@ -88,6 +89,32 @@ mod tests {
             },
             Some(false) => {
                 println!("{} {} doesn't support IPv4", LMARGIN, FAIL)
+            },
+            None => {
+
+            }
+        }
+
+        match result.supports_ipv6 {
+            Some(true) => {
+                println!("{} {} supports IPv6", LMARGIN, OK);
+                match result.highly_available_ipv6 {
+                    Some(true) => {
+                        println!("{} {} {} and is highly available under these addresses", LMARGIN, LMARGIN, OK);
+                    },
+                    Some(false) => {
+                        println!("{} {} {} but isn't highly available (only address)", LMARGIN, LMARGIN, FAIL);
+                    },
+                    None => {
+
+                    }
+                };
+                for addr in &result.ipv6_addrs {
+                    println!("{} {} {} {} {:?}", LMARGIN, LMARGIN, LMARGIN, BULB, addr);
+                }
+            },
+            Some(false) => {
+                println!("{} {} doesn't support IPv6", LMARGIN, FAIL)
             },
             None => {
 
