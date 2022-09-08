@@ -440,15 +440,13 @@ async fn query_stun_server_udp(
             })
             .filter(|opt| opt.is_some())
             .map(|opt| opt.unwrap())
-            .map(|external_addr| {
-                match external_addr {
-                    stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
-                        SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-                    },
-                    stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
-                        SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-                    },
-                }
+            .map(|external_addr| match external_addr {
+                stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                },
+                stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                },
             })
             .next();
 
@@ -486,15 +484,13 @@ async fn query_stun_server_tcp(
             })
             .filter(|opt| opt.is_some())
             .map(|opt| opt.unwrap())
-            .map(|external_addr| {
-                match external_addr {
-                    stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
-                        SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-                    },
-                    stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
-                        SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-                    },
-                }
+            .map(|external_addr| match external_addr {
+                stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                },
+                stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                },
             })
             .next();
 
