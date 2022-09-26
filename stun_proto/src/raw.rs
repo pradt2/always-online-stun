@@ -132,10 +132,6 @@ impl<'a> RawAttributesReaderIterator<'a> {
             bytes
         }
     }
-
-    fn asserted(&self) -> Option<AssertedRawAttributesReaderIterator> {
-        AssertedRawAttributesReaderIterator::new(self.bytes)
-    }
 }
 
 impl<'a> Iterator for RawAttributesReaderIterator<'a> {
@@ -176,18 +172,46 @@ pub struct AssertedRawWriter<'a> {
     pub len: &'a mut [u8; 2],
     pub tid: &'a mut [u8; 16],
     pub attrs: &'a mut [u8],
+    cursor: usize,
 }
 
 impl<'a> AssertedRawWriter<'a> {
     pub fn new(bytes: &'a mut [u8]) -> Option<Self> {
-        let reader = RawWriter::new(bytes);
+        let writer = RawWriter::new(bytes);
 
         Some(Self {
-            typ: reader.typ?,
-            len: reader.len?,
-            tid: reader.tid?,
-            attrs: reader.attrs?,
+            typ: writer.typ?,
+            len: writer.len?,
+            tid: writer.tid?,
+            attrs: writer.attrs?,
+            cursor: 0,
         })
+    }
+
+    fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
+        self.attrs.get(self.cursor..self.cursor + 4 + val.len())?; // fail early if the entire attr cannot fit
+
+        self.attrs.get_mut(self.cursor..self.cursor + 2)?.copy_from_slice(typ);
+        self.cursor += 2;
+
+        self.attrs.get_mut(self.cursor..self.cursor + 2)?.copy_from_slice(len);
+        self.cursor += 2;
+
+        self.attrs.get_mut(self.cursor..self.cursor + val.len())?.copy_from_slice(val);
+        self.cursor += val.len();
+
+        Some(())
+    }
+
+    fn add_attr2<T: FnOnce(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> usize>(&mut self, f: T) -> Option<()> {
+        let (typ, bytes) = split_at_mut(self.attrs.get_mut(self.cursor..)?);
+        let (len, val) = split_at_mut(bytes);
+
+        let used = f(typ?, len?, val);
+
+        self.cursor += 4 + used;
+
+        Some(())
     }
 }
 
@@ -216,7 +240,7 @@ impl<'a> RawWriter<'a> {
     }
 
     fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
-        self.attrs?.get(self.cursor..self.cursor + 4 + val.len())?; // fail early if the entire attr cannot fit
+        self.attrs.as_mut()?.get(self.cursor..self.cursor + 4 + val.len())?; // fail early if the entire attr cannot fit
 
         self.attrs.as_mut()?.get_mut(self.cursor..self.cursor + 2)?.copy_from_slice(typ);
         self.cursor += 2;
@@ -230,13 +254,20 @@ impl<'a> RawWriter<'a> {
         Some(())
     }
 
-    fn add_attr2<T: FnOnce(&[u8; 2], &[u8; 2], &[u8]) -> u16>(&mut self, f: T) {
-        let used = f(self)
+    fn add_attr2<T: FnOnce(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> usize>(&mut self, f: T) -> Option<()> {
+        let (typ, bytes) = split_at_mut(self.attrs.as_mut()?.get_mut(self.cursor..)?);
+        let (len, val) = split_at_mut(bytes);
+
+        let used = f(typ?, len?, val);
+
+        self.cursor += 4 + used;
+
+        Some(())
     }
 }
 
 fn split_at_mut<const N: usize>(bytes: &mut [u8]) -> (Option<&mut [u8; N]>, &mut [u8]) {
-    if bytes.len() > N {
+    if N > bytes.len() {
         return (None, bytes);
     }
     let (chunk, rest) = bytes.split_at_mut(N);
@@ -267,7 +298,7 @@ mod tests {
         0x00, 0x00, 0x00, 0x00,
         0x00, 0x00, 0x00, 0x01,         // transaction id (16 bytes total incl. magic cookie)
         0x00, 0x03,                     // type: ChangeRequest
-        0x00, 0x04,                     // value length
+        0x00, 0x04,                     // length: 4 (only value bytes count)
         0x00, 0x00, 0x00, 0x40 | 0x20,  // change both ip and port
     ];
 
@@ -277,7 +308,12 @@ mod tests {
         assert_eq!(&MSG[0..2], reader.typ.unwrap());
         assert_eq!(&MSG[2..4], reader.len.unwrap());
         assert_eq!(&MSG[4..20], reader.tid.unwrap());
-        assert_eq!(&MSG[20..], reader.attrs.unwrap());
+        assert_eq!(&MSG[20..28], reader.attrs.unwrap());
+    }
+
+    #[test]
+    fn read_raw_attr() {
+        let reader = RawReader::new(&MSG);
 
         assert_eq!(1, reader.attrs().count());
         let attr_reader = reader.attrs().next().unwrap();
@@ -293,7 +329,12 @@ mod tests {
         assert_eq!(&MSG[0..2], reader.typ);
         assert_eq!(&MSG[2..4], reader.len);
         assert_eq!(&MSG[4..20], reader.tid);
-        assert_eq!(&MSG[20..], reader.attrs);
+        assert_eq!(&MSG[20..28], reader.attrs);
+    }
+
+    #[test]
+    fn read_asserted_attr() {
+        let reader = AssertedRawReader::new(&MSG).unwrap();
 
         assert_eq!(1, reader.attrs().count());
         let attr_reader = reader.attrs().next().unwrap();
@@ -308,6 +349,74 @@ mod tests {
         let mut buf = [0u8; 28];
 
         let writer = RawWriter::new(&mut buf);
-        writer.typ.unwrap();
+        writer.typ.unwrap().copy_from_slice(&MSG[0..2]);
+        writer.len.unwrap().copy_from_slice(&MSG[2..4]);
+        writer.tid.unwrap().copy_from_slice(&MSG[4..20]);
+        writer.attrs.unwrap().copy_from_slice(&MSG[20..28]);
+
+        assert_eq!(MSG, buf);
+    }
+
+    #[test]
+    fn write_raw_attr() {
+        let mut buf = [0u8; 28];
+
+        let mut writer = RawWriter::new(&mut buf);
+        writer.add_attr(&MSG[20..22].try_into().unwrap(), &MSG[22..24].try_into().unwrap(), &MSG[24..28]).unwrap();
+
+        assert_eq!(MSG[20..28], buf[20..28]);
+    }
+
+    #[test]
+    fn write_raw_attr2() {
+        let mut buf = [0u8; 28];
+
+        let mut writer = RawWriter::new(&mut buf);
+        writer.add_attr2(|typ, len, val| {
+            typ.copy_from_slice(&MSG[20..22]);
+            len.copy_from_slice(&MSG[22..24]);
+            val.copy_from_slice(&MSG[24..28]);
+            return 4;
+        }).unwrap();
+
+        assert_eq!(MSG[20..28], buf[20..28]);
+    }
+
+    #[test]
+    fn write_asserted() {
+        let mut buf = [0u8; 28];
+
+        let writer = AssertedRawWriter::new(&mut buf).unwrap();
+        writer.typ.copy_from_slice(&MSG[0..2]);
+        writer.len.copy_from_slice(&MSG[2..4]);
+        writer.tid.copy_from_slice(&MSG[4..20]);
+        writer.attrs.copy_from_slice(&MSG[20..28]);
+
+        assert_eq!(MSG, buf);
+    }
+
+    #[test]
+    fn write_asserted_attr() {
+        let mut buf = [0u8; 28];
+
+        let mut writer = AssertedRawWriter::new(&mut buf).unwrap();
+        writer.add_attr(&MSG[20..22].try_into().unwrap(), &MSG[22..24].try_into().unwrap(), &MSG[24..28]).unwrap();
+
+        assert_eq!(MSG[20..28], buf[20..28]);
+    }
+
+    #[test]
+    fn write_asserted_attr2() {
+        let mut buf = [0u8; 28];
+
+        let mut writer = AssertedRawWriter::new(&mut buf).unwrap();
+        writer.add_attr2(|typ, len, val| {
+            typ.copy_from_slice(&MSG[20..22]);
+            len.copy_from_slice(&MSG[22..24]);
+            val.copy_from_slice(&MSG[24..28]);
+            return 4;
+        }).unwrap();
+
+        assert_eq!(MSG[20..28], buf[20..28]);
     }
 }
