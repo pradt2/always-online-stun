@@ -58,7 +58,7 @@ pub struct AssertedRawAttributesReaderIterator<'a> {
 }
 
 impl<'a> AssertedRawAttributesReaderIterator<'a> {
-    fn new(bytes: &'a [u8]) -> Option<Self> {
+    pub fn new(bytes: &'a [u8]) -> Option<Self> {
         let raw_reader_count = RawAttributesReaderIterator::new(bytes).count();
         let asserted_reader_count = AssertedRawAttributesReaderIterator { raw_iter: RawAttributesReaderIterator::new(bytes) }.count();
         if raw_reader_count != asserted_reader_count { return None; }
@@ -73,7 +73,7 @@ impl<'a> Iterator for AssertedRawAttributesReaderIterator<'a> {
     type Item = AssertedRawAttributeReader<'a>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.raw_iter.next()?.asserted()
+        AssertedRawAttributeReader::new(&self.raw_iter.next()?)
     }
 }
 
@@ -108,16 +108,12 @@ pub struct RawAttributeReader<'a> {
 }
 
 impl<'a> RawAttributeReader<'a> {
-    fn new(bytes: &'a [u8]) -> Self {
+    pub fn new(bytes: &'a [u8]) -> Self {
         Self {
             typ: bytes.get(0..2).map(|s| s.try_into().ok()).flatten(),
             len: bytes.get(2..4).map(|s| s.try_into().ok()).flatten(),
             val: bytes.get(4..),
         }
-    }
-
-    pub fn asserted(&self) -> Option<AssertedRawAttributeReader<'a>> {
-        AssertedRawAttributeReader::new(self)
     }
 }
 
@@ -188,7 +184,7 @@ impl<'a> AssertedRawWriter<'a> {
         })
     }
 
-    fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
+    pub fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
         self.attrs.get(self.cursor..self.cursor + 4 + val.len())?; // fail early if the entire attr cannot fit
 
         self.attrs.get_mut(self.cursor..self.cursor + 2)?.copy_from_slice(typ);
@@ -203,7 +199,7 @@ impl<'a> AssertedRawWriter<'a> {
         Some(())
     }
 
-    fn add_attr2<T: FnOnce(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> usize>(&mut self, f: T) -> Option<()> {
+    pub fn add_attr2<T: FnOnce(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> usize>(&mut self, f: T) -> Option<()> {
         let (typ, bytes) = split_at_mut(self.attrs.get_mut(self.cursor..)?);
         let (len, val) = split_at_mut(bytes);
 
@@ -239,7 +235,7 @@ impl<'a> RawWriter<'a> {
         }
     }
 
-    fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
+    pub fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
         self.attrs.as_mut()?.get(self.cursor..self.cursor + 4 + val.len())?; // fail early if the entire attr cannot fit
 
         self.attrs.as_mut()?.get_mut(self.cursor..self.cursor + 2)?.copy_from_slice(typ);
@@ -254,7 +250,7 @@ impl<'a> RawWriter<'a> {
         Some(())
     }
 
-    fn add_attr2<T: FnOnce(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> usize>(&mut self, f: T) -> Option<()> {
+    pub fn add_attr2<T: FnOnce(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> usize>(&mut self, f: T) -> Option<()> {
         let (typ, bytes) = split_at_mut(self.attrs.as_mut()?.get_mut(self.cursor..)?);
         let (len, val) = split_at_mut(bytes);
 
