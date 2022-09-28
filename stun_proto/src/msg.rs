@@ -73,6 +73,7 @@ impl<'a> RawMsgHeaderWriter<'a> {
 
 #[cfg(test)]
 mod tests {
+    use core::any::Any;
     use super::*;
 
     const HEADER: [u8; 20] = [
@@ -107,7 +108,17 @@ mod tests {
 
     struct U16BeBufStruct<'a>(&'a mut [u8; 2]);
 
+    type U16BeBuf<'a> = impl U16BeBufTrait<'a>;
+    type U16BeBufMut<'a> = impl U16BeBufTrait<'a> + U16BeBufMutTrait<'a>;
+
     trait U16BeBufTrait<'a> : Sized {
+        fn new(bytes: &'a [u8; 2]) -> U16BeBuf<'a> {
+            #[allow(mutable_transmutes)]
+            unsafe {
+                U16BeBufStruct(core::mem::transmute(bytes))
+            }
+        }
+
         fn get(&self) -> u16;
         fn as_slice(&'a self) -> &'a [u8; 2];
     }
@@ -122,7 +133,11 @@ mod tests {
         }
     }
 
-    trait U16BeBufMutTrait<'a> : U16BeBufTrait<'a> {
+    trait U16BeBufMutTrait<'a> : Sized {
+        fn new(bytes: &'a mut [u8; 2]) -> U16BeBufMut<'a> {
+            U16BeBufStruct(bytes)
+        }
+
         fn set(&mut self, val: u16);
         fn as_slice(&'a mut self) -> &'a mut [u8; 2];
     }
@@ -134,24 +149,6 @@ mod tests {
 
         fn as_slice(&'a mut self) -> &'a mut [u8; 2] {
             self.0
-        }
-    }
-
-    type U16BeBuf<'a> = impl U16BeBufTrait<'a>;
-    type U16BeBufMut<'a> = impl U16BeBufMutTrait<'a>;
-
-    impl<'a> U16BeBufStruct<'a> {
-        fn from(bytes: &'a [u8; 2]) -> U16BeBuf<'a> {
-            #[allow(mutable_transmutes)]
-            Self {
-                0: unsafe { core::mem::transmute(bytes) }
-            }
-        }
-
-        fn from_mut(bytes: &'a mut [u8; 2]) -> U16BeBufMut<'a> {
-            Self {
-                0: bytes
-            }
         }
     }
 
@@ -173,12 +170,13 @@ mod tests {
 
     impl<'a> RawStunBufTrait<'a> for RawStunBufStruct<'a> {
         fn typ(&'a self) -> U16BeBuf<'a> {
-            U16BeBufStruct::from((&self.0[0..2]).try_into().unwrap())
+            let ref1 = (&self.0[0..2]).try_into().unwrap();
+            U16BeBuf::new(ref1)
         }
     }
 
     trait RawStunBufMutTrait<'a> : Sized {
-        fn from(bytes: &'a mut [u8]) -> RawStunBufMut<'a> {
+        fn new(bytes: &'a mut [u8]) -> RawStunBufMut<'a> {
             RawStunBufStruct(bytes)
         }
 
@@ -187,7 +185,7 @@ mod tests {
 
     impl<'a> RawStunBufMutTrait<'a> for RawStunBufStruct<'a> {
         fn typ(&'a mut self) -> U16BeBufMut<'a> {
-            U16BeBufStruct::from_mut((&mut self.0[0..2]).try_into().unwrap())
+            <U16BeBufMut<'_> as U16BeBufMutTrait>::new((&mut self.0[0..2]).try_into().unwrap())
         }
     }
 
@@ -197,7 +195,7 @@ mod tests {
 
         let r = RawStunBuf::new(&buf);
 
-        r.typ().get();
+        r.type_id();
 
         // let mut r = RawStunBufMut::from(buf.as_mut_slice());
         //
