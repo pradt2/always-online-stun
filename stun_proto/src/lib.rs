@@ -1,4 +1,5 @@
 #![no_std]
+#![feature(type_alias_impl_trait)]
 
 mod base;
 mod attrs;
