@@ -104,4 +104,75 @@ mod tests {
 
         assert_eq!(HEADER, buffer);
     }
+
+    struct U16BigEndianBuf<'a>(&'a mut [u8; 2]);
+
+    impl<'a> U16BigEndianBuf<'a> {
+        fn from(bytes: &'a [u8; 2]) -> &'a Self {
+            unsafe { core::mem::transmute(bytes) }
+        }
+
+        fn from_mut(bytes: &'a mut [u8; 2]) -> &'a mut Self {
+            unsafe { core::mem::transmute(bytes) }
+        }
+
+        fn get(&self) -> u16 {
+            u16::from_be_bytes(*self.0)
+        }
+
+        fn set(&mut self, val: u16) {
+            self.0.copy_from_slice(&val.to_be_bytes());
+        }
+
+        fn as_slice(&'a mut self) -> &'a mut [u8; 2] {
+            self.0
+        }
+    }
+
+    struct U128BigEndianBuf<'a>(&'a mut [u8; 16]);
+
+    impl<'a> U128BigEndianBuf<'a> {
+        fn from(bytes: &'a [u8; 16]) -> &'a Self {
+            unsafe { core::mem::transmute(bytes) }
+        }
+
+        fn from_mut(bytes: &'a mut [u8; 16]) -> &'a mut Self {
+            unsafe { core::mem::transmute(bytes) }
+        }
+
+        fn get(&self) -> u128 {
+            u128::from_be_bytes(*self.0)
+        }
+
+        fn set(&mut self, val: u128) {
+            self.0.copy_from_slice(&val.to_be_bytes());
+        }
+
+        fn as_slice(&'a mut self) -> &'a mut [u8; 16] {
+            self.0
+        }
+    }
+
+    trait RawStunBuf {
+        fn typ(&self) -> &U16BigEndianBuf;
+        fn typ_mut(&mut self) -> &mut U16BigEndianBuf;
+    }
+
+    impl RawStunBuf for [u8] {
+        fn typ(&self) -> &U16BigEndianBuf {
+            U16BigEndianBuf::from((&self[0..2]).try_into().unwrap())
+        }
+
+        fn typ_mut(&mut self) -> &mut U16BigEndianBuf {
+            U16BigEndianBuf::from_mut((&mut self[0..2]).try_into().unwrap())
+        }
+    }
+
+    #[test]
+    fn test1() {
+        let buf = [0u8; 12];
+
+        buf.typ();
+
+    }
 }
