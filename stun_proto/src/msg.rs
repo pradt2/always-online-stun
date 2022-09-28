@@ -73,7 +73,6 @@ impl<'a> RawMsgHeaderWriter<'a> {
 
 #[cfg(test)]
 mod tests {
-    use core::any::Any;
     use super::*;
 
     const HEADER: [u8; 20] = [
@@ -106,103 +105,59 @@ mod tests {
         assert_eq!(HEADER, buffer);
     }
 
-    struct U16BeBufStruct<'a>(&'a mut [u8; 2]);
-
-    type U16BeBuf<'a> = impl U16BeBufTrait<'a>;
-    type U16BeBufMut<'a> = impl U16BeBufTrait<'a> + U16BeBufMutTrait<'a>;
-
-    trait U16BeBufTrait<'a> : Sized {
-        fn new(bytes: &'a [u8; 2]) -> U16BeBuf<'a> {
-            #[allow(mutable_transmutes)]
-            unsafe {
-                U16BeBufStruct(core::mem::transmute(bytes))
-            }
-        }
-
-        fn get(&self) -> u16;
-        fn as_slice(&'a self) -> &'a [u8; 2];
-    }
-
-    impl<'a> U16BeBufTrait<'a> for U16BeBufStruct<'a> {
-        fn get(&self) -> u16 {
-            u16::from_be_bytes(*self.0)
-        }
-
-        fn as_slice(&'a self) -> &'a [u8; 2] {
-            self.0
-        }
-    }
-
-    trait U16BeBufMutTrait<'a> : Sized {
-        fn new(bytes: &'a mut [u8; 2]) -> U16BeBufMut<'a> {
-            U16BeBufStruct(bytes)
-        }
-
-        fn set(&mut self, val: u16);
-        fn as_slice(&'a mut self) -> &'a mut [u8; 2];
-    }
-
-    impl<'a> U16BeBufMutTrait<'a> for U16BeBufStruct<'a> {
-        fn set(&mut self, val: u16) {
-            self.0.copy_from_slice(&val.to_be_bytes())
-        }
-
-        fn as_slice(&'a mut self) -> &'a mut [u8; 2] {
-            self.0
-        }
-    }
-
-    struct RawStunBufStruct<'a>(&'a mut [u8]);
-
-    type RawStunBuf<'a> = impl RawStunBufTrait<'a>;
-    type RawStunBufMut<'a> = impl RawStunBufMutTrait<'a>;
-
-    trait RawStunBufTrait<'a> : Sized {
-        fn new(bytes: &'a [u8]) -> RawStunBuf<'a> {
-            #[allow(mutable_transmutes)]
-            unsafe {
-                RawStunBufStruct(core::mem::transmute(bytes))
-            }
-        }
-
-        fn typ(&'a self) -> U16BeBuf<'a>;
-    }
-
-    impl<'a> RawStunBufTrait<'a> for RawStunBufStruct<'a> {
-        fn typ(&'a self) -> U16BeBuf<'a> {
-            let ref1 = (&self.0[0..2]).try_into().unwrap();
-            U16BeBuf::new(ref1)
-        }
-    }
-
-    trait RawStunBufMutTrait<'a> : Sized {
-        fn new(bytes: &'a mut [u8]) -> RawStunBufMut<'a> {
-            RawStunBufStruct(bytes)
-        }
-
-        fn typ(&'a mut self) -> U16BeBufMut<'a>;
-    }
-
-    impl<'a> RawStunBufMutTrait<'a> for RawStunBufStruct<'a> {
-        fn typ(&'a mut self) -> U16BeBufMut<'a> {
-            <U16BeBufMut<'_> as U16BeBufMutTrait>::new((&mut self.0[0..2]).try_into().unwrap())
-        }
-    }
-
-    #[test]
-    fn test1() {
-        let mut buf = [0u8; 12];
-
-        let r = RawStunBuf::new(&buf);
-
-        r.type_id();
-
-        // let mut r = RawStunBufMut::from(buf.as_mut_slice());
-        //
-        // r.typ().set(16);
-
-        // let mut r = RawStunBufMutTrait::from(buf.as_mut());
-
-        // r.typ().set(16);
-    }
+    // struct RawStunBufStruct<'a>(&'a mut [u8]);
+    //
+    // type RawStunBuf<'a> = impl RawStunBufTrait<'a>;
+    // type RawStunBufMut<'a> = impl RawStunBufMutTrait<'a>;
+    //
+    // trait RawStunBufTrait<'a> : Sized {
+    //     fn new(bytes: &'a [u8]) -> RawStunBuf<'a> {
+    //         #[allow(mutable_transmutes)]
+    //         unsafe {
+    //             RawStunBufStruct(core::mem::transmute(bytes))
+    //         }
+    //     }
+    //
+    //     fn typ(&'a self) -> U16BeBuf<'a>;
+    // }
+    //
+    // impl<'a> RawStunBufTrait<'a> for RawStunBufStruct<'a> {
+    //     fn typ(&'a self) -> U16BeBuf<'a> {
+    //         let ref1 = (&self.0[0..2]).try_into().unwrap();
+    //         U16BeBuf::new(ref1)
+    //     }
+    // }
+    //
+    // trait RawStunBufMutTrait<'a> : Sized {
+    //     fn new(bytes: &'a mut [u8]) -> RawStunBufMut<'a> {
+    //         RawStunBufStruct(bytes)
+    //     }
+    //
+    //     fn typ(&'a mut self) -> U16BeBufMut<'a>;
+    // }
+    //
+    // impl<'a> RawStunBufMutTrait<'a> for RawStunBufStruct<'a> {
+    //     fn typ(&'a mut self) -> U16BeBufMut<'a> {
+    //         <U16BeBufMut<'_> as U16BeBufMutTrait>::new_mut((&mut self.0[0..2]).try_into().unwrap())
+    //     }
+    // }
+    //
+    // #[test]
+    // fn test1() {
+    //     let mut buf = [0u8; 2];
+    //
+    //     let r = U16BeBuf::new(&buf);
+    //     r.get();
+    //
+    //     let r = U16BeBufMut::new(&mut buf);
+    //     r.get();
+    //
+    //     // let mut r = RawStunBufMut::from(buf.as_mut_slice());
+    //     //
+    //     // r.typ().set(16);
+    //
+    //     // let mut r = RawStunBufMutTrait::from(buf.as_mut());
+    //
+    //     // r.typ().set(16);
+    // }
 }

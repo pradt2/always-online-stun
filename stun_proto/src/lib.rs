@@ -2,6 +2,7 @@
 #![feature(type_alias_impl_trait)]
 
 mod base;
+mod byte;
 mod attrs;
 mod msg;
 mod raw;
