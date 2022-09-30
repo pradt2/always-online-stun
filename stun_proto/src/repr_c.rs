@@ -1,7 +1,7 @@
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 #[repr(packed, C)]
-struct u16be(u16);
+pub struct u16be(u16);
 
 impl u16be {
     fn get(&self) -> u16 { self.0.to_be() }
@@ -11,7 +11,7 @@ impl u16be {
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
 #[repr(packed, C)]
-struct u128be(u128);
+pub struct u128be(u128);
 
 impl u128be {
     fn get(&self) -> u128 { self.0.to_be() }
@@ -19,7 +19,7 @@ impl u128be {
 }
 
 #[repr(packed, C)]
-struct Msg {
+pub struct Msg {
     pub typ: u16be,
     pub len: u16be,
     pub tid: u128be,
@@ -27,11 +27,11 @@ struct Msg {
 
 impl Msg {
     pub fn new<'a>(bytes: &'a [u8]) -> Result<&'a Msg, ()> {
-        Self::assert_size(bytes).map(|_| unsafe { core::mem::transmute(bytes.as_ptr()) })
+        Self::assert_mem_safety(bytes).map(|_| unsafe { core::mem::transmute(bytes.as_ptr()) })
     }
 
     pub fn new_mut<'a>(bytes: &'a mut [u8]) -> Result<&'a mut Msg, ()> {
-        Self::assert_size(bytes).map(|_| unsafe { core::mem::transmute(bytes.as_ptr()) })
+        Self::assert_mem_safety(bytes).map(|_| unsafe { core::mem::transmute(bytes.as_ptr()) })
     }
 
     pub fn attrs(&self) -> &[u8] {
@@ -59,7 +59,7 @@ impl Msg {
         AttrMutIterator::new(self.attrs_mut())
     }
 
-    fn assert_size(bytes: &[u8]) -> Result<(), ()> {
+    fn assert_mem_safety(bytes: &[u8]) -> Result<(), ()> {
         let declared_len = Self::get_padded_value_len(bytes)? as usize;
         if bytes.len() >= declared_len + core::mem::size_of::<Self>() { Ok(()) } else { Err(()) }
     }
@@ -75,19 +75,19 @@ impl Msg {
 }
 
 #[repr(packed, C)]
-struct Attr {
+pub struct Attr {
     pub typ: u16be,
     pub len: u16be,
 }
 
 impl Attr {
     pub fn new<'a>(bytes: &[u8]) -> Option<&'a Attr> {
-        Self::assert_size(bytes).ok()
+        Self::assert_mem_safety(bytes).ok()
             .map(|_| unsafe { core::mem::transmute(bytes.as_ptr()) })
     }
 
     pub fn new_mut<'a>(bytes: &'a mut [u8]) -> Option<&'a mut Attr> {
-        Self::assert_size(bytes).ok()
+        Self::assert_mem_safety(bytes).ok()
             .map(|_| unsafe { core::mem::transmute(bytes.as_mut_ptr()) })
     }
 
@@ -108,7 +108,7 @@ impl Attr {
         }
     }
 
-    fn assert_size(bytes: &[u8]) -> Result<(), ()> {
+    fn assert_mem_safety(bytes: &[u8]) -> Result<(), ()> {
         let declared_len = Self::get_padded_value_len(bytes)? as usize;
         if bytes.len() >= declared_len + core::mem::size_of::<Self>() { Ok(()) } else { Err(()) }
     }
@@ -123,8 +123,8 @@ impl Attr {
     }
 }
 
-struct AttrIterator<'a> {
-    attr_bytes: &'a [u8]
+pub struct AttrIterator<'a> {
+    attr_bytes: &'a [u8],
 }
 
 impl<'a> AttrIterator<'a> {
@@ -149,7 +149,7 @@ impl<'a> Iterator for AttrIterator<'a> {
     }
 }
 
-struct AttrMutIterator<'a> {
+pub struct AttrMutIterator<'a> {
     attr_bytes: &'a mut [u8],
     cursor: usize,
 }
@@ -248,10 +248,9 @@ mod tests {
         assert_eq!(0x2112A442_10000002_30000004_50000006, msg.tid.get());
 
         let attr = msg.attrs_iter_mut().next().unwrap();
-        attr.typ.set(0x0003);
-        assert_eq!(0x0003, attr.typ.get());
+        attr.val_mut().copy_from_slice(&[1, 2, 3, 4]);
+        assert_eq!(&[1, 2, 3, 4], attr.val_mut());
 
         assert_eq!(1, msg.attrs_iter().count());
     }
-
 }
