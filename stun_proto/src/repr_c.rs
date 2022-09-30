@@ -1,6 +1,6 @@
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-#[repr(C)]
+#[repr(packed, C)]
 struct u16be(u16);
 
 impl u16be {
@@ -10,7 +10,7 @@ impl u16be {
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Copy)]
-#[repr(C)]
+#[repr(packed, C)]
 struct u128be(u128);
 
 impl u128be {
@@ -18,7 +18,7 @@ impl u128be {
     fn set(&mut self, val: u128) { self.0 = val.to_be() }
 }
 
-#[repr(packed)]
+#[repr(packed, C)]
 struct Msg {
     pub typ: u16be,
     pub len: u16be,
@@ -74,7 +74,7 @@ impl Msg {
     }
 }
 
-#[repr(C)]
+#[repr(packed, C)]
 struct Attr {
     pub typ: u16be,
     pub len: u16be,
@@ -95,7 +95,7 @@ impl Attr {
         unsafe {
             let data_ptr: *mut u8 = core::mem::transmute(self);
             let data_ptr = data_ptr.offset(core::mem::size_of::<Self>() as isize);
-            core::slice::from_raw_parts(data_ptr, (self.len.get() as usize + 3) / 4)
+            core::slice::from_raw_parts(data_ptr, (self.len.get() as usize + 3) & !3)
         }
     }
 
@@ -104,7 +104,7 @@ impl Attr {
             let len = self.len.get() as usize;
             let data_ptr: *mut u8 = core::mem::transmute(self);
             let data_ptr = data_ptr.offset(core::mem::size_of::<Self>() as isize);
-            core::slice::from_raw_parts_mut(data_ptr, (len + 3) / 4)
+            core::slice::from_raw_parts_mut(data_ptr, (len + 3) & !3)
         }
     }
 
@@ -118,7 +118,7 @@ impl Attr {
             .ok_or(())?
             .try_into()
             .map_err(|_| ())?;
-        let len = (u16::from_be_bytes(*len_bytes) + 3) / 4; // include padding
+        let len = (u16::from_be_bytes(*len_bytes) + 3) & !3; // include padding
         Ok(len)
     }
 }
@@ -218,7 +218,40 @@ mod tests {
 
     #[test]
     fn read_mut() {
+        let mut buf = MSG.clone();
+        let msg = Msg::new_mut(&mut buf).unwrap();
 
+        assert_eq!(0x0001, msg.typ.get());
+        assert_eq!(0x0008, msg.len.get());
+        assert_eq!(0x2112A442_00000000_00000000_00000001, msg.tid.get());
+        assert_eq!(&MSG[20..28], msg.attrs());
+        assert_eq!(1, msg.attrs_iter().count());
+
+        let attr = msg.attrs_iter().next().unwrap();
+
+        assert_eq!(0x0003, attr.typ.get());
+        assert_eq!(0x0004, attr.len.get());
+        assert_eq!(&MSG[24..28], attr.val());
+    }
+
+    #[test]
+    fn write_mut() {
+        let mut buf = MSG.clone();
+        let msg = Msg::new_mut(&mut buf).unwrap();
+
+        msg.typ.set(0x1000);
+        assert_eq!(0x1000, msg.typ.get());
+
+        assert_eq!(0x0008, msg.len.get());
+
+        msg.tid.set(0x2112A442_10000002_30000004_50000006);
+        assert_eq!(0x2112A442_10000002_30000004_50000006, msg.tid.get());
+
+        let attr = msg.attrs_iter_mut().next().unwrap();
+        attr.typ.set(0x0003);
+        assert_eq!(0x0003, attr.typ.get());
+
+        assert_eq!(1, msg.attrs_iter().count());
     }
 
 }
