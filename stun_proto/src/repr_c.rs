@@ -1,22 +1,4 @@
-#[allow(non_camel_case_types)]
-#[derive(Clone, Copy)]
-#[repr(packed, C)]
-pub struct u16be(u16);
-
-impl u16be {
-    fn get(&self) -> u16 { self.0.to_be() }
-    fn set(&mut self, val: u16) { self.0 = val.to_be() }
-}
-
-#[allow(non_camel_case_types)]
-#[derive(Clone, Copy)]
-#[repr(packed, C)]
-pub struct u128be(u128);
-
-impl u128be {
-    fn get(&self) -> u128 { self.0.to_be() }
-    fn set(&mut self, val: u128) { self.0 = val.to_be() }
-}
+use crate::endian::{u16be, u128be};
 
 #[repr(packed, C)]
 pub struct Msg {

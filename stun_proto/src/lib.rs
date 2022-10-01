@@ -1,8 +1,9 @@
 #![no_std]
-#![feature(type_alias_impl_trait)]
+
+extern crate alloc;
 
 mod base;
-mod be;
+mod endian;
 mod byte;
 mod attrs;
 mod msg;
