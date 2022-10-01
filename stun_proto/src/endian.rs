@@ -10,8 +10,7 @@ impl u16be {
 
     pub fn from_slice<'a>(bytes: &'a [u8]) -> Option<&'a Self> {
         bytes.get(0..core::mem::size_of::<Self>())
-            .map(|bytes| bytes.try_into().ok())
-            .flatten()
+            .map(|bytes| bytes.try_into().ok())?
             .map(u16be::from)
     }
 
@@ -33,8 +32,7 @@ impl u128be {
 
     pub fn from_slice<'a>(bytes: &'a [u8]) -> Option<&'a Self> {
         bytes.get(0..core::mem::size_of::<Self>())
-            .map(|bytes| bytes.try_into().ok())
-            .flatten()
+            .map(|bytes| bytes.try_into().ok())?
             .map(u128be::from)
     }
 
