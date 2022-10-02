@@ -15,7 +15,37 @@ impl u16be {
     }
 
     pub fn get(&self) -> u16 { self.0.to_be() }
+    pub fn as_slice(&self) -> &[u8; core::mem::size_of::<Self>()] {
+        unsafe {
+            core::mem::transmute(&self)
+        }
+    }
     pub fn set(&mut self, val: u16) { self.0 = val.to_be() }
+}
+
+#[allow(non_camel_case_types)]
+#[derive(Clone, Copy)]
+#[repr(packed, C)]
+pub struct u32be(u32);
+
+impl u32be {
+    pub fn from<'a>(bytes: &[u8; core::mem::size_of::<Self>()]) -> &'a Self {
+        unsafe {  core::mem::transmute(bytes) }
+    }
+
+    pub fn from_slice<'a>(bytes: &'a [u8]) -> Option<&'a Self> {
+        bytes.get(0..core::mem::size_of::<Self>())
+            .map(|bytes| bytes.try_into().ok())?
+            .map(u32be::from)
+    }
+
+    pub fn get(&self) -> u32 { self.0.to_be() }
+    pub fn as_slice(&self) -> &[u8; core::mem::size_of::<Self>()] {
+        unsafe {
+            core::mem::transmute(&self)
+        }
+    }
+    pub fn set(&mut self, val: u32) { self.0 = val.to_be() }
 }
 
 #[allow(non_camel_case_types)]
@@ -37,5 +67,10 @@ impl u128be {
     }
 
     pub fn get(&self) -> u128 { self.0.to_be() }
+    pub fn as_slice(&self) -> &[u8; core::mem::size_of::<Self>()] {
+        unsafe {
+            core::mem::transmute(&self)
+        }
+    }
     pub fn set(&mut self, val: u128) { self.0 = val.to_be() }
 }

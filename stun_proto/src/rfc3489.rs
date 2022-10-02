@@ -1,7 +1,7 @@
 use super::*;
 
 pub use super::attrs::{SocketAddr};
-pub use super::base::ReaderErr;
+pub use super::reader::ReaderErr;
 
 #[derive(Copy, Clone, Debug, PartialEq)]
 pub enum MessageType {

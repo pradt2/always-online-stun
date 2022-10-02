@@ -2,7 +2,7 @@
 
 extern crate alloc;
 
-mod base;
+mod reader;
 mod endian;
 mod byte;
 mod attrs;
@@ -11,7 +11,7 @@ mod raw;
 mod repr_c;
 mod typed;
 
-use base::*;
+use reader::*;
 use attrs::*;
 use msg::*;
 
