@@ -25,91 +25,91 @@ impl<'a> Msg<'a> {
 }
 
 enum MsgType {
-    #[cfg(any(rfc3489, rfc5349, rfc8489, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
     BindingRequest,
 
-    #[cfg(any(rfc3489, rfc5349, rfc8489, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
     BindingResponse,
 
-    #[cfg(any(rfc5349, rfc8489, iana))]
+    #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
     BindingIndication,
 
-    #[cfg(any(rfc3489, rfc5349, rfc8489, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
     BindingErrorResponse,
 
-    #[cfg(rfc3489)]
+    #[cfg(feature = "rfc3489")]
     SharedSecretRequest,
 
-    #[cfg(rfc3489)]
+    #[cfg(feature = "rfc3489")]
     SharedSecretResponse,
 
-    #[cfg(rfc3489)]
+    #[cfg(feature = "rfc3489")]
     SharedSecretErrorResponse,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     AllocateRequest,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     AllocateResponse,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     AllocateErrorResponse,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     RefreshRequest,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     RefreshResponse,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     RefreshErrorResponse,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     SendIndication,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     DataIndication,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     CreatePermissionRequest,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     CreatePermissionResponse,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     CreatePermissionErrorResponse,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     ChannelBindRequest,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     ChannelBindResponse,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     ChannelBindErrorResponse,
 
-    #[cfg(any(rfc6062, iana))]
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectRequest,
 
-    #[cfg(any(rfc6062, iana))]
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectResponse,
 
-    #[cfg(any(rfc6062, iana))]
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectErrorResponse,
 
-    #[cfg(any(rfc6062, iana))]
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectionBindRequest,
 
-    #[cfg(any(rfc6062, iana))]
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectionBindResponse,
 
-    #[cfg(any(rfc6062, iana))]
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectionBindErrorResponse,
 
-    #[cfg(any(rfc6062, iana))]
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectionAttemptIndication,
 
-    #[cfg(iana)]
+    #[cfg(feature = "iana")]
     GooglePing,
 
     Other(u16),
@@ -118,91 +118,91 @@ enum MsgType {
 impl From<u16> for MsgType {
     fn from(val: u16) -> Self {
         match val {
-            #[cfg(any(rfc3489, rfc5349, rfc8489, iana))]
+            #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
             0x0001 => MsgType::BindingRequest,
 
-            #[cfg(any(rfc3489, rfc5349, rfc8489, iana))]
+            #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
             0x0011 => MsgType::BindingResponse,
 
-            #[cfg(any(rfc5349, rfc8489, iana))]
+            #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
             0x0101 => MsgType::BindingIndication,
 
-            #[cfg(any(rfc3489, rfc5349, rfc8489, iana))]
+            #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
             0x0111 => MsgType::BindingErrorResponse,
 
-            #[cfg(rfc3489)]
+            #[cfg(feature = "rfc3489")]
             0x0002 => MsgType::SharedSecretRequest,
 
-            #[cfg(rfc3489)]
+            #[cfg(feature = "rfc3489")]
             0x0102 => MsgType::SharedSecretResponse,
 
-            #[cfg(rfc3489)]
+            #[cfg(feature = "rfc3489")]
             0x0112 => MsgType::SharedSecretErrorResponse,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::AllocateRequest,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::AllocateResponse,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::AllocateErrorResponse,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::RefreshRequest,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::RefreshResponse,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::RefreshErrorResponse,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::SendIndication,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::DataIndication,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::CreatePermissionRequest,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::CreatePermissionResponse,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::CreatePermissionErrorResponse,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::ChannelBindRequest,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::ChannelBindResponse,
 
-            #[cfg(any(rfc5766, rfc8656, iana))]
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0000 => MsgType::ChannelBindErrorResponse,
 
-            #[cfg(any(rfc6062, iana))]
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
             0x0000 => MsgType::ConnectRequest,
 
-            #[cfg(any(rfc6062, iana))]
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
             0x0000 => MsgType::ConnectResponse,
 
-            #[cfg(any(rfc6062, iana))]
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
             0x0000 => MsgType::ConnectErrorResponse,
 
-            #[cfg(any(rfc6062, iana))]
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
             0x0000 => MsgType::ConnectionBindRequest,
 
-            #[cfg(any(rfc6062, iana))]
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
             0x0000 => MsgType::ConnectionBindResponse,
 
-            #[cfg(any(rfc6062, iana))]
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
             0x0000 => MsgType::ConnectionBindErrorResponse,
 
-            #[cfg(any(rfc6062, iana))]
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
             0x0000 => MsgType::ConnectionAttemptIndication,
 
-            #[cfg(iana)]
+            #[cfg(feature = "iana")]
             0x000 => MsgType::GooglePing,
 
             val => MsgType::Other(val),
@@ -218,165 +218,167 @@ pub enum SocketAddr {
 
 #[derive(Copy, Clone)]
 enum Attr<'a> {
-    #[cfg(any(rfc3489, rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     MappedAddress(SocketAddr),
 
-    #[cfg(rfc3489)]
+    #[cfg(feature = "rfc3489")]
     ResponseAddress(SocketAddr),
 
-    #[cfg(any(rfc3489, rfc5780, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5780", feature = "iana"))]
     ChangeRequest { change_ip: bool, change_port: bool },
 
-    #[cfg(rfc3489)]
+    #[cfg(feature = "rfc3489")]
     SourceAddress(SocketAddr),
 
-    #[cfg(rfc3489)]
+    #[cfg(feature = "rfc3489")]
     ChangedAddress(SocketAddr),
 
-    #[cfg(any(rfc3489, rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     Username(&'a str),
 
-    #[cfg(rfc3489)]
+    #[cfg(feature = "rfc3489")]
     Password(&'a str),
 
-    #[cfg(any(rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     Realm(&'a str),
 
-    #[cfg(any(rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     Nonce(&'a str),
 
-    #[cfg(any(rfc3489, rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     MessageIntegrity(&'a [u8; 20]),
 
-    #[cfg(any(rfc8489, iana))]
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
     MessageIntegritySha256(&'a [u8; 32]),
 
-    #[cfg(any(rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     Fingerprint(u32),
 
-    #[cfg(any(rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     XorMappedAddress(SocketAddr),
 
-    #[cfg(any(rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     Software(&'a str),
 
-    #[cfg(any(rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     AlternateServer(SocketAddr),
 
-    #[cfg(any(rfc3489, rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     ErrorCode { code: u16, reason: &'a str },
 
-    #[cfg(any(rfc3489, rfc5389, rfc8489, iana))]
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     UnknownAttributes(&'a [u16be]),
 
-    #[cfg(rfc3489)]
+    #[cfg(feature = "rfc3489")]
     ReflectedFrom(SocketAddr),
 
-    #[cfg(any(rfc5425, rfc8445, iana))]
+    #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
     Priority(u32),
 
-    #[cfg(any(rfc5425, rfc8445, iana))]
+    #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
     UseCandidate,
 
-    #[cfg(any(rfc5425, rfc8445, iana))]
+    #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
     IceControlled(u64),
 
-    #[cfg(any(rfc5425, rfc8445, iana))]
+    #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
     IceControlling(u64),
 
-    #[cfg(any(rfc5780, iana))]
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
     ResponseOrigin(SocketAddr),
 
-    #[cfg(any(rfc5780, iana))]
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
     OtherAddress(SocketAddr),
 
-    #[cfg(any(rfc5780, iana))]
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
     ResponsePort(u16),
 
-    #[cfg(any(rfc5780, iana))]
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
     Padding(&'a [u8]),
 
-    #[cfg(any(rfc5780, iana))]
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
     CacheTimeout(u32),
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     ChannelNumber(u16),
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     Lifetime(u32),
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     XorPeerAddress(SocketAddr),
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     Data(&'a [u8]),
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     XorRelayedAddress(SocketAddr),
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     EvenPort(bool),
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     RequestedTransport(u8), // can be narrowed down
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     DontFragment,
 
-    #[cfg(any(rfc5766, rfc8656, iana))]
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     ReservationToken(u64),
 
-    #[cfg(any(rfc8656, iana))]
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
     RequestedAddressFamily(u8), // can be narrowed down
 
-    #[cfg(any(rfc8656, iana))]
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
     AdditionalAddressFamily(u8), // can be narrowed down
 
-    #[cfg(any(rfc8656, iana))]
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
     AddressErrorCode { family: u8, code: u16, reason: &'a str }, // family and code can be narrowed down
 
-    #[cfg(any(rfc8656, iana))]
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
     Icmp { typ: u8, code: u8, data: u32 }, // maybe can be narrowed down
 
-    #[cfg(any(rfc8489, iana))]
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
     Userhash(&'a [u8; 32]),
 
-    #[cfg(any(rfc8489, iana))]
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
     PasswordAlgorithm(PasswordAlgorithm<'a>),
 
-    #[cfg(any(rfc8489, iana))]
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
     PasswordAlgorithms(PasswordAlgorithmIter<'a>),
 
-    #[cfg(any(rfc8489, iana))]
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
     AlternateDomain(&'a str),
 
-    #[cfg(any(rfc6679, iana))]
-    EcnCheck{ valid: bool, val: u8 },
+    #[cfg(any(feature = "rfc6679", feature = "iana"))]
+    EcnCheck { valid: bool, val: u8 },
 
-    #[cfg(any(rfc7635, iana))]
+    #[cfg(any(feature = "rfc7635", feature = "iana"))]
     ThirdPartyAuthorisation(&'a str),
 
-    #[cfg(any(rfc7635, iana))]
-    AccessToken{ nonce: &'a [u8], mac: &'a [u8], timestamp: u64, lifetime: u32 },
+    #[cfg(any(feature = "rfc7635", feature = "iana"))]
+    AccessToken { nonce: &'a [u8], mac: &'a [u8], timestamp: u64, lifetime: u32 },
 
-    #[cfg(any(rfc8016, iana))]
+    #[cfg(any(feature = "rfc8016", feature = "iana"))]
     MobilityTicket(&'a [u8]),
 
-    #[cfg(any(rfc6062, iana))]
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectionId(u32),
 
-    Other { typ: u16, val: & 'a [u8] },
+    Other { typ: u16, val: &'a [u8] },
 }
 
-#[cfg(any(rfc8489, iana))]
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
+#[derive(Copy, Clone)]
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
 pub enum PasswordAlgorithm<'a> {
     Other { typ: u16, params: &'a [u8] }
 }
 
-#[cfg(any(rfc8489, iana))]
-struct PasswordAlgorithmIter<'a> {
-
-}
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
+#[derive(Copy, Clone)]
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
+struct PasswordAlgorithmIter<'a> { buf: &'a [u8]}
 
 impl<'a> TryFrom<(RawAttr<'a>, &'a u128be)> for Attr<'a> {
     type Error = ();
