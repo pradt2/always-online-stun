@@ -628,8 +628,8 @@ added these new protocol elements to the "STUN Attributes" registry.
 0x0027: RESPONSE-PORT
 0x0026: PADDING
 0x8027: CACHE-TIMEOUT
-0x802b: RESPONSE-ORIGIN
-0x802c: OTHER-ADDRESS
+0x802B: RESPONSE-ORIGIN
+0x802C: OTHER-ADDRESS
 ```
 
 *Editor's note:* No other RFC metions the CACHE-TIMEOUT attribute; it is only metioned in an IETF's [Draft document ver. 6 of RFC 5780](https://datatracker.ietf.org/doc/html/draft-ietf-behave-nat-behavior-discovery-06).
@@ -1237,6 +1237,19 @@ CONTROLLING or ICE-CONTROLLED attribute, indicating an ICE role
 that conflicted with the server. The remote server compared the
 tiebreaker values of the client and the server and determined that
 the client needs to switch roles.
+
+
+### [Section 20.1](https://www.rfc-editor.org/rfc/rfc8445.html#section-20.1) STUN Attributes
+
+IANA has registered four STUN attributes:
+
+```text
+0x0024: PRIORITY
+0x0025: USE-CANDIDATE
+0x8029: ICE-CONTROLLED
+0x802A: ICE-CONTROLLING
+```
+
 
 ## [RFC 8656](https://datatracker.ietf.org/doc/html/rfc8656)
 
