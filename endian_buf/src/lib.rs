@@ -1,17 +1,27 @@
-pub trait EndianBuf<T> {
-    fn be(&self) -> T;
-    fn le(&self) -> T;
-    fn be_set(&mut self, val: T);
-    fn le_set(&mut self, val: T);
+pub trait EndianTo<T> {
+    fn to_be(&self) -> T;
+    fn to_le(&self) -> T;
+    fn set_be(&mut self, val: T);
+    fn set_le(&mut self, val: T);
+}
+
+pub trait EndianOf<T, U> {
+    fn of_be(buf: &U) -> T;
+    fn of_le(buf: &U) -> T;
 }
 
 macro_rules! impl_endian_buf {
     ($typ:ty) => {
-        impl EndianBuf<typ> for [u8; core::mem::size_of::<typ>] {
-            fn be(&self) -> typ { typ::from_be_bytes(*self) }
-            fn le(&self) -> typ { typ::from_le_bytes(*self) }
-            fn be_set(&mut self, val: typ) { self.copy_from_slice(&val.to_be_bytes()); }
-            fn le_set(&mut self, val: typ) { self.copy_from_slice(&val.to_le_bytes()); }
+        impl EndianTo<$typ> for [u8; core::mem::size_of::<$typ>()] {
+            fn to_be(&self) -> $typ { <$typ>::from_be_bytes(*self) }
+            fn to_le(&self) -> $typ { <$typ>::from_le_bytes(*self) }
+            fn set_be(&mut self, val: $typ) { self.copy_from_slice(&val.to_be_bytes()); }
+            fn set_le(&mut self, val: $typ) { self.copy_from_slice(&val.to_le_bytes()); }
+        }
+
+        impl EndianOf<$typ, [u8; core::mem::size_of::<$typ>()]> for $typ {
+            fn of_be(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_be() }
+            fn of_le(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_le() }
         }
     };
 }
@@ -39,3 +49,33 @@ impl_endian_buf!(i64);
 
 #[cfg(feature = "i128")]
 impl_endian_buf!(i128);
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn u16() {
+        let buf = [1u8, 2];
+
+        assert_eq!(0x0102 as u16, buf.to_be());
+        assert_eq!(0x0201 as u16, buf.to_le());
+
+        let mut buf = [0u8, 0];
+
+        buf.set_be(0x0102 as u16);
+        assert_eq!(&[1u8, 2], &buf);
+
+        buf.set_le(0x0102 as u16);
+        assert_eq!(&[2u8, 1], &buf);
+    }
+
+    #[test]
+    fn option_map() {
+        let buf = [1u8, 2];
+        let opt = Some(&buf);
+        let val = opt.map(u16::of_be).unwrap();
+        assert_eq!(0x0102 as u16, val);
+    }
+
+}
