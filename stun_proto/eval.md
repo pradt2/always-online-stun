@@ -51,7 +51,7 @@ Below is a table that represents the primitive types most commonly used in binar
 | unsigned int (8 bits)          | `unsigned char`, `uint8_t` |  `byte`   |     `u8`      |
 | unsigned int                   |          &check;           |  &check;  |               |
 
-#### Struct
+##### Struct
 
 A struct represents a collection of other data types (other structs, unions, primitive types, etc.) which reside in memory in the order in which they are specified in the source code.
 Each member of this collection must have a uniquely name and type. For example:
@@ -67,10 +67,10 @@ struct  {
 
 ```C
 struct StunMsg {
-    uint16_t type;
-    uint16_t length;
-    uint128_t transaction_id;
-    uint8_t attributes[length];
+    uint16_t    type;
+    uint16_t    length;
+    uint128_t   transaction_id;
+    uint8_t     attributes[length];
 };
 ```
 
@@ -85,3 +85,66 @@ While this is possible, there are a lot of prerequisites:
 
 When the format does not have arrays. Arrays complicate everything. E.g.
 
+### Raw notes
+
+Pros and cons of different parser types:
+
+#### Repr C'like (declarative)
+
+ - pro: immutable and mutable references implemented together, no need for separate types
+ - pro: memory representations really simple if number of elements and their type (incl. size) is known at compile time
+ - pro: to_bytes() easy to implement
+ - pro: checks are smaller and done only once (eagerly), less branching while reading
+ - pro/con: alignment issues may arise, but X86/ARM should be immune to them
+ - pro/con: there is a choice of building the fields as [u8; N] (and probably that would eliminate
+   the need for `repr(C, packed)`, or building explicitly `be`/`le` types)
+ - con: to an extent it has to be early checked (such that we know that no value inside the struct would prompt read/write overflows)
+ - con: requires unsafe code
+ - con: any field after the first *dynamically sized field* is accessible only via a dynamically calculated pointer,
+   not via nice value fields (which brings back the nightmare of double implementations for mutable/immutable variants AND breaks consistency)
+
+#### Getters/Setters (procedural)
+
+ - pro: choice of earger vs lazy evaluation
+ - pro: can be implemented with zero unsafe code
+ - con: uglier of most types are statically known (type + size), as all access happens via method calls
+ - con: impl for mutable/immutable are completely separate, i.e double effort
+
+#### Parser styles
+
+Interfaces
+
+ - like a regular struct
+   - field reads like regular fields
+   - field writes like regular fields
+
+ - some struct with method calls, like getters/setters, to do read/write ops
+
+ - some struct with callbacks that get triggered certains items/characteristcs
+
+Backings
+
+ - separate memory copy using pitentially many data allocations (i.e. one alloc per any dynamically sized field)
+ - separate memory copy using exactly one memory allocation
+ - no separate copy but assumes the existence of a biffer that can store the entire struct at once
+ - small buf << total length of the message
+
+Philosophies
+
+ - is the data parsed genrally assumed to be correct?
+ - is the parsing of invalid data just as common/valuabe to the user as valid data?
+ - more genrally: what are the user expectations about reacting to invalid data
+
+#### How parsers are assessed
+
+ - documentation
+ - how intuitive it is
+ - how compatible it is
+   - what requirements it has
+     - std
+     - alloc
+     - its own dependencies
+ - how lightweight it is
+ - how configurable it is
+ - how performant it is
+ - how consistent the interface is
