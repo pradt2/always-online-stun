@@ -1,5 +1,9 @@
 #![no_std]
 
+mod prelude {
+    pub use super::lib::*;
+}
+
 mod lib {
     pub trait EndianTo<T> {
         fn to_be(&self) -> T;
@@ -14,20 +18,20 @@ mod lib {
     }
 
     macro_rules! impl_endian_traits {
-    ($typ:ty) => {
-        impl EndianTo<$typ> for [u8; core::mem::size_of::<$typ>()] {
-            fn to_be(&self) -> $typ { <$typ>::from_be_bytes(*self) }
-            fn to_le(&self) -> $typ { <$typ>::from_le_bytes(*self) }
-            fn set_be(&mut self, val: $typ) { self.copy_from_slice(&val.to_be_bytes()); }
-            fn set_le(&mut self, val: $typ) { self.copy_from_slice(&val.to_le_bytes()); }
-        }
+        ($typ:ty) => {
+            impl EndianTo<$typ> for [u8; core::mem::size_of::<$typ>()] {
+                fn to_be(&self) -> $typ { <$typ>::from_be_bytes(*self) }
+                fn to_le(&self) -> $typ { <$typ>::from_le_bytes(*self) }
+                fn set_be(&mut self, val: $typ) { self.copy_from_slice(&val.to_be_bytes()); }
+                fn set_le(&mut self, val: $typ) { self.copy_from_slice(&val.to_le_bytes()); }
+            }
 
-        impl EndianOf<$typ, [u8; core::mem::size_of::<$typ>()]> for $typ {
-            fn of_be(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_be() }
-            fn of_le(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_le() }
-        }
-    };
-}
+            impl EndianOf<$typ, [u8; core::mem::size_of::<$typ>()]> for $typ {
+                fn of_be(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_be() }
+                fn of_le(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_le() }
+            }
+        };
+    }
 
     #[cfg(feature = "u16")]
     impl_endian_traits!(u16);
@@ -77,10 +81,5 @@ mod lib {
             let val = opt.map(u16::of_be).unwrap();
             assert_eq!(0x0102 as u16, val);
         }
-
     }
-}
-
-mod prelude {
-    pub use super::lib::*;
 }
