@@ -1,6 +1,6 @@
 #![no_std]
 
-mod prelude {
+pub mod prelude {
     pub use super::lib::*;
 }
 
@@ -56,6 +56,16 @@ mod lib {
 
     #[cfg(feature = "i128")]
     impl_endian_traits!(i128);
+
+    #[cfg(feature = "carve")]
+    pub fn carve<const N: usize, T>(buf: &[T]) -> Option<&[T; N]> {
+        buf.try_into().ok()
+    }
+
+    #[cfg(feature = "carve")]
+    pub fn carve_mut<const N: usize, T>(buf: &mut [T]) -> Option<&mut [T; N]> {
+        buf.try_into().ok()
+    }
 
     #[cfg(test)]
     mod tests {

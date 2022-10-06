@@ -395,6 +395,10 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "90e5c1c8368803113bf0c9584fc495a58b86dc8a29edbf8fe877d21d9507e797"
 
 [[package]]
+name = "endianeer"
+version = "1.0.0"
+
+[[package]]
 name = "event-listener"
 version = "2.5.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -827,6 +831,9 @@ dependencies = [
 [[package]]
 name = "stun_proto"
 version = "0.1.0"
+dependencies = [
+ "endianeer",
+]
 
 [[package]]
 name = "stun_tester"
