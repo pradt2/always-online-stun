@@ -8,6 +8,9 @@ mod lib {
     pub trait EndianTo<T> {
         fn to_be(&self) -> T;
         fn to_le(&self) -> T;
+    }
+
+    pub trait EndianSet<T> {
         fn set_be(&mut self, val: T);
         fn set_le(&mut self, val: T);
     }
@@ -22,8 +25,21 @@ mod lib {
             impl EndianTo<$typ> for [u8; core::mem::size_of::<$typ>()] {
                 fn to_be(&self) -> $typ { <$typ>::from_be_bytes(*self) }
                 fn to_le(&self) -> $typ { <$typ>::from_le_bytes(*self) }
+            }
+
+            impl EndianSet<$typ> for [u8; core::mem::size_of::<$typ>()] {
                 fn set_be(&mut self, val: $typ) { self.copy_from_slice(&val.to_be_bytes()); }
                 fn set_le(&mut self, val: $typ) { self.copy_from_slice(&val.to_le_bytes()); }
+            }
+
+            impl EndianTo<Option<$typ>> for Option<&[u8; core::mem::size_of::<$typ>()]> {
+                fn to_be(&self) -> Option<$typ> { self.map(|val| <$typ>::from_be_bytes(*val)) }
+                fn to_le(&self) -> Option<$typ> { self.map(|val| <$typ>::from_le_bytes(*val)) }
+            }
+
+            impl EndianTo<Option<$typ>> for Option<&[u8]> {
+                fn to_be(&self) -> Option<$typ> { self.map(carve).flatten().map(|val| <$typ>::from_be_bytes(*val)) }
+                fn to_le(&self) -> Option<$typ> { self.map(carve).flatten().map(|val| <$typ>::from_le_bytes(*val)) }
             }
 
             impl EndianOf<$typ, [u8; core::mem::size_of::<$typ>()]> for $typ {
