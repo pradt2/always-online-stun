@@ -15,5 +15,6 @@ reqwest = { version = "0.11.10", default-features = false, features=["json", "ru
 serde_json = { version = "1.0.70", default-features = false }
 stun_client = { path = "./stun_client" }
 stun_proto = { path = "./stun_proto" }
+endian_buf = { path = "./endian_buf" }
 tokio = { version = "1.14.0", default-features = false, features = ["fs", "macros", "net", "rt"] }
 tokio-stream = { version = "0.1.8", default-features = false }

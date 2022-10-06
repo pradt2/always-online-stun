@@ -1,0 +1,19 @@
+[package]
+name = "endian_buf"
+version = "1.0.0"
+edition = "2021"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[features]
+u16 = []
+u32 = []
+u64 = []
+u128 = []
+i16 = []
+i32 = []
+i64 = []
+i128 = []
+unsigned = ["u16", "u32", "u64", "u128"]
+signed = ["i16", "i32", "i64", "i128"]
+default = ["unsigned", "signed"]
