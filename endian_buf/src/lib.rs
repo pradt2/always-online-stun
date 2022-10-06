@@ -10,7 +10,7 @@ pub trait EndianOf<T, U> {
     fn of_le(buf: &U) -> T;
 }
 
-macro_rules! impl_endian_buf {
+macro_rules! impl_endian_traits {
     ($typ:ty) => {
         impl EndianTo<$typ> for [u8; core::mem::size_of::<$typ>()] {
             fn to_be(&self) -> $typ { <$typ>::from_be_bytes(*self) }
@@ -27,28 +27,28 @@ macro_rules! impl_endian_buf {
 }
 
 #[cfg(feature = "u16")]
-impl_endian_buf!(u16);
+impl_endian_traits!(u16);
 
 #[cfg(feature = "u32")]
-impl_endian_buf!(u32);
+impl_endian_traits!(u32);
 
 #[cfg(feature = "u64")]
-impl_endian_buf!(u64);
+impl_endian_traits!(u64);
 
 #[cfg(feature = "u128")]
-impl_endian_buf!(u128);
+impl_endian_traits!(u128);
 
 #[cfg(feature = "i16")]
-impl_endian_buf!(i16);
+impl_endian_traits!(i16);
 
 #[cfg(feature = "i32")]
-impl_endian_buf!(i32);
+impl_endian_traits!(i32);
 
 #[cfg(feature = "i64")]
-impl_endian_buf!(i64);
+impl_endian_traits!(i64);
 
 #[cfg(feature = "i128")]
-impl_endian_buf!(i128);
+impl_endian_traits!(i128);
 
 #[cfg(test)]
 mod tests {
@@ -68,10 +68,7 @@ mod tests {
 
         buf.set_le(0x0102 as u16);
         assert_eq!(&[2u8, 1], &buf);
-    }
 
-    #[test]
-    fn option_map() {
         let buf = [1u8, 2];
         let opt = Some(&buf);
         let val = opt.map(u16::of_be).unwrap();
