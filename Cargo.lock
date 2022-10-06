@@ -16,7 +16,7 @@ name = "always-online-stun"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "endian_buf",
+ "endianeer",
  "futures",
  "log",
  "pretty_env_logger",
@@ -97,7 +97,7 @@ dependencies = [
 ]
 
 [[package]]
-name = "endian_buf"
+name = "endianeer"
 version = "1.0.0"
 
 [[package]]
