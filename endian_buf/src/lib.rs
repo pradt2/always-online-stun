@@ -1,3 +1,5 @@
+#![no_std]
+
 pub trait EndianTo<T> {
     fn to_be(&self) -> T;
     fn to_le(&self) -> T;
