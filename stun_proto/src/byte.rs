@@ -14,11 +14,16 @@ impl<'a> Msg<'a> {
     }
 
     pub fn typ(&self) -> Option<MsgType> {
-        self.reader.typ().map(u16::of_be).map(MsgType::from)
+        self.reader.typ()
+            .map(u16::of_be)
+            .map(MsgType::from)
     }
 
     pub fn cookie(&self) -> Option<u32> {
-        self.reader.tid()?.get(0..4).map(carve)?.map(u32::of_be)
+        self.reader.tid()?
+            .get(0..4)
+            .map(carve)?
+            .map(u32::of_be)
     }
 
     pub fn tid(&self) -> Option<u128> {
