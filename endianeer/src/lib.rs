@@ -106,6 +106,13 @@ mod lib {
             let opt = Some(&buf);
             let val = opt.map(u16::of_be).unwrap();
             assert_eq!(0x0102 as u16, val);
+
+            let opt = Some(buf.as_slice());
+            let val = opt.map(carve)
+                .flatten()
+                .map(u16::of_be)
+                .unwrap();
+            assert_eq!(0x0102 as u16, val);
         }
     }
 }
