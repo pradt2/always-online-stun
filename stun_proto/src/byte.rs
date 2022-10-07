@@ -13,20 +13,20 @@ impl<'a> Msg<'a> {
         }
     }
 
-    fn typ(&self) -> Option<MsgType> {
+    pub fn typ(&self) -> Option<MsgType> {
         Some(MsgType::from(self.reader.typ().map(u16::of_be)?))
     }
 
-    fn tid(&self) -> Option<u128> {
+    pub fn tid(&self) -> Option<u128> {
         Some(self.reader.tid().map(u128::of_be)?)
     }
 
-    fn attrs_iter(&self) -> Option<AttrIter> {
+    pub fn attrs_iter(&self) -> Option<AttrIter> {
         Some(AttrIter { raw_iter: self.reader.attrs_iter(), tid: self.reader.tid()? })
     }
 }
 
-enum MsgType {
+pub enum MsgType {
     #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
     BindingRequest,
 
@@ -110,9 +110,6 @@ enum MsgType {
 
     #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectionAttemptIndication,
-
-    #[cfg(feature = "iana")]
-    GooglePing,
 
     Other(u16),
 }
@@ -203,9 +200,6 @@ impl From<u16> for MsgType {
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
             0x001C => MsgType::ConnectionAttemptIndication,
-
-            #[cfg(feature = "iana")]
-            0x0000 => MsgType::GooglePing,
 
             val => MsgType::Other(val),
         }
@@ -896,13 +890,12 @@ impl<'a> RawAttr<'a> {
     fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.get(0..2).map(carve)? }
     fn len(&self) -> Option<&'a [u8; 2]> { self.buf.get(2..4).map(carve)? }
     fn val(&self) -> Option<&'a [u8]> {
-        let val = self.len()
+        self.len()
             .map(u16::of_be)
             .map(|len| len + 3 & !3)
-            .map(|len| self.buf.get(4..len as usize))
+            .map(|len| self.buf.get(4..4 + len as usize))
             .flatten()
-            .unwrap_or(self.buf);
-        Some(val)
+            .or(self.buf.get(4..))
     }
 }
 
@@ -943,40 +936,40 @@ mod tests {
         0x00, 0x00, 0x00, 0x40 | 0x20,  // change both ip and port
     ];
 
-    // #[test]
-    // fn read_raw() {
-    //     let msg = RawMsg::from(&MSG);
-    //
-    //     assert_eq!(0x0001, msg.typ.get());
-    //     assert_eq!(0x0008, msg.len.get());
-    //     assert_eq!(0x2112A442_00000000_00000000_00000001, msg.tid.get());
-    //     assert_eq!(&MSG[20..28], msg.attrs);
-    //     assert_eq!(1, msg.attrs_iter().count());
-    //
-    //     let attr = msg.attrs_iter().next().unwrap();
-    //
-    //     assert_eq!(0x0003, attr.typ.get());
-    //     assert_eq!(0x0004, attr.len.get());
-    //     assert_eq!(&MSG[24..28], attr.val);
-    // }
-    //
-    // #[test]
-    // fn read() {
-    //     let msg = Msg::from(&MSG).unwrap();
-    //
-    //     if let MsgType::BindingRequest = msg.typ() {} else { assert!(false); }
-    //
-    //     assert_eq!(0x2112A442_00000000_00000000_00000001, msg.tid());
-    //
-    //     assert_eq!(1, msg.attrs_iter().count());
-    //
-    //     let attr = msg.attrs_iter().next().unwrap();
-    //
-    //     if let Attr::ChangeRequest { change_ip, change_port } = attr {
-    //         assert_eq!(true, change_ip);
-    //         assert_eq!(true, change_port);
-    //     } else {
-    //         assert!(false);
-    //     }
-    // }
+    #[test]
+    fn read_raw() {
+        let msg = RawMsg::from(&MSG);
+
+        assert_eq!(&MSG[0..2], msg.typ().unwrap());
+        assert_eq!(&MSG[2..4], msg.len().unwrap());
+        assert_eq!(&MSG[4..20], msg.tid().unwrap());
+        assert_eq!(&MSG[20..28], msg.attrs().unwrap());
+        assert_eq!(1, msg.attrs_iter().count());
+
+        let attr = msg.attrs_iter().next().unwrap();
+
+        assert_eq!(&MSG[20..22], attr.typ().unwrap());
+        assert_eq!(&MSG[22..24], attr.len().unwrap());
+        assert_eq!(&MSG[24..28], attr.val().unwrap());
+    }
+
+    #[test]
+    fn read() {
+        let msg = Msg::from(&MSG);
+
+        if let MsgType::BindingRequest = msg.typ().unwrap() {} else { assert!(false); }
+
+        assert_eq!(0x2112A442_00000000_00000000_00000001, msg.tid().unwrap());
+
+        assert_eq!(1, msg.attrs_iter().unwrap().count());
+
+        let attr = msg.attrs_iter().unwrap().next().unwrap();
+
+        if let Attr::ChangeRequest { change_ip, change_port } = attr {
+            assert_eq!(true, change_ip);
+            assert_eq!(true, change_port);
+        } else {
+            assert!(false);
+        }
+    }
 }
