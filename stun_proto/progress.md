@@ -368,3 +368,11 @@ Legend:
 |:-----------|:-------:|:-------:|
 | `446`      | &cross; | &cross; |
 | `447`      | &cross; | &cross; |
+
+## [RFC 7982](https://datatracker.ietf.org/doc/html/rfc7982)
+
+### Attributes
+
+| Attribute                      | Reader  | Writer  |
+|:-------------------------------|:-------:|:-------:|
+| `TRANSACITON-TRANSMIT-COUNTER` | &cross; | &cross; |

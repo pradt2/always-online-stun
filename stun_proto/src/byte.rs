@@ -124,10 +124,10 @@ impl From<u16> for MsgType {
             0x0001 => MsgType::BindingRequest,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            0x0011 => MsgType::BindingResponse,
+            0x0101 => MsgType::BindingResponse,
 
             #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            0x0101 => MsgType::BindingIndication,
+            0x0011 => MsgType::BindingIndication,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
             0x0111 => MsgType::BindingErrorResponse,
@@ -142,70 +142,70 @@ impl From<u16> for MsgType {
             0x0112 => MsgType::SharedSecretErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::AllocateRequest,
+            0x0003 => MsgType::AllocateRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::AllocateResponse,
+            0x0103 => MsgType::AllocateResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::AllocateErrorResponse,
+            0x0113 => MsgType::AllocateErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::RefreshRequest,
+            0x0004 => MsgType::RefreshRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::RefreshResponse,
+            0x0104 => MsgType::RefreshResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::RefreshErrorResponse,
+            0x0114 => MsgType::RefreshErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::SendIndication,
+            0x0016 => MsgType::SendIndication,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::DataIndication,
+            0x0017 => MsgType::DataIndication,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::CreatePermissionRequest,
+            0x0008 => MsgType::CreatePermissionRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::CreatePermissionResponse,
+            0x0108 => MsgType::CreatePermissionResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::CreatePermissionErrorResponse,
+            0x0118 => MsgType::CreatePermissionErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::ChannelBindRequest,
+            0x0009 => MsgType::ChannelBindRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::ChannelBindResponse,
+            0x0109 => MsgType::ChannelBindResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0000 => MsgType::ChannelBindErrorResponse,
+            0x0119 => MsgType::ChannelBindErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x0000 => MsgType::ConnectRequest,
+            0x000A => MsgType::ConnectRequest,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x0000 => MsgType::ConnectResponse,
+            0x010A => MsgType::ConnectResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x0000 => MsgType::ConnectErrorResponse,
+            0x011A => MsgType::ConnectErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x0000 => MsgType::ConnectionBindRequest,
+            0x000B => MsgType::ConnectionBindRequest,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x0000 => MsgType::ConnectionBindResponse,
+            0x010B => MsgType::ConnectionBindResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x0000 => MsgType::ConnectionBindErrorResponse,
+            0x011B => MsgType::ConnectionBindErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x0000 => MsgType::ConnectionAttemptIndication,
+            0x001C => MsgType::ConnectionAttemptIndication,
 
             #[cfg(feature = "iana")]
-            0x000 => MsgType::GooglePing,
+            0x0000 => MsgType::GooglePing,
 
             val => MsgType::Other(val),
         }
@@ -417,6 +417,9 @@ enum Attr<'a> {
     #[cfg(any(feature = "rfc6062", feature = "iana"))]
     ConnectionId(u32),
 
+    #[cfg(any(feature = "rfc7982", feature = "iana"))]
+    TransactionTransmitCounter { req: u8, res: u8 },
+
     Other { typ: u16, val: &'a [u8] },
 }
 
@@ -430,81 +433,81 @@ impl<'a> Attr<'a> {
 
         Some(match typ {
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0001 => Attr::MappedAddress(Self::parse_address(val)?),
+            0x0001 => Self::MappedAddress(Self::parse_address(val)?),
 
             #[cfg(feature = "rfc3489")]
-            0x0002 => Attr::ResponseAddress(Self::parse_address(val)?),
+            0x0002 => Self::ResponseAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5780", feature = "iana"))]
             0x0003 => {
                 let (change_ip, change_port) = Self::parse_change_request(val)?;
-                Attr::ChangeRequest { change_ip, change_port }
+                Self::ChangeRequest { change_ip, change_port }
             }
 
             #[cfg(feature = "rfc3489")]
-            0x0004 => Attr::SourceAddress(Self::parse_address(val)?),
+            0x0004 => Self::SourceAddress(Self::parse_address(val)?),
 
             #[cfg(feature = "rfc3489")]
-            0x0005 => Attr::ChangedAddress(Self::parse_address(val)?),
+            0x0005 => Self::ChangedAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0006 => Attr::Username(Self::parse_string(val)?),
+            0x0006 => Self::Username(Self::parse_string(val)?),
 
             #[cfg(feature = "rfc3489")]
-            0x0007 => Attr::Password(Self::parse_string(val)?),
+            0x0007 => Self::Password(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0008 => Attr::MessageIntegrity(Self::parse_message_integrity(val)?),
+            0x0008 => Self::MessageIntegrity(Self::parse_message_integrity(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             0x0009 => {
                 let (code, reason) = Self::parse_error_code(val)?;
-                Attr::ErrorCode { code, reason }
+                Self::ErrorCode { code, reason }
             }
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x000A => Attr::UnknownAttributes(UnknownAttrIter { buf: val }),
+            0x000A => Self::UnknownAttributes(UnknownAttrIter { buf: val }),
 
             #[cfg(feature = "rfc3489")]
-            0x000B => Attr::ReflectedFrom(Self::parse_address(val)?),
+            0x000B => Self::ReflectedFrom(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x000C => Attr::ChannelNumber(val.get(0..2).map(carve)?.map(u16::of_be)?),
+            0x000C => Self::ChannelNumber(val.get(0..2).map(carve)?.map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x000D => Attr::Lifetime(Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
+            0x000D => Self::Lifetime(Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0012 => Attr::XorPeerAddress(Self::parse_address(val)?),
+            0x0012 => Self::XorPeerAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0013 => Attr::Data(val),
+            0x0013 => Self::Data(val),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0016 => Attr::XorRelayedAddress(Self::parse_address(val)?),
+            0x0016 => Self::XorRelayedAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x0017 => Attr::RequestedAddressFamily(val.get(0).map(AddressFamily::from)?),
+            0x0017 => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0018 => Attr::EvenPort(val.get(0).map(|val| val & 1 == 1)?),
+            0x0018 => Self::EvenPort(val.get(0).map(|val| val & 1 == 1)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0019 => Attr::RequestedTransport(val.get(0).map(TransportProtocol::from)?),
+            0x0019 => Self::RequestedTransport(val.get(0).map(TransportProtocol::from)?),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0014 => Attr::Realm(Self::parse_string(val)?),
+            0x0014 => Self::Realm(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0015 => Attr::Nonce(Self::parse_string(val)?),
+            0x0015 => Self::Nonce(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x001A => Attr::DontFragment,
+            0x001A => Self::DontFragment,
 
             #[cfg(any(feature = "rfc7635", feature = "iana"))]
             0x001B => {
                 let (nonce, mac, timestamp, lifetime) = Self::parse_access_token(val)?;
-                Attr::AccessToken {
+                Self::AccessToken {
                     nonce,
                     mac,
                     timestamp,
@@ -513,42 +516,42 @@ impl<'a> Attr<'a> {
             }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001C => Attr::MessageIntegritySha256(val.get(0..32).map(carve)??),
+            0x001C => Self::MessageIntegritySha256(val.get(0..32).map(carve)??),
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001D => Attr::PasswordAlgorithm(Self::parse_password_algorithm(val)?),
+            0x001D => Self::PasswordAlgorithm(Self::parse_password_algorithm(val)?),
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001E => Attr::Userhash(val.get(0..32).map(carve)??),
+            0x001E => Self::Userhash(val.get(0..32).map(carve)??),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0020 => Attr::XorMappedAddress(Self::parse_xor_address(val, tid)?),
+            0x0020 => Self::XorMappedAddress(Self::parse_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0022 => Attr::ReservationToken(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            0x0022 => Self::ReservationToken(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x0024 => Attr::Priority(val.get(0..4).map(carve)?.map(u32::of_be)?),
+            0x0024 => Self::Priority(val.get(0..4).map(carve)?.map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x0025 => Attr::UseCandidate,
+            0x0025 => Self::UseCandidate,
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x0026 => Attr::Padding(val),
+            0x0026 => Self::Padding(val),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x0027 => Attr::ResponsePort(val.get(0..2).map(carve)?.map(u16::of_be)?),
+            0x0027 => Self::ResponsePort(val.get(0..2).map(carve)?.map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x002A => Attr::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
+            0x002A => Self::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x8000 => Attr::AdditionalAddressFamily(val.get(0).map(AddressFamily::from)?),
+            0x8000 => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
             0x8001 => {
                 let (family, code, reason) = Self::parse_address_error_code(val)?;
-                Attr::AddressErrorCode {
+                Self::AddressErrorCode {
                     family,
                     code,
                     reason,
@@ -557,7 +560,7 @@ impl<'a> Attr<'a> {
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             0x8002 => {
-                Attr::PasswordAlgorithms(PasswordAlgorithmIter {
+                Self::PasswordAlgorithms(PasswordAlgorithmIter {
                     raw_iter: RawIter {
                         buf: val
                     }
@@ -565,20 +568,26 @@ impl<'a> Attr<'a> {
             }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x8003 => Attr::AlternateDomain(Self::parse_string(val)?),
+            0x8003 => Self::AlternateDomain(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x8004 => Attr::Icmp {
+            0x8004 => Self::Icmp {
                 typ: *val.get(2)?,
                 code: *val.get(3)?,
                 data: val.get(4..8).map(carve)?.map(u32::of_be)?,
             },
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x8022 => Attr::Software(Self::parse_string(val)?),
+            0x8022 => Self::Software(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x8023 => Attr::AlternateServer(Self::parse_address(val)?),
+            0x8023 => Self::AlternateServer(Self::parse_address(val)?),
+
+            #[cfg(any(feature = "rfc7982", feature = "iana"))]
+            0x8025 => Self::TransactionTransmitCounter {
+                req: *val.get(2)?,
+                res: *val.get(3)?,
+            },
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
             0x8027 => {
@@ -588,37 +597,37 @@ impl<'a> Attr<'a> {
                     .map(|val| val as u64)
                     .map(Duration::from_secs)?;
 
-                Attr::CacheTimeout(timeout)
-            },
+                Self::CacheTimeout(timeout)
+            }
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x8028 => Attr::Fingerprint(Self::parse_fingerprint(val)?),
+            0x8028 => Self::Fingerprint(Self::parse_fingerprint(val)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x8029 => Attr::IceControlled(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            0x8029 => Self::IceControlled(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x802A => Attr::IceControlling(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            0x802A => Self::IceControlling(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x802B => Attr::ResponseOrigin(Self::parse_address(val)?),
+            0x802B => Self::ResponseOrigin(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x802C => Attr::OtherAddress(Self::parse_address(val)?),
+            0x802C => Self::OtherAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc6679", feature = "iana"))]
-            0x802D => Attr::EcnCheck {
+            0x802D => Self::EcnCheck {
                 valid: val.get(3).map(|val| val & 128 != 0)?,
                 val: val.get(3).map(|val| (val & 96) >> 5)?,
             },
 
             #[cfg(any(feature = "rfc7635", feature = "iana"))]
-            0x802E => Attr::ThirdPartyAuthorisation(Self::parse_string(val)?),
+            0x802E => Self::ThirdPartyAuthorisation(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc8016", feature = "iana"))]
-            0x8030 => Attr::MobilityTicket(val),
+            0x8030 => Self::MobilityTicket(val),
 
-            typ => Attr::Other { typ, val },
+            typ => Self::Other { typ, val },
         })
     }
 

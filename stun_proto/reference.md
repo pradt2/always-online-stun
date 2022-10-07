@@ -1661,6 +1661,36 @@ connection. It is a 32-bit unsigned integral value.
  - `446 (Connection Already Exists)`
  - `447 (Connection Timeout or Failure)`
 
+## [RFC 7982](https://datatracker.ietf.org/doc/html/rfc7982)
+
+### [Section 3.1](https://datatracker.ietf.org/doc/html/rfc7982#section-3.1) Attribute TRANSACTION-TRANSMIT-COUNTER
+
+The format of the value in the TRANSACTION_TRANSMIT_COUNTER attribute
+in the request is:
+
+```text
+0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1 2 3 4 5 6 7 8 9 0 1
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+|        Reserved (Padding)     |    Req        |     Resp      |
++-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+-+
+```
+
+The fields are described below:
+
+Req:  Number of times the request is transmitted with the same
+transaction ID to the server.
+
+Resp:  Number of times a response with the same transaction ID is
+sent from the server.  MUST be set to zero in requests and ignored
+by the receiver.
+
+The padding is necessary to hit the 32-bit boundary needed for STUN
+attributes.  The padding bits are ignored, but to allow for future
+reuse of these bits, they MUST be set to zero.
+
+The IANA-assigned STUN type for the new attribute is `0x8025`.
+
+
 ## Other relevant documents
 
 ### [RFC 5769](https://datatracker.ietf.org/doc/html/rfc5769)
