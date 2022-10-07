@@ -1,4 +1,4 @@
-use crate::endian::{u16be};
+use core::time::Duration;
 
 use endianeer::prelude::*;
 
@@ -219,6 +219,56 @@ pub enum SocketAddr {
 }
 
 #[derive(Copy, Clone)]
+pub enum AddressFamily {
+    IPv4,
+    IPv6,
+    Other(u8),
+}
+
+impl AddressFamily {
+    fn from(fam: &u8) -> Self {
+        match fam {
+            1 => Self::IPv4,
+            2 => Self::IPv6,
+            fam => Self::Other(*fam),
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum TransportProtocol {
+    UDP,
+    Other(u8),
+}
+
+impl TransportProtocol {
+    fn from(proto: &u8) -> Self {
+        match proto {
+            17 => Self::UDP,
+            proto => Self::Other(*proto),
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
+pub enum ErrorCode {
+    Other(u16),
+}
+
+impl ErrorCode {
+    fn from(buf: &[u8; 2]) -> Self {
+        let class = buf[0] as u16 >> 5; // we only care about 3 MSB
+        let num = buf[1] as u16;
+
+        let code = class * 100 + num;
+
+        match code {
+            code => Self::Other(code),
+        }
+    }
+}
+
+#[derive(Copy, Clone)]
 enum Attr<'a> {
     #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     MappedAddress(SocketAddr),
@@ -266,10 +316,10 @@ enum Attr<'a> {
     AlternateServer(SocketAddr),
 
     #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    ErrorCode { code: u16, reason: &'a str },
+    ErrorCode { code: ErrorCode, reason: &'a str },
 
     #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    UnknownAttributes(&'a [u16be]),
+    UnknownAttributes(UnknownAttrIter<'a>),
 
     #[cfg(feature = "rfc3489")]
     ReflectedFrom(SocketAddr),
@@ -299,13 +349,13 @@ enum Attr<'a> {
     Padding(&'a [u8]),
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
-    CacheTimeout(u32),
+    CacheTimeout(Duration),
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     ChannelNumber(u16),
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-    Lifetime(u32),
+    Lifetime(Duration),
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     XorPeerAddress(SocketAddr),
@@ -320,7 +370,7 @@ enum Attr<'a> {
     EvenPort(bool),
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-    RequestedTransport(u8), // can be narrowed down
+    RequestedTransport(TransportProtocol),
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     DontFragment,
@@ -329,13 +379,13 @@ enum Attr<'a> {
     ReservationToken(u64),
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
-    RequestedAddressFamily(u8), // can be narrowed down
+    RequestedAddressFamily(AddressFamily),
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
-    AdditionalAddressFamily(u8), // can be narrowed down
+    AdditionalAddressFamily(AddressFamily),
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
-    AddressErrorCode { family: u8, code: u16, reason: &'a str }, // family and code can be narrowed down
+    AddressErrorCode { family: AddressFamily, code: ErrorCode, reason: &'a str },
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
     Icmp { typ: u8, code: u8, data: u32 }, // maybe can be narrowed down
@@ -359,7 +409,7 @@ enum Attr<'a> {
     ThirdPartyAuthorisation(&'a str),
 
     #[cfg(any(feature = "rfc7635", feature = "iana"))]
-    AccessToken { nonce: &'a [u8], mac: &'a [u8], timestamp: u64, lifetime: u32 },
+    AccessToken { nonce: &'a [u8], mac: &'a [u8], timestamp: Duration, lifetime: Duration },
 
     #[cfg(any(feature = "rfc8016", feature = "iana"))]
     MobilityTicket(&'a [u8]),
@@ -371,7 +421,6 @@ enum Attr<'a> {
 }
 
 impl<'a> Attr<'a> {
-
     fn from(raw: RawAttr<'a>, tid: &'a [u8; 16]) -> Option<Attr<'a>> {
         let typ = raw.typ().map(u16::of_be)?;
         let len = raw.len().map(u16::of_be)?;
@@ -379,10 +428,6 @@ impl<'a> Attr<'a> {
             .map(|val| val.get(0..len as usize))
             .flatten()?;
 
-        Self::parse(typ, val, tid)
-    }
-
-    fn parse(typ: u16, val: &'a [u8], tid: &'a [u8; 16]) -> Option<Attr<'a>> {
         Some(match typ {
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             0x0001 => Attr::MappedAddress(Self::parse_address(val)?),
@@ -418,16 +463,16 @@ impl<'a> Attr<'a> {
             }
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x000A => Attr::UnknownAttributes(Self::parse_unknown_attrs(val)?),
+            0x000A => Attr::UnknownAttributes(UnknownAttrIter { buf: val }),
 
             #[cfg(feature = "rfc3489")]
             0x000B => Attr::ReflectedFrom(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x000C => Attr::ChannelNumber(0), // TODO add parsing
+            0x000C => Attr::ChannelNumber(val.get(0..2).map(carve)?.map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x000D => Attr::Lifetime(0), // TODO add parsing
+            0x000D => Attr::Lifetime(Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0012 => Attr::XorPeerAddress(Self::parse_address(val)?),
@@ -439,13 +484,13 @@ impl<'a> Attr<'a> {
             0x0016 => Attr::XorRelayedAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x0017 => Attr::RequestedAddressFamily(0), // TODO add parsing
+            0x0017 => Attr::RequestedAddressFamily(val.get(0).map(AddressFamily::from)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0018 => Attr::EvenPort(false), // TODO add parsing
+            0x0018 => Attr::EvenPort(val.get(0).map(|val| val & 1 == 1)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0019 => Attr::RequestedTransport(0), // TODO add parsing
+            0x0019 => Attr::RequestedTransport(val.get(0).map(TransportProtocol::from)?),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             0x0014 => Attr::Realm(Self::parse_string(val)?),
@@ -457,30 +502,33 @@ impl<'a> Attr<'a> {
             0x001A => Attr::DontFragment,
 
             #[cfg(any(feature = "rfc7635", feature = "iana"))]
-            0x001B => Attr::AccessToken {
-                nonce: &[],
-                mac: &[],
-                timestamp: 0,
-                lifetime: 0, // TODO add parsing
-            },
+            0x001B => {
+                let (nonce, mac, timestamp, lifetime) = Self::parse_access_token(val)?;
+                Attr::AccessToken {
+                    nonce,
+                    mac,
+                    timestamp,
+                    lifetime,
+                }
+            }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001C => Attr::MessageIntegritySha256(&[0u8; 32]), // TODO add parsing
+            0x001C => Attr::MessageIntegritySha256(val.get(0..32).map(carve)??),
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001D => Attr::PasswordAlgorithm(PasswordAlgorithm::Other { typ: 0, params: &[] }), // TODO add parsing
+            0x001D => Attr::PasswordAlgorithm(Self::parse_password_algorithm(val)?),
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001E => Attr::Userhash(&[0u8; 32]), // TODO add parsing
+            0x001E => Attr::Userhash(val.get(0..32).map(carve)??),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             0x0020 => Attr::XorMappedAddress(Self::parse_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0022 => Attr::ReservationToken(0), // TODO add parsing
+            0x0022 => Attr::ReservationToken(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x0024 => Attr::Priority(0), // TODO parsing
+            0x0024 => Attr::Priority(val.get(0..4).map(carve)?.map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
             0x0025 => Attr::UseCandidate,
@@ -489,32 +537,41 @@ impl<'a> Attr<'a> {
             0x0026 => Attr::Padding(val),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x0027 => Attr::ResponsePort(0), // TODO add padding
+            0x0027 => Attr::ResponsePort(val.get(0..2).map(carve)?.map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x002A => Attr::ConnectionId(0), // TODO add parsing
+            0x002A => Attr::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x8000 => Attr::AdditionalAddressFamily(0), // TODO add parsing
+            0x8000 => Attr::AdditionalAddressFamily(val.get(0).map(AddressFamily::from)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x8001 => Attr::AddressErrorCode {
-                family: 0,
-                code: 0,
-                reason: "", // TODO add parsing
-            },
+            0x8001 => {
+                let (family, code, reason) = Self::parse_address_error_code(val)?;
+                Attr::AddressErrorCode {
+                    family,
+                    code,
+                    reason,
+                }
+            }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x8002 => Attr::PasswordAlgorithms(PasswordAlgorithmIter { buf: val }),
+            0x8002 => {
+                Attr::PasswordAlgorithms(PasswordAlgorithmIter {
+                    raw_iter: RawIter {
+                        buf: val
+                    }
+                })
+            }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             0x8003 => Attr::AlternateDomain(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
             0x8004 => Attr::Icmp {
-                typ: 0,
-                code: 0,
-                data: 0, // TODO add parsing
+                typ: *val.get(2)?,
+                code: *val.get(3)?,
+                data: val.get(4..8).map(carve)?.map(u32::of_be)?,
             },
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
@@ -524,16 +581,24 @@ impl<'a> Attr<'a> {
             0x8023 => Attr::AlternateServer(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x8027 => Attr::CacheTimeout(0), // TODO add padding
+            0x8027 => {
+                let timeout = val.get(0..4)
+                    .map(carve)?
+                    .map(u32::of_be)
+                    .map(|val| val as u64)
+                    .map(Duration::from_secs)?;
+
+                Attr::CacheTimeout(timeout)
+            },
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             0x8028 => Attr::Fingerprint(Self::parse_fingerprint(val)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x8029 => Attr::IceControlled(0), // TODO add parsing
+            0x8029 => Attr::IceControlled(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x802A => Attr::IceControlling(0), // TODO add parsing
+            0x802A => Attr::IceControlling(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
             0x802B => Attr::ResponseOrigin(Self::parse_address(val)?),
@@ -542,7 +607,10 @@ impl<'a> Attr<'a> {
             0x802C => Attr::OtherAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc6679", feature = "iana"))]
-            0x802D => Attr::EcnCheck { valid: false, val: 0 }, // TODO add parsing
+            0x802D => Attr::EcnCheck {
+                valid: val.get(3).map(|val| val & 128 != 0)?,
+                val: val.get(3).map(|val| (val & 96) >> 5)?,
+            },
 
             #[cfg(any(feature = "rfc7635", feature = "iana"))]
             0x802E => Attr::ThirdPartyAuthorisation(Self::parse_string(val)?),
@@ -585,9 +653,14 @@ impl<'a> Attr<'a> {
             .map(carve)?
             .map(u16::of_be)?;
 
+        let port_mask = tid.get(0..2)
+            .map(carve)?
+            .map(u16::of_be)?;
+
         let port = buf.get(2..4)
             .map(carve)?
-            .map(u16::of_be)?; // TODO port is xor'ed as well
+            .map(u16::of_be)
+            .map(|port| port ^ port_mask)?;
 
         if addr_family == 1 {
             let cookie = tid.get(0..4)
@@ -600,10 +673,8 @@ impl<'a> Attr<'a> {
                 .map(|ip| ip ^ cookie)
                 .map(u32::to_be_bytes)?;
 
-            return Some(SocketAddr::V4(ip, port));
-        }
-
-        if addr_family == 2 {
+            Some(SocketAddr::V4(ip, port))
+        } else if addr_family == 2 {
             let tid: u128 = tid.to_be();
 
             let ip = buf.get(4..20)
@@ -612,10 +683,8 @@ impl<'a> Attr<'a> {
                 .map(|ip| ip ^ tid)
                 .map(u128::to_be_bytes)?;
 
-            return Some(SocketAddr::V6(ip, port));
-        }
-
-        return None;
+            Some(SocketAddr::V6(ip, port))
+        } else { None }
     }
 
     fn parse_string(buf: &[u8]) -> Option<&str> {
@@ -623,26 +692,21 @@ impl<'a> Attr<'a> {
     }
 
     fn parse_message_integrity(buf: &[u8]) -> Option<&[u8; 20]> {
-        buf.get(0..20)?.try_into().ok()
+        buf.get(0..20)?
+            .try_into()
+            .ok()
     }
 
     fn parse_fingerprint(buf: &[u8]) -> Option<u32> {
-        buf.get(0..4).map(carve)?.map(u32::of_be)
+        buf.get(0..4)
+            .map(carve)?
+            .map(u32::of_be)
     }
 
-    fn parse_error_code(buf: &[u8]) -> Option<(u16, &str)> {
-        let class = *buf.get(2)? as u16 >> 5; // we only care about 3 MSB
-        let num = *buf.get(3)? as u16;
-
-        let code = class * 100 + num;
-
-        let reason = buf.get(4..).map(|buf| core::str::from_utf8(buf).ok())??;
+    fn parse_error_code(buf: &[u8]) -> Option<(ErrorCode, &str)> {
+        let code = ErrorCode::from(buf.get(2..4).map(carve)??);
+        let reason = buf.get(4..).map(Self::parse_string)??;
         Some((code, reason))
-    }
-
-    fn parse_unknown_attrs(buf: &[u8]) -> Option<&[u16be]> {
-        if buf.len() % 2 != 0 { return None; }
-        unsafe { Some(core::mem::transmute(buf)) }
     }
 
     fn parse_change_request(buf: &[u8]) -> Option<(bool, bool)> {
@@ -651,20 +715,128 @@ impl<'a> Attr<'a> {
         Some((change_ip, change_port))
     }
 
+    fn parse_access_token(buf: &[u8]) -> Option<(&[u8], &[u8], Duration, Duration)> {
+        let mut cursor = 0usize;
+
+        let nonce_len = buf.get(cursor..cursor + 2)
+            .map(carve)?
+            .map(u16::of_be)? as usize;
+
+        cursor += 2;
+
+        let nonce = buf.get(cursor..cursor + nonce_len)?;
+
+        cursor += nonce_len;
+
+        let mac_len = buf.get(cursor..cursor + 2)
+            .map(carve)?
+            .map(u16::of_be)? as usize;
+
+        cursor += 2;
+
+        let mac = buf.get(cursor..cursor + mac_len)?;
+
+        cursor += mac_len;
+
+        let timestamp_bytes: &[u8; 8] = buf.get(cursor..cursor + 8)
+            .map(carve)??;
+
+        cursor += 8;
+
+        let timestamp_seconds = timestamp_bytes.get(0..4)
+            .map(carve)?
+            .map(u32::of_be)
+            .map(|val| (val as u64) << 16)? | timestamp_bytes.get(4..6)
+            .map(carve)?
+            .map(u16::of_be)? as u64;
+
+        let timestamp_frac = timestamp_bytes.get(6..8)
+            .map(carve)?
+            .map(u16::of_be)? as f64 / 64000_f64;
+
+        let timestamp = Duration::from_secs_f64(timestamp_seconds as f64 + timestamp_frac);
+
+        let lifetime_secs = buf.get(cursor..cursor + 4)
+            .map(carve)?
+            .map(u32::of_be)?;
+
+        let lifetime = Duration::from_secs(lifetime_secs as u64);
+
+        Some((nonce, mac, timestamp, lifetime))
+    }
+
+    fn parse_password_algorithm(buf: &[u8]) -> Option<PasswordAlgorithm> {
+        PasswordAlgorithmIter { raw_iter: RawIter { buf } }.next()
+    }
+
+    fn parse_address_error_code(buf: &'a [u8]) -> Option<(AddressFamily, ErrorCode, &'a str)> {
+        let address_family = buf.get(0)
+            .map(AddressFamily::from)?;
+
+        let error_code = buf.get(2..4)
+            .map(carve)?
+            .map(ErrorCode::from)?;
+
+        let reason = Self::parse_string(buf.get(4..)?)?;
+
+        Some((address_family, error_code, reason))
+    }
+}
+
+#[derive(Copy, Clone)]
+struct UnknownAttrIter<'a> {
+    buf: &'a [u8],
+}
+
+impl<'a> Iterator for UnknownAttrIter<'a> {
+    type Item = u16;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let attr = self.buf.get(0..2)
+            .map(carve)?
+            .map(u16::of_be)?;
+
+        self.buf = self.buf.get(2..)?;
+        Some(attr)
+    }
 }
 
 #[cfg(any(feature = "rfc8489", feature = "iana"))]
 #[derive(Copy, Clone)]
 #[cfg(any(feature = "rfc8489", feature = "iana"))]
 pub enum PasswordAlgorithm<'a> {
-    Other { typ: u16, params: &'a [u8] }
+    Md5,
+    Sha256,
+    Other { typ: u16, params: &'a [u8] },
+}
+
+impl<'a> PasswordAlgorithm<'a> {
+    fn from(typ: u16, params: &'a [u8]) -> Self {
+        match typ {
+            1 => PasswordAlgorithm::Md5,
+            2 => PasswordAlgorithm::Sha256,
+            typ => PasswordAlgorithm::Other { typ, params },
+        }
+    }
 }
 
 #[cfg(any(feature = "rfc8489", feature = "iana"))]
 #[derive(Copy, Clone)]
 #[cfg(any(feature = "rfc8489", feature = "iana"))]
 struct PasswordAlgorithmIter<'a> {
-    buf: &'a [u8],
+    raw_iter: RawIter<'a>,
+}
+
+impl<'a> Iterator for PasswordAlgorithmIter<'a> {
+    type Item = PasswordAlgorithm<'a>;
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let attr = self.raw_iter.next()?;
+        let typ = attr.typ().map(u16::of_be)?;
+        let len = attr.len().map(u16::of_be)?;
+        let params = attr.val()?.get(0..len as usize)?;
+        Some(PasswordAlgorithm::from(typ, params))
+    }
 }
 
 struct AttrIter<'a> {
@@ -725,6 +897,7 @@ impl<'a> RawAttr<'a> {
     }
 }
 
+#[derive(Copy, Clone)]
 pub struct RawIter<'a> {
     buf: &'a [u8],
 }
