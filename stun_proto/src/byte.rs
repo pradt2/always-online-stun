@@ -713,6 +713,7 @@ impl<'a> Attr<'a> {
         buf.get(0..4)
             .map(carve)?
             .map(u32::of_be)
+            .map(|val| val ^ 0x5354554E)
     }
 
     fn parse_error_code(buf: &[u8]) -> Option<(ErrorCode, &str)> {
