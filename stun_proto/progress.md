@@ -1,3 +1,15 @@
+# To do
+
+ - Test all message types
+ - Test all attributes
+ - Test for out-of-bounds reads
+ - Add feature to toggle between Option/Result return types
+ - Extract byte-level parser into its own lib
+ - Add mut interface to the byte-level parser
+ - Add builder interface to the byte-level parser (?)
+ - Add error codes
+ - Add IANA-only attributes
+
 # Implementation progress of RFC standards
 
 This documents tracks the implementation progress of the STUN features listed in all RFC documents.
