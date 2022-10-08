@@ -460,7 +460,7 @@ impl<'a> Attr<'a> {
             0x0007 => Self::Password(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0008 => Self::MessageIntegrity(Self::parse_message_integrity(val)?),
+            0x0008 => Self::MessageIntegrity(val.get(0..20).map(carve)??),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             0x0009 => {
@@ -481,13 +481,13 @@ impl<'a> Attr<'a> {
             0x000D => Self::Lifetime(Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0012 => Self::XorPeerAddress(Self::parse_address(val)?),
+            0x0012 => Self::XorPeerAddress(Self::parse_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0013 => Self::Data(val),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0016 => Self::XorRelayedAddress(Self::parse_address(val)?),
+            0x0016 => Self::XorRelayedAddress(Self::parse_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
             0x0017 => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from)?),
@@ -703,12 +703,6 @@ impl<'a> Attr<'a> {
         core::str::from_utf8(buf).ok()
     }
 
-    fn parse_message_integrity(buf: &[u8]) -> Option<&[u8; 20]> {
-        buf.get(0..20)?
-            .try_into()
-            .ok()
-    }
-
     fn parse_fingerprint(buf: &[u8]) -> Option<u32> {
         buf.get(0..4)
             .map(carve)?
@@ -885,9 +879,9 @@ impl<'a> RawMsg<'a> {
     fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.get(0..2).map(carve)? }
     fn len(&self) -> Option<&'a [u8; 2]> { self.buf.get(2..4).map(carve)? }
     fn tid(&self) -> Option<&'a [u8; 16]> { self.buf.get(4..20).map(carve)? }
-    fn attrs(&self) -> Option<&'a [u8]> { self.buf.get(20..) }
+    fn attr(&self) -> Option<&'a [u8]> { self.buf.get(20..) }
     fn attrs_iter(&self) -> RawIter {
-        RawIter { buf: self.attrs().unwrap_or(&[]) }
+        RawIter { buf: self.attr().unwrap_or(&[]) }
     }
 }
 
@@ -931,7 +925,7 @@ impl<'a> Iterator for RawIter<'a> {
 }
 
 #[cfg(test)]
-mod tests {
+mod head {
     use super::*;
 
     const MSG: [u8; 28] = [
@@ -953,7 +947,7 @@ mod tests {
         assert_eq!(&MSG[0..2], msg.typ().unwrap());
         assert_eq!(&MSG[2..4], msg.len().unwrap());
         assert_eq!(&MSG[4..20], msg.tid().unwrap());
-        assert_eq!(&MSG[20..28], msg.attrs().unwrap());
+        assert_eq!(&MSG[20..28], msg.attr().unwrap());
         assert_eq!(1, msg.attrs_iter().count());
 
         let attr = msg.attrs_iter().next().unwrap();
@@ -981,5 +975,581 @@ mod tests {
         } else {
             assert!(false);
         }
+    }
+}
+
+#[cfg(test)]
+mod attr {
+    use super::*;
+
+    const TID: [u8; 16] = [0u8; 16];
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test] fn mapped_address() {
+        let ATTR = [
+            0x00, 0x01,             // type: Mapped Address
+            0x00, 0x08,             // len: 8
+            0x00, 0x01,             // family: IPv4
+            0x01, 0x02,             // port: 0x0102
+            0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::MappedAddress(SocketAddr::V4(ip, port))) = attr {
+            assert_eq!([10, 11, 12, 13], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x00, 0x01,             // type: Mapped Address
+            0x00, 0x14,             // len: 20
+            0x00, 0x02,             // family: IPv6
+            0x01, 0x02,             // port: 0x0102
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::MappedAddress(SocketAddr::V6(ip, port))) = attr {
+            assert_eq!([
+                           0x00, 0x01, 0x02, 0x03,
+                           0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0A, 0x0B,
+                           0x0C, 0x0D, 0x0E, 0x0F,
+                       ], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+    }
+
+    #[cfg(feature = "rfc3489")]
+    #[test] fn response_address() {
+        let ATTR = [
+            0x00, 0x02,             // type: Response Address
+            0x00, 0x08,             // len: 8
+            0x00, 0x01,             // family: IPv4
+            0x01, 0x02,             // port: 0x0102
+            0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ResponseAddress(SocketAddr::V4(ip, port))) = attr {
+            assert_eq!([10, 11, 12, 13], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x00, 0x02,             // type: Response Address
+            0x00, 0x14,             // len: 20
+            0x00, 0x02,             // family: IPv6
+            0x01, 0x02,             // port: 0x0102
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ResponseAddress(SocketAddr::V6(ip, port))) = attr {
+            assert_eq!([
+                           0x00, 0x01, 0x02, 0x03,
+                           0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0A, 0x0B,
+                           0x0C, 0x0D, 0x0E, 0x0F,
+                       ], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5780", feature = "iana"))]
+    #[test] fn change_request() {
+        let ATTR = [
+            0x00, 0x03,              // type: ChangeRequest
+            0x00, 0x04,              // length: 4 (only value bytes count)
+            0x00, 0x00, 0x00, 0x40,  // change ip
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ChangeRequest { change_ip, change_port }) = attr {
+            assert_eq!(true, change_ip);
+            assert_eq!(false, change_port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x00, 0x03,              // type: ChangeRequest
+            0x00, 0x04,              // length: 4 (only value bytes count)
+            0x00, 0x00, 0x00, 0x20,  // change port
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ChangeRequest { change_ip, change_port }) = attr {
+            assert_eq!(false, change_ip);
+            assert_eq!(true, change_port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x00, 0x03,                     // type: ChangeRequest
+            0x00, 0x04,                     // length: 4 (only value bytes count)
+            0x00, 0x00, 0x00, 0x40 | 0x20,  // change both ip and port
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ChangeRequest { change_ip, change_port }) = attr {
+            assert_eq!(true, change_ip);
+            assert_eq!(true, change_port);
+        } else { assert!(false); }
+    }
+
+    #[cfg(feature = "rfc3489")]
+    #[test] fn source_address() {
+        let ATTR = [
+            0x00, 0x04,             // type: Source Address
+            0x00, 0x08,             // len: 8
+            0x00, 0x01,             // family: IPv4
+            0x01, 0x02,             // port: 0x0102
+            0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::SourceAddress(SocketAddr::V4(ip, port))) = attr {
+            assert_eq!([10, 11, 12, 13], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x00, 0x04,             // type: Source Address
+            0x00, 0x14,             // len: 20
+            0x00, 0x02,             // family: IPv6
+            0x01, 0x02,             // port: 0x0102
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::SourceAddress(SocketAddr::V6(ip, port))) = attr {
+            assert_eq!([
+                           0x00, 0x01, 0x02, 0x03,
+                           0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0A, 0x0B,
+                           0x0C, 0x0D, 0x0E, 0x0F,
+                       ], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+    }
+
+    #[cfg(feature = "rfc3489")]
+    #[test] fn changed_address() {
+        let ATTR = [
+            0x00, 0x05,             // type: Changed Address
+            0x00, 0x08,             // len: 8
+            0x00, 0x01,             // family: IPv4
+            0x01, 0x02,             // port: 0x0102
+            0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ChangedAddress(SocketAddr::V4(ip, port))) = attr {
+            assert_eq!([10, 11, 12, 13], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x00, 0x05,             // type: Changed Address
+            0x00, 0x14,             // len: 20
+            0x00, 0x02,             // family: IPv6
+            0x01, 0x02,             // port: 0x0102
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ChangedAddress(SocketAddr::V6(ip, port))) = attr {
+            assert_eq!([
+                           0x00, 0x01, 0x02, 0x03,
+                           0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0A, 0x0B,
+                           0x0C, 0x0D, 0x0E, 0x0F,
+                       ], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test] fn username() {
+        let ATTR = [
+            0x00, 0x06,                         // type: Username
+            0x00, 0x06,                         // len: 6
+            0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // 'string'
+            0x00, 0x00,                         // padding
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::Username(val)) = attr {
+            assert_eq!("string", val);
+        } else { assert!(false); }
+    }
+
+    #[cfg(feature = "rfc3489")]
+    #[test] fn password() {
+        let ATTR = [
+            0x00, 0x07,                         // type: Username
+            0x00, 0x06,                         // len: 6
+            0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // 'string'
+            0x00, 0x00,                         // padding
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::Password(val)) = attr {
+            assert_eq!("string", val);
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test] fn message_integrity() {
+        let ATTR = [
+            0x00, 0x08,             // type: Message Integrity
+            0x00, 0x14,             // len: 20
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F,
+            0x10, 0x11, 0x12, 0x13, // value
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::MessageIntegrity(val)) = attr {
+            assert_eq!(&ATTR[4..24], val.as_slice());
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test] fn error_code() {
+        let ATTR = [
+            0x00, 0x09,                         // type: Error Code
+            0x00, 0x0A,                         // len: 10
+            0x00, 0x00, 0x06 << 5 , 0x10,       // code: 616
+            0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // reason: 'string'
+            0x00, 0x00,                         // padding
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ErrorCode{ code: ErrorCode::Other(code), reason }) = attr {
+            assert_eq!(616, code);
+            assert_eq!("string", reason);
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test] fn unknown_attrs() {
+        let ATTR = [
+            0x00, 0x0A, // type: Unknown Attributes
+            0x00, 0x02, // len: 2
+            0x01, 0x02, // unknown attr: 0x0102
+            0x00, 0x00, // padding
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::UnknownAttributes(mut iter)) = attr {
+            if let Some(unknown_attr) = iter.next() {
+                assert_eq!(0x0102, unknown_attr);
+            } else { assert!(false); }
+
+            assert!(iter.next().is_none());
+        } else { assert!(false); }
+    }
+
+    #[cfg(feature = "rfc3489")]
+    #[test] fn reflected_from() {
+        let ATTR = [
+            0x00, 0x0B,             // type: Reflected From
+            0x00, 0x08,             // len: 8
+            0x00, 0x01,             // family: IPv4
+            0x01, 0x02,             // port: 0x0102
+            0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ReflectedFrom(SocketAddr::V4(ip, port))) = attr {
+            assert_eq!([10, 11, 12, 13], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x00, 0x0B,             // type: Reflected From
+            0x00, 0x14,             // len: 20
+            0x00, 0x02,             // family: IPv6
+            0x01, 0x02,             // port: 0x0102
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ReflectedFrom(SocketAddr::V6(ip, port))) = attr {
+            assert_eq!([
+                           0x00, 0x01, 0x02, 0x03,
+                           0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0A, 0x0B,
+                           0x0C, 0x0D, 0x0E, 0x0F,
+                       ], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test] fn channel_number() {
+        let ATTR = [
+            0x00, 0x0C, // type: Channel Number
+            0x00, 0x02, // len: 2
+            0x01, 0x02, // channel num: 0x0102
+            0x00, 0x00, // padding
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ChannelNumber(num)) = attr {
+            assert_eq!(0x0102, num);
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test] fn lifetime() {
+        let ATTR = [
+            0x00, 0x0D,             // type: Lifetime
+            0x00, 0x04,             // len: 2
+            0x00, 0x01, 0x02, 0x03  // secs: 0x010203
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::Lifetime(lifetime)) = attr {
+            assert_eq!(0x010203, lifetime.as_secs());
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
+    #[test] fn response_origin() {
+        let ATTR = [
+            0x80, 0x2B,             // type: Response Origin
+            0x00, 0x08,             // len: 8
+            0x00, 0x01,             // family: IPv4
+            0x01, 0x02,             // port: 0x0102
+            0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ResponseOrigin(SocketAddr::V4(ip, port))) = attr {
+            assert_eq!([10, 11, 12, 13], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x80, 0x2B,             // type: Response Origin
+            0x00, 0x14,             // len: 20
+            0x00, 0x02,             // family: IPv6
+            0x01, 0x02,             // port: 0x0102
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::ResponseOrigin(SocketAddr::V6(ip, port))) = attr {
+            assert_eq!([
+                           0x00, 0x01, 0x02, 0x03,
+                           0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0A, 0x0B,
+                           0x0C, 0x0D, 0x0E, 0x0F,
+                       ], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
+    #[test] fn other_address() {
+        let ATTR = [
+            0x80, 0x2C,             // type: Other Address
+            0x00, 0x08,             // len: 8
+            0x00, 0x01,             // family: IPv4
+            0x01, 0x02,             // port: 0x0102
+            0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::OtherAddress(SocketAddr::V4(ip, port))) = attr {
+            assert_eq!([10, 11, 12, 13], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+
+        let ATTR = [
+            0x80, 0x2C,             // type: Other Address
+            0x00, 0x14,             // len: 20
+            0x00, 0x02,             // family: IPv6
+            0x01, 0x02,             // port: 0x0102
+            0x00, 0x01, 0x02, 0x03,
+            0x04, 0x05, 0x06, 0x07,
+            0x08, 0x09, 0x0A, 0x0B,
+            0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter {
+                buf: &ATTR
+            },
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::OtherAddress(SocketAddr::V6(ip, port))) = attr {
+            assert_eq!([
+                           0x00, 0x01, 0x02, 0x03,
+                           0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0A, 0x0B,
+                           0x0C, 0x0D, 0x0E, 0x0F,
+                       ], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
     }
 }
