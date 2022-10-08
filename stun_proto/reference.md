@@ -1659,6 +1659,8 @@ connection. It is a 32-bit unsigned integral value.
 ### [Section 6.4](https://datatracker.ietf.org/doc/html/rfc6062#section-6.3) New STUN error codes
 
  - `446 (Connection Already Exists)`
+
+
  - `447 (Connection Timeout or Failure)`
 
 ## [RFC 7982](https://datatracker.ietf.org/doc/html/rfc7982)
