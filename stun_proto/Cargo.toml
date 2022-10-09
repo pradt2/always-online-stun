@@ -23,3 +23,4 @@ default = ["rfc3489", "rfc5389", "rfc5245", "rfc5780", "rfc5766", "rfc8489", "rf
 
 [dependencies]
 endianeer = { path = "../endianeer", default-features = false, features = ["carve", "unsigned"] }
+stun_bytes = { path = "../stun_bytes" }

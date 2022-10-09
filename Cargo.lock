@@ -735,6 +735,13 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
+name = "stun_bytes"
+version = "0.1.0"
+dependencies = [
+ "endianeer",
+]
+
+[[package]]
 name = "stun_client"
 version = "0.1.0"
 dependencies = [
@@ -747,6 +754,7 @@ name = "stun_proto"
 version = "0.1.0"
 dependencies = [
  "endianeer",
+ "stun_bytes",
 ]
 
 [[package]]

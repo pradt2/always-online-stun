@@ -1,6 +1,6 @@
 use core::time::Duration;
-
 use endianeer::prelude::*;
+use stun_bytes::{RawAttr, RawMsg, RawIter};
 
 pub struct Msg<'a> {
     reader: RawMsg<'a>,
@@ -32,7 +32,7 @@ impl<'a> Msg<'a> {
             .map(u128::of_be);
 
         #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-        let tid = tid.map(|val| val & ((1u128 << 96) - 1));
+            let tid = tid.map(|val| val & ((1u128 << 96) - 1));
 
         tid
     }
@@ -262,7 +262,6 @@ impl TransportProtocol {
 
 #[derive(Copy, Clone)]
 pub enum ErrorCode {
-
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     TryAlternate,
 
@@ -710,9 +709,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             0x8002 => {
                 Self::PasswordAlgorithms(PasswordAlgorithmIter {
-                    raw_iter: RawIter {
-                        buf: val
-                    }
+                    raw_iter: RawIter::from(val),
                 })
             }
 
@@ -919,7 +916,7 @@ impl<'a> Attr<'a> {
     }
 
     fn parse_password_algorithm(buf: &[u8]) -> Option<PasswordAlgorithm> {
-        PasswordAlgorithmIter { raw_iter: RawIter { buf } }.next()
+        PasswordAlgorithmIter { raw_iter: RawIter::from(&buf) }.next()
     }
 
     fn parse_address_error_code(buf: &'a [u8]) -> Option<(AddressFamily, ErrorCode, &'a str)> {
@@ -1372,9 +1369,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1395,9 +1390,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1424,9 +1417,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1447,9 +1438,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1474,9 +1463,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1492,9 +1479,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1510,9 +1495,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1534,9 +1517,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1557,9 +1538,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1586,9 +1565,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1609,9 +1586,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1637,9 +1612,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1659,9 +1632,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1684,9 +1655,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1707,9 +1676,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1730,9 +1697,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1757,9 +1722,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1780,9 +1743,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1808,9 +1769,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1829,9 +1788,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1852,9 +1809,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1875,9 +1830,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1902,9 +1855,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1924,9 +1875,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1944,9 +1893,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1965,9 +1912,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -1988,9 +1933,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2015,9 +1958,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2030,9 +1971,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2045,9 +1984,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2065,9 +2002,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2081,9 +2016,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2100,9 +2033,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2115,9 +2046,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2133,9 +2062,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2158,9 +2085,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2192,9 +2117,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2221,9 +2144,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2237,9 +2158,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2254,9 +2173,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2284,9 +2201,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2314,9 +2229,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2337,9 +2250,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2365,9 +2276,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2384,9 +2293,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2402,9 +2309,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2421,9 +2326,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2441,9 +2344,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2460,9 +2361,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2479,9 +2378,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2494,9 +2391,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2509,9 +2404,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2531,9 +2424,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2560,9 +2451,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2585,9 +2474,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2607,9 +2494,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2627,9 +2512,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2648,9 +2531,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2671,9 +2552,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2700,9 +2579,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2719,9 +2596,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2740,9 +2615,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2761,9 +2634,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2780,9 +2651,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2801,9 +2670,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2824,9 +2691,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2853,9 +2718,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2876,9 +2739,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2904,9 +2765,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2920,9 +2779,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2936,9 +2793,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2956,9 +2811,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2975,9 +2828,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter {
-                buf: &buf
-            },
+            raw_iter: RawIter::from(&buf),
             tid: &TID,
         }.next();
 
