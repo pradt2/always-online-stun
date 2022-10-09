@@ -41,6 +41,18 @@ impl<'a> Msg<'a> {
     }
 }
 
+#[cfg(feature = "fmt")]
+impl<'a> core::fmt::Debug for Msg<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        if cfg!(any(feature = "rfc5349", feature = "rfc8489", feature = "iana")) {
+            f.write_fmt(format_args!("Type: {:?}, Cookie: {:?}, Transaction Id: {:?}, Attributes: {:?}", self.typ(), self.cookie(), self.tid(), self.attrs_iter()))?;
+        } else {
+            f.write_fmt(format_args!("Type: {:?}, Transaction Id: {:?}, Attributes: {:?}", self.typ(), self.tid(), self.attrs_iter()))?;
+        }
+        Ok(())
+    }
+}
+
 #[cfg_attr(feature = "fmt", derive(core::fmt::Debug))]
 pub enum MsgType {
     #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
@@ -1030,6 +1042,19 @@ impl<'a> Iterator for AttrIter<'a> {
     fn next(&mut self) -> Option<Self::Item> {
         let raw_attr = self.raw_iter.next()?;
         Attr::from(raw_attr, self.tid)
+    }
+}
+
+#[cfg(feature = "fmt")]
+impl<'a> core::fmt::Debug for AttrIter<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let iter = AttrIter { raw_iter: self.raw_iter.clone(), tid: self.tid };
+        f.write_str("AttrIter {")?;
+        for (idx, e) in iter.enumerate() {
+            f.write_fmt(format_args!("{}: {:?}, ", idx, e))?;
+        }
+        f.write_str("}")?;
+        Ok(())
     }
 }
 
