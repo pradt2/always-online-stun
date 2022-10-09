@@ -979,7 +979,316 @@ mod head {
             assert!(false);
         }
     }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn binding_request() {
+        let buf = [
+            0x00, 0x01,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::BindingRequest) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn binding_response() {
+        let buf = [
+            0x01, 0x01,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::BindingResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn binding_indication() {
+        let buf = [
+            0x00, 0x11,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::BindingIndication) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn binding_error_response() {
+        let buf = [
+            0x01, 0x11,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::BindingErrorResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(feature = "rfc3489")]
+    #[test]
+    fn shared_secret_request() {
+        let buf = [
+            0x00, 0x02,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::SharedSecretRequest) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(feature = "rfc3489")]
+    #[test]
+    fn shared_secret_response() {
+        let buf = [
+            0x01, 0x02,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::SharedSecretResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(feature = "rfc3489")]
+    #[test]
+    fn shared_secret_error_response() {
+        let buf = [
+            0x01, 0x12,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::SharedSecretErrorResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn allocate_request() {
+        let buf = [
+            0x00, 0x03,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::AllocateRequest) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn allocate_response() {
+        let buf = [
+            0x01, 0x03,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::AllocateResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn allocate_error_response() {
+        let buf = [
+            0x01, 0x13,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::AllocateErrorResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn refresh_request() {
+        let buf = [
+            0x00, 0x04,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::RefreshRequest) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn refresh_response() {
+        let buf = [
+            0x01, 0x04,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::RefreshResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn refresh_error_response() {
+        let buf = [
+            0x01, 0x14,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::RefreshErrorResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn send_indication() {
+        let buf = [
+            0x00, 0x16,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::SendIndication) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn data_indication() {
+        let buf = [
+            0x00, 0x17,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::DataIndication) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn create_permission_request() {
+        let buf = [
+            0x00, 0x08,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::CreatePermissionRequest) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn create_permission_response() {
+        let buf = [
+            0x01, 0x08,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::CreatePermissionResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn create_permission_error_response() {
+        let buf = [
+            0x01, 0x18,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::CreatePermissionErrorResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn channel_bind_request() {
+        let buf = [
+            0x00, 0x09,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ChannelBindRequest) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn channel_bind_response() {
+        let buf = [
+            0x01, 0x09,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ChannelBindResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn channel_bind_error_response() {
+        let buf = [
+            0x01, 0x19,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ChannelBindErrorResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    #[test]
+    fn connect_request() {
+        let buf = [
+            0x00, 0x0A,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ConnectRequest) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    #[test]
+    fn connect_response() {
+        let buf = [
+            0x01, 0x0A,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ConnectResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    #[test]
+    fn connect_error_response() {
+        let buf = [
+            0x01, 0x1A,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ConnectErrorResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    #[test]
+    fn connection_bind_request() {
+        let buf = [
+            0x00, 0x0B,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ConnectionBindRequest) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    #[test]
+    fn connection_bind_response() {
+        let buf = [
+            0x01, 0x0B,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ConnectionBindResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    #[test]
+    fn connection_bind_error_response() {
+        let buf = [
+            0x01, 0x1B,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ConnectionBindErrorResponse) = msg.typ() {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    #[test]
+    fn connection_attempt_indication() {
+        let buf = [
+            0x0, 0x1C,
+        ];
+
+        let msg = Msg::from(&buf);
+        if let Some(MsgType::ConnectionAttemptIndication) = msg.typ() {} else { assert!(false); }
+    }
 }
+
 
 #[cfg(test)]
 mod attr {

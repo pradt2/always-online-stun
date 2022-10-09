@@ -1,7 +1,5 @@
 # To do
 
- - Test all message types
- - Test all attributes
  - Test for out-of-bounds reads
  - Add feature to toggle between Option/Result return types
  - Extract byte-level parser into its own lib
