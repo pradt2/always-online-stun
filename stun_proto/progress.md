@@ -1,12 +1,13 @@
 # To do
 
- - Test for out-of-bounds reads
  - Add feature to toggle between Option/Result return types
+ - Add IANA-only attributes
+
  - Extract byte-level parser into its own lib
  - Add mut interface to the byte-level parser
+ - Test for out-of-bounds reads/writes
  - Add builder interface to the byte-level parser (?)
- - Add error codes
- - Add IANA-only attributes
+
 
 # Implementation progress of RFC standards
 

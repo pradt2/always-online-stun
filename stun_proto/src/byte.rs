@@ -28,7 +28,13 @@ impl<'a> Msg<'a> {
     }
 
     pub fn tid(&self) -> Option<u128> {
-        self.reader.tid().map(u128::of_be)
+        let tid = self.reader.tid()
+            .map(u128::of_be);
+
+        #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+        let tid = tid.map(|val| val & ((1u128 << 96) - 1));
+
+        tid
     }
 
     pub fn attrs_iter(&self) -> Option<AttrIter> {
@@ -256,6 +262,76 @@ impl TransportProtocol {
 
 #[derive(Copy, Clone)]
 pub enum ErrorCode {
+
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    TryAlternate,
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    BadRequest,
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    Unauthorised,
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    Forbidden,
+
+    #[cfg(any(feature = "rfc8016", feature = "iana"))]
+    MobilityForbidden,
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    UnknownAttribute,
+
+    #[cfg(any(feature = "rfc3489"))]
+    StaleCredentials,
+
+    #[cfg(any(feature = "rfc3489"))]
+    IntegrityCheckFailure,
+
+    #[cfg(any(feature = "rfc3489"))]
+    MissingUsername,
+
+    #[cfg(any(feature = "rfc3489"))]
+    UseTls,
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    AllocationMismatch,
+
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    StaleNonce,
+
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    AddressFamilyNotSupported,
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    WrongCredentials,
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    UnsupportedTransportProtocol,
+
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    PeerAddressFamilyMismatch,
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    ConnectionAlreadyExists,
+
+    #[cfg(any(feature = "rfc6062", feature = "iana"))]
+    ConnectionTimeoutOrFailure,
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    AllocationQuotaReached,
+
+    #[cfg(any(feature = "rfc5245", feature = "rfc8445", feature = "iana"))]
+    RoleConflict,
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    ServerError,
+
+    #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+    InsufficientCapacity,
+
+    #[cfg(any(feature = "rfc3489"))]
+    GlobalFailure,
+
     Other(u16),
 }
 
@@ -267,6 +343,75 @@ impl ErrorCode {
         let code = class * 100 + num;
 
         match code {
+            #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            300 => Self::TryAlternate,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            400 => Self::BadRequest,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            401 => Self::Unauthorised,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            403 => Self::Forbidden,
+
+            #[cfg(any(feature = "rfc8016", feature = "iana"))]
+            405 => Self::MobilityForbidden,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            420 => Self::UnknownAttribute,
+
+            #[cfg(any(feature = "rfc3489"))]
+            430 => Self::StaleCredentials,
+
+            #[cfg(any(feature = "rfc3489"))]
+            431 => Self::IntegrityCheckFailure,
+
+            #[cfg(any(feature = "rfc3489"))]
+            432 => Self::MissingUsername,
+
+            #[cfg(any(feature = "rfc3489"))]
+            433 => Self::UseTls,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            437 => Self::AllocationMismatch,
+
+            #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            438 => Self::StaleNonce,
+
+            #[cfg(any(feature = "rfc8656", feature = "iana"))]
+            440 => Self::AddressFamilyNotSupported,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            441 => Self::WrongCredentials,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            442 => Self::UnsupportedTransportProtocol,
+
+            #[cfg(any(feature = "rfc8656", feature = "iana"))]
+            443 => Self::PeerAddressFamilyMismatch,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            446 => Self::ConnectionAlreadyExists,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            447 => Self::ConnectionTimeoutOrFailure,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            486 => Self::AllocationQuotaReached,
+
+            #[cfg(any(feature = "rfc5245", feature = "rfc8445", feature = "iana"))]
+            487 => Self::RoleConflict,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            500 => Self::ServerError,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            508 => Self::InsufficientCapacity,
+
+            #[cfg(any(feature = "rfc3489"))]
+            600 => Self::GlobalFailure,
+
             code => Self::Other(code),
         }
     }
@@ -966,7 +1111,7 @@ mod head {
 
         assert_eq!(0x2112A442, msg.cookie().unwrap());
 
-        assert_eq!(0x2112A442_00000000_00000000_00000001, msg.tid().unwrap());
+        assert_eq!(1, msg.tid().unwrap());
 
         assert_eq!(1, msg.attrs_iter().unwrap().count());
 

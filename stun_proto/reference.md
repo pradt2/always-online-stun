@@ -422,7 +422,7 @@ value MUST be between 0 and 99.
 The following error codes, along with their recommended reason
 phrases, are defined:
 
- - `300 Try Alternate` The client should contact an alternate server for
+ - `300 (Try Alternate)` The client should contact an alternate server for
 this request. This error response MUST only be sent if the
 request included a USERNAME attribute and a valid MESSAGE-
 INTEGRITY attribute; otherwise, it MUST NOT be sent and error
@@ -432,30 +432,30 @@ MUST validate the MESSAGE-INTEGRITY of this response before
 redirecting themselves to an alternate server.
 
 
- - `400 Bad Request` The request was malformed. The client SHOULD NOT
+ - `400 (Bad Request)` The request was malformed. The client SHOULD NOT
 retry the request without modification from the previous
 attempt. The server may not be able to generate a valid
 MESSAGE-INTEGRITY for this error, so the client MUST NOT expect
 a valid MESSAGE-INTEGRITY attribute on this response.
 
 
- - `401 Unauthorized` The request did not contain the correct
+ - `401 (Unauthorized)` The request did not contain the correct
 credentials to proceed. The client should retry the request
 with proper credentials.
 
 
- - `420 Unknown Attribute` The server received a STUN packet containing
+ - `420 (Unknown Attribute)` The server received a STUN packet containing
 a comprehension-required attribute that it did not understand.
 The server MUST put this unknown attribute in the UNKNOWN-
 ATTRIBUTE attribute of its error response.
 
 
- - `438 Stale Nonce` The NONCE used by the client was no longer valid.
+ - `438 (Stale Nonce)` The NONCE used by the client was no longer valid.
 The client should retry, using the NONCE provided in the
 response.
 
 
- - `500 Server Error` The server has suffered a temporary error. The
+ - `500 (Server Error)` The server has suffered a temporary error. The
 client should try again.
 
 
@@ -1011,7 +1011,7 @@ modulo 100, and its value MUST be between 0 and 99.
 The following error codes, along with their recommended reason
 phrases, are defined:
 
- - `300 Try Alternate` The client should contact an alternate server for
+ - `300 (Try Alternate)` The client should contact an alternate server for
 this request. This error response MUST only be sent if the
 request included either a USERNAME or USERHASH attribute and a
 valid MESSAGE-INTEGRITY or MESSAGE-INTEGRITY-SHA256 attribute;
@@ -1023,7 +1023,7 @@ INTEGRITY-SHA256 of this response before redirecting themselves
 to an alternate server.
 
 
- - `400 Bad Request` The request was malformed. The client SHOULD NOT
+ - `400 (Bad Request)` The request was malformed. The client SHOULD NOT
 retry the request without modification from the previous
 attempt. The server may not be able to generate a valid
 MESSAGE-INTEGRITY or MESSAGE-INTEGRITY-SHA256 for this error, so
@@ -1031,23 +1031,23 @@ the client MUST NOT expect a valid MESSAGE-INTEGRITY or MESSAGE-
 INTEGRITY-SHA256 attribute on this response.
 
 
- - `401 Unauthenticated` The request did not contain the correct
+ - `401 (Unauthenticated)` The request did not contain the correct
 credentials to proceed. The client should retry the request
 with proper credentials.
 
 
- - `420 Unknown Attribute` The server received a STUN packet containing
+ - `420 (Unknown Attribute)` The server received a STUN packet containing
 a comprehension-required attribute that it did not understand.
 The server MUST put this unknown attribute in the UNKNOWN-
 ATTRIBUTE attribute of its error response.
 
 
- - `438 Stale Nonce` The NONCE used by the client was no longer valid.
+ - `438 (Stale Nonce)` The NONCE used by the client was no longer valid.
 The client should retry, using the NONCE provided in the
 response.
 
 
- - `500 Server Error` The server has suffered a temporary error. The
+ - `500 (Server Error)` The server has suffered a temporary error. The
 client should try again.
 
 
