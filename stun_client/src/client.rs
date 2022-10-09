@@ -234,30 +234,9 @@ pub fn print_stun_msg(buf: &[u8]) {
 #[cfg(test)]
 mod tests {
     use std::net::UdpSocket;
+    use std::time::Duration;
     use super::*;
     extern crate pretty_env_logger;
-
-    #[test]
-    fn test_new_client() {
-        let msg = [
-            0x00, 0x01,
-            0x00, 0x00,
-            0x21, 0x12, 0xA4, 0x42,
-            0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x00,
-            0x00, 0x00, 0x00, 0x01,
-        ];
-
-        let sock = UdpSocket::bind("0.0.0.0:0").unwrap();
-        sock.connect("stun.meetwife.com:3478").unwrap();
-        sock.send(&msg).unwrap();
-
-        let mut buf = [0u8; 128];
-        let size = sock.recv(buf.as_mut()).unwrap();
-
-        let msg = stun_proto::byte::Msg::from(buf.as_slice());
-        println!("{:?}", msg);
-    }
 
     #[test]
     fn test_udp_call() {
