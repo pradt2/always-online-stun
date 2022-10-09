@@ -6,7 +6,7 @@ pub struct Msg<'a> {
 }
 
 impl<'a> Msg<'a> {
-    fn from(buf: &'a [u8]) -> Self {
+    pub fn from(buf: &'a [u8]) -> Self {
         Self {
             reader: RawMsg::from(buf)
         }
@@ -44,11 +44,14 @@ impl<'a> Msg<'a> {
 #[cfg(feature = "fmt")]
 impl<'a> core::fmt::Debug for Msg<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        f.write_str("Msg {\n")?;
+        f.write_fmt(format_args!("  Type: {:?}\n", self.typ()))?;
         if cfg!(any(feature = "rfc5349", feature = "rfc8489", feature = "iana")) {
-            f.write_fmt(format_args!("Type: {:?}, Cookie: {:?}, Transaction Id: {:?}, Attributes: {:?}", self.typ(), self.cookie(), self.tid(), self.attrs_iter()))?;
-        } else {
-            f.write_fmt(format_args!("Type: {:?}, Transaction Id: {:?}, Attributes: {:?}", self.typ(), self.tid(), self.attrs_iter()))?;
+            f.write_fmt(format_args!("  Cookie: {:?}\n", self.cookie()))?;
         }
+        f.write_fmt(format_args!("  Transaction Id: {:?}\n", self.tid()))?;
+        f.write_fmt(format_args!("  Attributes: {:?}\n", self.attrs_iter()))?;
+        f.write_str("}")?;
         Ok(())
     }
 }
@@ -959,9 +962,9 @@ pub struct UnknownAttrIter<'a> {
 impl<'a> core::fmt::Debug for UnknownAttrIter<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let iter = UnknownAttrIter { buf: self.buf };
-        f.write_str("UnknownAttrIter: [")?;
+        f.write_str("[\n")?;
         for (idx, attr) in iter.enumerate() {
-            f.write_fmt(format_args!("{}: {}, ", idx, attr))?;
+            f.write_fmt(format_args!("  ({}) {}\n", idx, attr))?;
         }
         f.write_str("]")?;
         Ok(())
@@ -1010,9 +1013,9 @@ pub struct PasswordAlgorithmIter<'a> {
 impl<'a> core::fmt::Debug for PasswordAlgorithmIter<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let iter = PasswordAlgorithmIter { raw_iter: self.raw_iter };
-        f.write_str("PasswordAlgorithmIter: [")?;
+        f.write_str("[\n")?;
         for (idx, alg) in iter.enumerate() {
-            f.write_fmt(format_args!("{}: {:?}, ", idx, alg))?;
+            f.write_fmt(format_args!("  ({}) {:?}\n", idx, alg))?;
         }
         f.write_str("]")?;
         Ok(())
@@ -1049,11 +1052,11 @@ impl<'a> Iterator for AttrIter<'a> {
 impl<'a> core::fmt::Debug for AttrIter<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
         let iter = AttrIter { raw_iter: self.raw_iter.clone(), tid: self.tid };
-        f.write_str("AttrIter {")?;
+        f.write_str("[\n")?;
         for (idx, e) in iter.enumerate() {
-            f.write_fmt(format_args!("{}: {:?}, ", idx, e))?;
+            f.write_fmt(format_args!("  ({}) {:?}\n", idx, e))?;
         }
-        f.write_str("}")?;
+        f.write_str("]")?;
         Ok(())
     }
 }

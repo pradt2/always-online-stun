@@ -4,7 +4,7 @@ extern crate alloc;
 
 mod reader;
 mod endian;
-mod byte;
+pub mod byte;
 mod attrs;
 mod msg;
 mod raw;
