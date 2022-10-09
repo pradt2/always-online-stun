@@ -1,4 +1,3 @@
-use core::time::Duration;
 use endianeer::prelude::*;
 use stun_bytes::{RawAttr, RawMsg, RawIter};
 
@@ -42,6 +41,7 @@ impl<'a> Msg<'a> {
     }
 }
 
+#[cfg_attr(feature = "fmt", derive(core::fmt::Debug))]
 pub enum MsgType {
     #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
     BindingRequest,
@@ -222,12 +222,14 @@ impl From<u16> for MsgType {
     }
 }
 
+#[cfg_attr(feature = "fmt", derive(core::fmt::Debug))]
 #[derive(Copy, Clone)]
 pub enum SocketAddr {
     V4([u8; 4], u16),
     V6([u8; 16], u16),
 }
 
+#[cfg_attr(feature = "fmt", derive(core::fmt::Debug))]
 #[derive(Copy, Clone)]
 pub enum AddressFamily {
     IPv4,
@@ -245,6 +247,7 @@ impl AddressFamily {
     }
 }
 
+#[cfg_attr(feature = "fmt", derive(core::fmt::Debug))]
 #[derive(Copy, Clone)]
 pub enum TransportProtocol {
     UDP,
@@ -260,6 +263,7 @@ impl TransportProtocol {
     }
 }
 
+#[cfg_attr(feature = "fmt", derive(core::fmt::Debug))]
 #[derive(Copy, Clone)]
 pub enum ErrorCode {
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
@@ -416,6 +420,7 @@ impl ErrorCode {
     }
 }
 
+#[cfg_attr(feature = "fmt", derive(core::fmt::Debug))]
 #[derive(Copy, Clone)]
 pub enum Attr<'a> {
     #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
@@ -497,13 +502,13 @@ pub enum Attr<'a> {
     Padding(&'a [u8]),
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
-    CacheTimeout(Duration),
+    CacheTimeout(core::time::Duration),
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     ChannelNumber(u16),
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-    Lifetime(Duration),
+    Lifetime(core::time::Duration),
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
     XorPeerAddress(SocketAddr),
@@ -557,7 +562,7 @@ pub enum Attr<'a> {
     ThirdPartyAuthorisation(&'a str),
 
     #[cfg(any(feature = "rfc7635", feature = "iana"))]
-    AccessToken { nonce: &'a [u8], mac: &'a [u8], timestamp: Duration, lifetime: Duration },
+    AccessToken { nonce: &'a [u8], mac: &'a [u8], timestamp: core::time::Duration, lifetime: core::time::Duration },
 
     #[cfg(any(feature = "rfc8016", feature = "iana"))]
     MobilityTicket(&'a [u8]),
@@ -623,7 +628,7 @@ impl<'a> Attr<'a> {
             0x000C => Self::ChannelNumber(val.get(0..2).map(carve)?.map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x000D => Self::Lifetime(Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
+            0x000D => Self::Lifetime(core::time::Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             0x0012 => Self::XorPeerAddress(Self::parse_xor_address(val, tid)?),
@@ -741,7 +746,7 @@ impl<'a> Attr<'a> {
                     .map(carve)?
                     .map(u32::of_be)
                     .map(|val| val as u64)
-                    .map(Duration::from_secs)?;
+                    .map(core::time::Duration::from_secs)?;
 
                 Self::CacheTimeout(timeout)
             }
@@ -865,7 +870,7 @@ impl<'a> Attr<'a> {
         Some((change_ip, change_port))
     }
 
-    fn parse_access_token(buf: &[u8]) -> Option<(&[u8], &[u8], Duration, Duration)> {
+    fn parse_access_token(buf: &[u8]) -> Option<(&[u8], &[u8], core::time::Duration, core::time::Duration)> {
         let mut cursor = 0usize;
 
         let nonce_len = buf.get(cursor..cursor + 2)
@@ -904,13 +909,13 @@ impl<'a> Attr<'a> {
             .map(carve)?
             .map(u16::of_be)? as f64 / 64000_f64;
 
-        let timestamp = Duration::from_secs_f64(timestamp_seconds as f64 + timestamp_frac);
+        let timestamp = core::time::Duration::from_secs_f64(timestamp_seconds as f64 + timestamp_frac);
 
         let lifetime_secs = buf.get(cursor..cursor + 4)
             .map(carve)?
             .map(u32::of_be)?;
 
-        let lifetime = Duration::from_secs(lifetime_secs as u64);
+        let lifetime = core::time::Duration::from_secs(lifetime_secs as u64);
 
         Some((nonce, mac, timestamp, lifetime))
     }
@@ -938,6 +943,19 @@ pub struct UnknownAttrIter<'a> {
     buf: &'a [u8],
 }
 
+#[cfg(feature = "fmt")]
+impl<'a> core::fmt::Debug for UnknownAttrIter<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let iter = UnknownAttrIter { buf: self.buf };
+        f.write_str("UnknownAttrIter: [")?;
+        for (idx, attr) in iter.enumerate() {
+            f.write_fmt(format_args!("{}: {}, ", idx, attr))?;
+        }
+        f.write_str("]")?;
+        Ok(())
+    }
+}
+
 impl<'a> Iterator for UnknownAttrIter<'a> {
     type Item = u16;
 
@@ -951,9 +969,9 @@ impl<'a> Iterator for UnknownAttrIter<'a> {
     }
 }
 
+#[cfg_attr(feature = "fmt", derive(core::fmt::Debug))]
 #[cfg(any(feature = "rfc8489", feature = "iana"))]
 #[derive(Copy, Clone)]
-#[cfg(any(feature = "rfc8489", feature = "iana"))]
 pub enum PasswordAlgorithm<'a> {
     Md5,
     Sha256,
@@ -972,9 +990,21 @@ impl<'a> PasswordAlgorithm<'a> {
 
 #[cfg(any(feature = "rfc8489", feature = "iana"))]
 #[derive(Copy, Clone)]
-#[cfg(any(feature = "rfc8489", feature = "iana"))]
 pub struct PasswordAlgorithmIter<'a> {
     raw_iter: RawIter<'a>,
+}
+
+#[cfg(feature = "fmt")]
+impl<'a> core::fmt::Debug for PasswordAlgorithmIter<'a> {
+    fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
+        let iter = PasswordAlgorithmIter { raw_iter: self.raw_iter };
+        f.write_str("PasswordAlgorithmIter: [")?;
+        for (idx, alg) in iter.enumerate() {
+            f.write_fmt(format_args!("{}: {:?}, ", idx, alg))?;
+        }
+        f.write_str("]")?;
+        Ok(())
+    }
 }
 
 impl<'a> Iterator for PasswordAlgorithmIter<'a> {
