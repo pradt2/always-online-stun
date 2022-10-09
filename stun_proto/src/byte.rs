@@ -744,7 +744,7 @@ impl<'a> Attr<'a> {
             },
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x8020 => Self::MappedAddress(Self::parse_xor_address(val)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
+            0x8020 => Self::MappedAddress(Self::parse_xor_address(val, tid)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             0x8022 => Self::Software(Self::parse_string(val)?),
