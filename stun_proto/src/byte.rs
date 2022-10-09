@@ -480,6 +480,9 @@ pub enum Attr<'a> {
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     Software(&'a str),
 
+    #[cfg(any(feature = "rfc3489"))]
+    OptXorMappedAddress(SocketAddr),
+
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     AlternateServer(SocketAddr),
 
@@ -743,8 +746,8 @@ impl<'a> Attr<'a> {
                 data: val.get(4..8).map(carve)?.map(u32::of_be)?,
             },
 
-            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x8020 => Self::MappedAddress(Self::parse_xor_address(val, tid)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
+            #[cfg(any(feature = "rfc3489"))]
+            0x8020 => Self::OptXorMappedAddress(Self::parse_xor_address(val, tid)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             0x8022 => Self::Software(Self::parse_string(val)?),
@@ -2560,6 +2563,54 @@ mod attr {
         }.next();
 
         if let Some(Attr::Icmp { typ: 1, code: 2, data: 0x01020304 }) = attr {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489"))]
+    #[test]
+    fn opt_xor_mapped_address() {
+        let buf = [
+            0x80, 0x20,                                                 // type: Opt Xor Mapped Address
+            0x00, 0x08,                                                 // len: 8
+            0x00, 0x01,                                                 // family: IPv4
+            0x01 ^ TID[0], 0x02 ^ TID[1],                               // port: 0x0102
+            0x0A ^ TID[0], 0x0B ^ TID[1], 0x0C ^ TID[2], 0x0D ^ TID[3], // ip: 10.11.12.13
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter::from(&buf),
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::OptXorMappedAddress(SocketAddr::V4(ip, port))) = attr {
+            assert_eq!([10, 11, 12, 13], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
+
+        let buf = [
+            0x80, 0x20,                                                     // type: Opt Xor Mapped Address
+            0x00, 0x14,                                                     // len: 20
+            0x00, 0x02,                                                     // family: IPv6
+            0x01 ^ TID[0], 0x02 ^ TID[1],                                   // port: 0x0102
+            0x00 ^ TID[0], 0x01 ^ TID[1], 0x02 ^ TID[2], 0x03 ^ TID[3],
+            0x04 ^ TID[4], 0x05 ^ TID[5], 0x06 ^ TID[6], 0x07 ^ TID[7],
+            0x08 ^ TID[8], 0x09 ^ TID[9], 0x0A ^ TID[10], 0x0B ^ TID[11],
+            0x0C ^ TID[12], 0x0D ^ TID[13], 0x0E ^ TID[14], 0x0F ^ TID[15], // ip: 0123:4567:89AB:CDEF
+        ];
+
+        let attr = AttrIter {
+            raw_iter: RawIter::from(&buf),
+            tid: &TID,
+        }.next();
+
+        if let Some(Attr::OptXorMappedAddress(SocketAddr::V6(ip, port))) = attr {
+            assert_eq!([
+                           0x00, 0x01, 0x02, 0x03,
+                           0x04, 0x05, 0x06, 0x07,
+                           0x08, 0x09, 0x0A, 0x0B,
+                           0x0C, 0x0D, 0x0E, 0x0F,
+                       ], ip);
+            assert_eq!(0x0102, port);
+        } else { assert!(false); }
     }
 
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
