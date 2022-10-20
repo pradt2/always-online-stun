@@ -37,7 +37,7 @@ impl<'a> Msg<'a> {
     }
 
     pub fn attrs_iter(&self) -> Option<AttrIter> {
-        Some(AttrIter { raw_iter: self.reader.attrs_iter(), tid: self.reader.tid()? })
+        Some(AttrIter { raw_iter: self.reader.attr_iter(), tid: self.reader.tid()? })
     }
 }
 
