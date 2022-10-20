@@ -14,7 +14,6 @@ impl<'a> Msg<'a> {
 
     pub fn typ(&self) -> Option<MsgType> {
         self.reader.typ()
-            .map(u16::of_be)
             .map(MsgType::from)
     }
 
@@ -145,95 +144,191 @@ pub enum MsgType {
     Other(u16),
 }
 
-impl From<u16> for MsgType {
-    fn from(val: u16) -> Self {
+impl MsgType {
+    fn from(val: &[u8; 2]) -> Self {
+        use consts::msg_type::*;
+
+        let val = val.to_be();
+
         match val {
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            0x0001 => MsgType::BindingRequest,
+            BINDING_REQUEST => MsgType::BindingRequest,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            0x0101 => MsgType::BindingResponse,
+            BINDING_RESPONSE => MsgType::BindingResponse,
 
             #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            0x0011 => MsgType::BindingIndication,
+            BINDING_INDICATION => MsgType::BindingIndication,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            0x0111 => MsgType::BindingErrorResponse,
+            BINDING_ERROR_RESPONSE => MsgType::BindingErrorResponse,
 
             #[cfg(feature = "rfc3489")]
-            0x0002 => MsgType::SharedSecretRequest,
+            SHARED_SECRET_REQUEST => MsgType::SharedSecretRequest,
 
             #[cfg(feature = "rfc3489")]
-            0x0102 => MsgType::SharedSecretResponse,
+            SHARED_SECRET_RESPONSE => MsgType::SharedSecretResponse,
 
             #[cfg(feature = "rfc3489")]
-            0x0112 => MsgType::SharedSecretErrorResponse,
+            SHARED_SECRET_ERROR_RESPONSE => MsgType::SharedSecretErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0003 => MsgType::AllocateRequest,
+            ALLOCATE_REQUEST => MsgType::AllocateRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0103 => MsgType::AllocateResponse,
+            ALLOCATE_RESPONSE => MsgType::AllocateResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0113 => MsgType::AllocateErrorResponse,
+            ALLOCATE_ERROR_RESPONSE => MsgType::AllocateErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0004 => MsgType::RefreshRequest,
+            REFRESH_REQUEST => MsgType::RefreshRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0104 => MsgType::RefreshResponse,
+            REFRESH_RESPONSE => MsgType::RefreshResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0114 => MsgType::RefreshErrorResponse,
+            REFRESH_ERROR_RESPONSE => MsgType::RefreshErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0016 => MsgType::SendIndication,
+            SEND_INDICATION => MsgType::SendIndication,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0017 => MsgType::DataIndication,
+            DATA_INDICATION => MsgType::DataIndication,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0008 => MsgType::CreatePermissionRequest,
+            CREATE_PERMISSION_REQUEST => MsgType::CreatePermissionRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0108 => MsgType::CreatePermissionResponse,
+            CREATE_PERMISSION_RESPONSE => MsgType::CreatePermissionResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0118 => MsgType::CreatePermissionErrorResponse,
+            CREATE_PERMISSION_ERROR_RESPONSE => MsgType::CreatePermissionErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0009 => MsgType::ChannelBindRequest,
+            CHANNEL_BIND_REQUEST => MsgType::ChannelBindRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0109 => MsgType::ChannelBindResponse,
+            CHANNEL_BIND_RESPONSE => MsgType::ChannelBindResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0119 => MsgType::ChannelBindErrorResponse,
+            CHANNEL_BIND_ERROR_RESPONSE => MsgType::ChannelBindErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x000A => MsgType::ConnectRequest,
+            CONNECT_REQUEST => MsgType::ConnectRequest,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x010A => MsgType::ConnectResponse,
+            CONNECT_RESPONSE => MsgType::ConnectResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x011A => MsgType::ConnectErrorResponse,
+            CONNECT_ERROR_RESPONSE => MsgType::ConnectErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x000B => MsgType::ConnectionBindRequest,
+            CONNECTION_BIND_REQUEST => MsgType::ConnectionBindRequest,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x010B => MsgType::ConnectionBindResponse,
+            CONNECTION_BIND_RESPONSE => MsgType::ConnectionBindResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x011B => MsgType::ConnectionBindErrorResponse,
+            CONNECTION_BIND_ERROR_RESPONSE => MsgType::ConnectionBindErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x001C => MsgType::ConnectionAttemptIndication,
+            CONNECTION_ATTEMPT_INDICATION => MsgType::ConnectionAttemptIndication,
 
             val => MsgType::Other(val),
         }
+    }
+
+    fn into(&self) -> [u8; 2] {
+        use consts::msg_type::*;
+
+        match self {
+            #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+            Self::BindingRequest => BINDING_REQUEST,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+            Self::BindingResponse => BINDING_RESPONSE,
+
+            #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+            Self::BindingIndication => BINDING_INDICATION,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+            Self::BindingErrorResponse => BINDING_ERROR_RESPONSE,
+
+            #[cfg(feature = "rfc3489")]
+            Self::SharedSecretRequest => SHARED_SECRET_REQUEST,
+
+            #[cfg(feature = "rfc3489")]
+            Self::SharedSecretResponse => SHARED_SECRET_RESPONSE,
+
+            #[cfg(feature = "rfc3489")]
+            Self::SharedSecretErrorResponse => SHARED_SECRET_ERROR_RESPONSE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::AllocateRequest => ALLOCATE_REQUEST,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::AllocateResponse => ALLOCATE_RESPONSE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::AllocateErrorResponse => ALLOCATE_ERROR_RESPONSE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::RefreshRequest => REFRESH_REQUEST,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::RefreshResponse => REFRESH_RESPONSE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::RefreshErrorResponse => REFRESH_ERROR_RESPONSE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::SendIndication => SEND_INDICATION,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::DataIndication => DATA_INDICATION,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::CreatePermissionRequest => CREATE_PERMISSION_REQUEST,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::CreatePermissionResponse => CREATE_PERMISSION_RESPONSE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::CreatePermissionErrorResponse => CREATE_PERMISSION_ERROR_RESPONSE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::ChannelBindRequest => CHANNEL_BIND_REQUEST,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::ChannelBindResponse => CHANNEL_BIND_RESPONSE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::ChannelBindErrorResponse => CHANNEL_BIND_ERROR_RESPONSE,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectRequest => CONNECT_REQUEST,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectResponse => CONNECT_RESPONSE,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectErrorResponse => CONNECT_ERROR_RESPONSE,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectionBindRequest => CONNECTION_BIND_REQUEST,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectionBindResponse => CONNECTION_BIND_RESPONSE,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectionBindErrorResponse => CONNECTION_BIND_ERROR_RESPONSE,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectionAttemptIndication => CONNECTION_ATTEMPT_INDICATION,
+
+            Self::Other(val) => *val,
+        }.to_be_bytes()
     }
 }
 
@@ -353,8 +448,169 @@ pub enum ErrorCode {
     Other(u16),
 }
 
+mod consts {
+    pub mod msg_type {
+        #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+        pub const BINDING_REQUEST: u16 = 0x0001;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+        pub const BINDING_RESPONSE: u16 = 0x0101;
+
+        #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+        pub const BINDING_INDICATION: u16 = 0x0011;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
+        pub const BINDING_ERROR_RESPONSE: u16 = 0x0111;
+
+        #[cfg(feature = "rfc3489")]
+        pub const SHARED_SECRET_REQUEST: u16 = 0x0002;
+
+        #[cfg(feature = "rfc3489")]
+        pub const SHARED_SECRET_RESPONSE: u16 = 0x0102;
+
+        #[cfg(feature = "rfc3489")]
+        pub const SHARED_SECRET_ERROR_RESPONSE: u16 = 0x0112;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const ALLOCATE_REQUEST: u16 = 0x0003;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const ALLOCATE_RESPONSE: u16 = 0x0103;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const ALLOCATE_ERROR_RESPONSE: u16 = 0x0113;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const REFRESH_REQUEST: u16 = 0x0004;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const REFRESH_RESPONSE: u16 = 0x0104;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const REFRESH_ERROR_RESPONSE: u16 = 0x0114;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const SEND_INDICATION: u16 = 0x0016;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const DATA_INDICATION: u16 = 0x0017;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const CREATE_PERMISSION_REQUEST: u16 = 0x0008;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const CREATE_PERMISSION_RESPONSE: u16 = 0x0108;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const CREATE_PERMISSION_ERROR_RESPONSE: u16 = 0x0118;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const CHANNEL_BIND_REQUEST: u16 = 0x0009;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const CHANNEL_BIND_RESPONSE: u16 = 0x0109;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const CHANNEL_BIND_ERROR_RESPONSE: u16 = 0x0119;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECT_REQUEST: u16 = 0x000A;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECT_RESPONSE: u16 = 0x010A;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECT_ERROR_RESPONSE: u16 = 0x011A;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECTION_BIND_REQUEST: u16 = 0x000B;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECTION_BIND_RESPONSE: u16 = 0x010B;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECTION_BIND_ERROR_RESPONSE: u16 = 0x011B;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECTION_ATTEMPT_INDICATION: u16 = 0x001C;
+    }
+
+    pub mod error_code {
+        #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const TRY_ALTERNATE: u16 = 300;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const BAD_REQUEST: u16 = 400;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const UNAUTHORISED: u16 = 401;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const FORBIDDEN: u16 = 403;
+
+        #[cfg(any(feature = "rfc8016", feature = "iana"))]
+        pub const MOBILITY_FORBIDDEN: u16 = 405;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const UNKNOWN_ATTRIBUTE: u16 = 420;
+
+        #[cfg(any(feature = "rfc3489"))]
+        pub const STALE_CREDENTIALS: u16 = 430;
+
+        #[cfg(any(feature = "rfc3489"))]
+        pub const INTEGRITY_CHECK_FAILURE: u16 = 431;
+
+        #[cfg(any(feature = "rfc3489"))]
+        pub const MISSING_USERNAME: u16 = 432;
+
+        #[cfg(any(feature = "rfc3489"))]
+        pub const USE_TLS: u16 = 433;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const ALLOCATION_MISMATCH: u16 = 437;
+
+        #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const STALE_NONCE: u16 = 438;
+
+        #[cfg(any(feature = "rfc8656", feature = "iana"))]
+        pub const ADDRESS_FAMILY_NOT_SUPPORTED: u16 = 440;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const WRONG_CREDENTIALS: u16 = 441;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const UNSUPPORTED_TRANSPORT_PROTOCOL: u16 = 442;
+
+        #[cfg(any(feature = "rfc8656", feature = "iana"))]
+        pub const PEER_ADDRESS_FAMILY_MISMATCH: u16 = 443;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECTION_ALREADY_EXISTS: u16 = 446;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECTION_TIMEOUT_OR_FAILURE: u16 = 447;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const ALLOCATION_QUOTA_REACHED: u16 = 486;
+
+        #[cfg(any(feature = "rfc5245", feature = "rfc8445", feature = "iana"))]
+        pub const ROLE_CONFLICT: u16 = 487;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const SERVER_ERROR: u16 = 500;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const INSUFFICIENT_CAPACITY: u16 = 508;
+
+        #[cfg(any(feature = "rfc3489"))]
+        pub const GLOBAL_FAILURE: u16 = 600;
+    }
+}
+
 impl ErrorCode {
     fn from(buf: &[u8; 2]) -> Self {
+        use consts::error_code::*;
+
         let class = buf[0] as u16 >> 5; // we only care about 3 MSB
         let num = buf[1] as u16;
 
@@ -362,76 +618,156 @@ impl ErrorCode {
 
         match code {
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            300 => Self::TryAlternate,
+            TRY_ALTERNATE => Self::TryAlternate,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            400 => Self::BadRequest,
+            BAD_REQUEST => Self::BadRequest,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            401 => Self::Unauthorised,
+            UNAUTHORISED => Self::Unauthorised,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            403 => Self::Forbidden,
+            FORBIDDEN => Self::Forbidden,
 
             #[cfg(any(feature = "rfc8016", feature = "iana"))]
-            405 => Self::MobilityForbidden,
+            MOBILITY_FORBIDDEN => Self::MobilityForbidden,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            420 => Self::UnknownAttribute,
+            UNKNOWN_ATTRIBUTE => Self::UnknownAttribute,
 
             #[cfg(any(feature = "rfc3489"))]
-            430 => Self::StaleCredentials,
+            STALE_CREDENTIALS => Self::StaleCredentials,
 
             #[cfg(any(feature = "rfc3489"))]
-            431 => Self::IntegrityCheckFailure,
+            INTEGRITY_CHECK_FAILURE => Self::IntegrityCheckFailure,
 
             #[cfg(any(feature = "rfc3489"))]
-            432 => Self::MissingUsername,
+            MISSING_USERNAME => Self::MissingUsername,
 
             #[cfg(any(feature = "rfc3489"))]
-            433 => Self::UseTls,
+            USE_TLS => Self::UseTls,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            437 => Self::AllocationMismatch,
+            ALLOCATION_MISMATCH => Self::AllocationMismatch,
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            438 => Self::StaleNonce,
+            STALE_NONCE => Self::StaleNonce,
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            440 => Self::AddressFamilyNotSupported,
+            ADDRESS_FAMILY_NOT_SUPPORTED => Self::AddressFamilyNotSupported,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            441 => Self::WrongCredentials,
+            WRONG_CREDENTIALS => Self::WrongCredentials,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            442 => Self::UnsupportedTransportProtocol,
+            UNSUPPORTED_TRANSPORT_PROTOCOL => Self::UnsupportedTransportProtocol,
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            443 => Self::PeerAddressFamilyMismatch,
+            PEER_ADDRESS_FAMILY_MISMATCH => Self::PeerAddressFamilyMismatch,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            446 => Self::ConnectionAlreadyExists,
+            CONNECTION_ALREADY_EXISTS => Self::ConnectionAlreadyExists,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            447 => Self::ConnectionTimeoutOrFailure,
+            CONNECTION_TIMEOUT_OR_FAILURE => Self::ConnectionTimeoutOrFailure,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            486 => Self::AllocationQuotaReached,
+            ALLOCATION_QUOTA_REACHED => Self::AllocationQuotaReached,
 
             #[cfg(any(feature = "rfc5245", feature = "rfc8445", feature = "iana"))]
-            487 => Self::RoleConflict,
+            ROLE_CONFLICT => Self::RoleConflict,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            500 => Self::ServerError,
+            SERVER_ERROR => Self::ServerError,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            508 => Self::InsufficientCapacity,
+            INSUFFICIENT_CAPACITY => Self::InsufficientCapacity,
 
             #[cfg(any(feature = "rfc3489"))]
-            600 => Self::GlobalFailure,
+            GLOBAL_FAILURE => Self::GlobalFailure,
 
             code => Self::Other(code),
         }
+    }
+
+    pub fn into(&self) -> [u8; 2] {
+        use consts::error_code::*;
+
+        let code = match self {
+            #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::TryAlternate => TRY_ALTERNATE,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::BadRequest => BAD_REQUEST,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::Unauthorised => UNAUTHORISED,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::Forbidden => FORBIDDEN,
+
+            #[cfg(any(feature = "rfc8016", feature = "iana"))]
+            Self::MobilityForbidden => MOBILITY_FORBIDDEN,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::UnknownAttribute => UNKNOWN_ATTRIBUTE,
+
+            #[cfg(any(feature = "rfc3489"))]
+            Self::StaleCredentials => STALE_CREDENTIALS,
+
+            #[cfg(any(feature = "rfc3489"))]
+            Self::IntegrityCheckFailure => INTEGRITY_CHECK_FAILURE,
+
+            #[cfg(any(feature = "rfc3489"))]
+            Self::MissingUsername => MISSING_USERNAME,
+
+            #[cfg(any(feature = "rfc3489"))]
+            Self::UseTls => USE_TLS,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::AllocationMismatch => ALLOCATION_MISMATCH,
+
+            #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::StaleNonce => STALE_NONCE,
+
+            #[cfg(any(feature = "rfc8656", feature = "iana"))]
+            Self::AddressFamilyNotSupported => ADDRESS_FAMILY_NOT_SUPPORTED,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::WrongCredentials => WRONG_CREDENTIALS,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::UnsupportedTransportProtocol => UNSUPPORTED_TRANSPORT_PROTOCOL,
+
+            #[cfg(any(feature = "rfc8656", feature = "iana"))]
+            Self::PeerAddressFamilyMismatch => PEER_ADDRESS_FAMILY_MISMATCH,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectionAlreadyExists => CONNECTION_ALREADY_EXISTS,
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectionTimeoutOrFailure => CONNECTION_TIMEOUT_OR_FAILURE,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::AllocationQuotaReached => ALLOCATION_QUOTA_REACHED,
+
+            #[cfg(any(feature = "rfc5245", feature = "rfc8445", feature = "iana"))]
+            Self::RoleConflict => ROLE_CONFLICT,
+
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::ServerError => SERVER_ERROR,
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::InsufficientCapacity => INSUFFICIENT_CAPACITY,
+
+            #[cfg(any(feature = "rfc3489"))]
+            Self::GlobalFailure => GLOBAL_FAILURE,
+
+            Self::Other(code) => *code,
+        };
+
+        let code_100s = code / 100;
+        [(code_100s as u8) << 5, (code - code_100s) as u8]
     }
 }
 
