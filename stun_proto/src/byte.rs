@@ -535,6 +535,161 @@ mod consts {
         pub const CONNECTION_ATTEMPT_INDICATION: u16 = 0x001C;
     }
 
+    pub mod attr_type {
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const MAPPED_ADDRESS: u16 = 0x0001;
+
+        #[cfg(feature = "rfc3489")]
+        pub const RESPONSE_ADDRESS: u16 = 0x0002;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5780", feature = "iana"))]
+        pub const CHANGE_REQUEST: u16 = 0x0003;
+
+        #[cfg(feature = "rfc3489")]
+        pub const SOURCE_ADDRESS: u16 = 0x0004;
+
+        #[cfg(feature = "rfc3489")]
+        pub const CHANGED_ADDRESS: u16 = 0x0005;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const USERNAME: u16 = 0x0006;
+
+        #[cfg(feature = "rfc3489")]
+        pub const PASSWORD: u16 = 0x0007;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const MESSAGE_INTEGRITY: u16 = 0x0008;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const ERROR_CODE: u16 = 0x0009;
+
+        #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const UNKNOWN_ATTRIBUTES: u16 = 0x000A;
+
+        #[cfg(feature = "rfc3489")]
+        pub const REFLECTED_FROM: u16 = 0x000B;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const CHANNEL_NUMBER: u16 = 0x000C;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const LIFETIME: u16 = 0x000D;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const XOR_PEER_ADDRESS: u16 = 0x0012;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const DATA: u16 = 0x0013;
+
+        #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const REALM: u16 = 0x0014;
+
+        #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const NONCE: u16 = 0x0015;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const XOR_RELAYED_ADDRESS: u16 = 0x0016;
+
+        #[cfg(any(feature = "rfc8656", feature = "iana"))]
+        pub const REQUESTED_ADDRESS_FAMILY: u16 = 0x0017;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const EVEN_PORT: u16 = 0x0018;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const REQUESTED_TRANSPORT: u16 = 0x0019;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const DONT_FRAGMENT: u16 = 0x001A;
+
+        #[cfg(any(feature = "rfc7635", feature = "iana"))]
+        pub const ACCESS_TOKEN: u16 = 0x001B;
+
+        #[cfg(any(feature = "rfc8489", feature = "iana"))]
+        pub const MESSAGE_INTEGRITY_SHA256: u16 = 0x001C;
+
+        #[cfg(any(feature = "rfc8489", feature = "iana"))]
+        pub const PASSWORD_ALGORITHM: u16 = 0x001D;
+
+        #[cfg(any(feature = "rfc8489", feature = "iana"))]
+        pub const USERHASH: u16 = 0x001E;
+
+        #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const XOR_MAPPED_ADDRESS: u16 = 0x0020;
+
+        #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+        pub const RESERVATION_TOKEN: u16 = 0x0022;
+
+        #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+        pub const PRIORITY: u16 = 0x0024;
+
+        #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+        pub const USE_CANDIDATE: u16 = 0x0025;
+
+        #[cfg(any(feature = "rfc5780", feature = "iana"))]
+        pub const PADDING: u16 = 0x0026;
+
+        #[cfg(any(feature = "rfc5780", feature = "iana"))]
+        pub const RESPONSE_PORT: u16 = 0x0027;
+
+        #[cfg(any(feature = "rfc6062", feature = "iana"))]
+        pub const CONNECTION_ID: u16 = 0x002A;
+
+        #[cfg(any(feature = "rfc8656", feature = "iana"))]
+        pub const ADDITIONAL_ADDRESS_FAMILY: u16 = 0x8000;
+
+        #[cfg(any(feature = "rfc8656", feature = "iana"))]
+        pub const ADDRESS_ERROR_CODE: u16 = 0x8001;
+
+        #[cfg(any(feature = "rfc8489", feature = "iana"))]
+        pub const PASSWORD_ALGORITHMS: u16 = 0x8002;
+
+        #[cfg(any(feature = "rfc8489", feature = "iana"))]
+        pub const ALTERNATE_DOMAIN: u16 = 0x8003;
+
+        #[cfg(any(feature = "rfc8656", feature = "iana"))]
+        pub const ICMP: u16 = 0x8004;
+
+        #[cfg(any(feature = "rfc3489"))]
+        pub const OPT_XOR_MAPPED_ADDRESS: u16 = 0x8020;
+
+        #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const SOFTWARE: u16 = 0x8022;
+
+        #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const ALTERNATE_SERVER: u16 = 0x8023;
+
+        #[cfg(any(feature = "rfc7982", feature = "iana"))]
+        pub const TRANSACTION_TRANSMIT_COUNTER: u16 = 0x8025;
+
+        #[cfg(any(feature = "rfc5780", feature = "iana"))]
+        pub const CACHE_TIMEOUT: u16 = 0x8027;
+
+        #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+        pub const FINGERPRINT: u16 = 0x8028;
+
+        #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+        pub const ICE_CONTROLLED: u16 = 0x8029;
+
+        #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+        pub const ICE_CONTROLLING: u16 = 0x802A;
+
+        #[cfg(any(feature = "rfc5780", feature = "iana"))]
+        pub const RESPONSE_ORIGIN: u16 = 0x802B;
+
+        #[cfg(any(feature = "rfc5780", feature = "iana"))]
+        pub const OTHER_ADDRESS: u16 = 0x802C;
+
+        #[cfg(any(feature = "rfc6679", feature = "iana"))]
+        pub const ECN_CHECK: u16 = 0x802D;
+
+        #[cfg(any(feature = "rfc7635", feature = "iana"))]
+        pub const THIRD_PARTY_AUTHORISATION: u16 = 0x802E;
+
+        #[cfg(any(feature = "rfc8016", feature = "iana"))]
+        pub const MOBILITY_TICKET: u16 = 0x8030;
+    }
+
     pub mod error_code {
         #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
         pub const TRY_ALTERNATE: u16 = 300;
@@ -931,88 +1086,88 @@ pub enum Attr<'a> {
 }
 
 impl<'a> Attr<'a> {
-    fn from(raw: RawAttr<'a>, tid: &'a [u8; 16]) -> Option<Attr<'a>> {
-        let typ = raw.typ().map(u16::of_be)?;
-        let len = raw.len().map(u16::of_be)?;
-        let val = raw.val()
-            .map(|val| val.get(0..len as usize))
-            .flatten()?;
+    fn from(typ: &'a [u8; 2], len: &'a [u8; 2], val: &'a [u8], tid: &'a [u8; 16]) -> Option<Attr<'a>> {
+        let typ = typ.to_be();
+        let len: u16 = len.to_be();
+        let val = val.get(0..len as usize)?;
+
+        use consts::attr_type::*;
 
         Some(match typ {
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0001 => Self::MappedAddress(Self::parse_address(val)?),
+            MAPPED_ADDRESS => Self::MappedAddress(Self::parse_address(val)?),
 
             #[cfg(feature = "rfc3489")]
-            0x0002 => Self::ResponseAddress(Self::parse_address(val)?),
+            RESPONSE_ADDRESS => Self::ResponseAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5780", feature = "iana"))]
-            0x0003 => {
+            CHANGE_REQUEST => {
                 let (change_ip, change_port) = Self::parse_change_request(val)?;
                 Self::ChangeRequest { change_ip, change_port }
             }
 
             #[cfg(feature = "rfc3489")]
-            0x0004 => Self::SourceAddress(Self::parse_address(val)?),
+            SOURCE_ADDRESS => Self::SourceAddress(Self::parse_address(val)?),
 
             #[cfg(feature = "rfc3489")]
-            0x0005 => Self::ChangedAddress(Self::parse_address(val)?),
+            CHANGED_ADDRESS => Self::ChangedAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0006 => Self::Username(Self::parse_string(val)?),
+            USERNAME => Self::Username(Self::parse_string(val)?),
 
             #[cfg(feature = "rfc3489")]
-            0x0007 => Self::Password(Self::parse_string(val)?),
+            PASSWORD => Self::Password(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0008 => Self::MessageIntegrity(val.get(0..20).map(carve)??),
+            MESSAGE_INTEGRITY => Self::MessageIntegrity(val.get(0..20).map(carve)??),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0009 => {
+            ERROR_CODE => {
                 let (code, reason) = Self::parse_error_code(val)?;
                 Self::ErrorCode { code, reason }
             }
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x000A => Self::UnknownAttributes(UnknownAttrIter { buf: val }),
+            UNKNOWN_ATTRIBUTES => Self::UnknownAttributes(UnknownAttrIter { buf: val }),
 
             #[cfg(feature = "rfc3489")]
-            0x000B => Self::ReflectedFrom(Self::parse_address(val)?),
+            REFLECTED_FROM => Self::ReflectedFrom(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x000C => Self::ChannelNumber(val.get(0..2).map(carve)?.map(u16::of_be)?),
+            CHANNEL_NUMBER => Self::ChannelNumber(val.get(0..2).map(carve)?.map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x000D => Self::Lifetime(core::time::Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
+            LIFETIME => Self::Lifetime(core::time::Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0012 => Self::XorPeerAddress(Self::parse_xor_address(val, tid)?),
+            XOR_PEER_ADDRESS => Self::XorPeerAddress(Self::parse_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0013 => Self::Data(val),
+            DATA => Self::Data(val),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0014 => Self::Realm(Self::parse_string(val)?),
+            REALM => Self::Realm(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0015 => Self::Nonce(Self::parse_string(val)?),
+            NONCE => Self::Nonce(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0016 => Self::XorRelayedAddress(Self::parse_xor_address(val, tid)?),
+            XOR_RELAYED_ADDRESS => Self::XorRelayedAddress(Self::parse_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x0017 => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from)?),
+            REQUESTED_ADDRESS_FAMILY => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0018 => Self::EvenPort(val.get(0).map(|val| val & 1 == 1)?),
+            EVEN_PORT => Self::EvenPort(val.get(0).map(|val| val & 1 == 1)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0019 => Self::RequestedTransport(val.get(0).map(TransportProtocol::from)?),
+            REQUESTED_TRANSPORT => Self::RequestedTransport(val.get(0).map(TransportProtocol::from)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x001A => Self::DontFragment,
+            DONT_FRAGMENT => Self::DontFragment,
 
             #[cfg(any(feature = "rfc7635", feature = "iana"))]
-            0x001B => {
+            ACCESS_TOKEN => {
                 let (nonce, mac, timestamp, lifetime) = Self::parse_access_token(val)?;
                 Self::AccessToken {
                     nonce,
@@ -1023,40 +1178,40 @@ impl<'a> Attr<'a> {
             }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001C => Self::MessageIntegritySha256(val.get(0..32).map(carve)??),
+            MESSAGE_INTEGRITY_SHA256 => Self::MessageIntegritySha256(val.get(0..32).map(carve)??),
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001D => Self::PasswordAlgorithm(Self::parse_password_algorithm(val)?),
+            PASSWORD_ALGORITHM => Self::PasswordAlgorithm(Self::parse_password_algorithm(val)?),
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x001E => Self::Userhash(val.get(0..32).map(carve)??),
+            USERHASH => Self::Userhash(val.get(0..32).map(carve)??),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x0020 => Self::XorMappedAddress(Self::parse_xor_address(val, tid)?),
+            XOR_MAPPED_ADDRESS => Self::XorMappedAddress(Self::parse_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            0x0022 => Self::ReservationToken(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            RESERVATION_TOKEN => Self::ReservationToken(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x0024 => Self::Priority(val.get(0..4).map(carve)?.map(u32::of_be)?),
+            PRIORITY => Self::Priority(val.get(0..4).map(carve)?.map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x0025 => Self::UseCandidate,
+            USE_CANDIDATE => Self::UseCandidate,
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x0026 => Self::Padding(val),
+            PADDING => Self::Padding(val),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x0027 => Self::ResponsePort(val.get(0..2).map(carve)?.map(u16::of_be)?),
+            RESPONSE_PORT => Self::ResponsePort(val.get(0..2).map(carve)?.map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            0x002A => Self::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
+            CONNECTION_ID => Self::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x8000 => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from)?),
+            ADDITIONAL_ADDRESS_FAMILY => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x8001 => {
+            ADDRESS_ERROR_CODE => {
                 let (family, code, reason) = Self::parse_address_error_code(val)?;
                 Self::AddressErrorCode {
                     family,
@@ -1066,39 +1221,39 @@ impl<'a> Attr<'a> {
             }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x8002 => {
+            PASSWORD_ALGORITHMS => {
                 Self::PasswordAlgorithms(PasswordAlgorithmIter {
                     raw_iter: RawIter::from(val),
                 })
             }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            0x8003 => Self::AlternateDomain(Self::parse_string(val)?),
+            ALTERNATE_DOMAIN => Self::AlternateDomain(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            0x8004 => Self::Icmp {
+            ICMP => Self::Icmp {
                 typ: *val.get(2)?,
                 code: *val.get(3)?,
                 data: val.get(4..8).map(carve)?.map(u32::of_be)?,
             },
 
             #[cfg(any(feature = "rfc3489"))]
-            0x8020 => Self::OptXorMappedAddress(Self::parse_xor_address(val, tid)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
+            OPT_XOR_MAPPED_ADDRESS => Self::OptXorMappedAddress(Self::parse_xor_address(val, tid)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x8022 => Self::Software(Self::parse_string(val)?),
+            SOFTWARE => Self::Software(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x8023 => Self::AlternateServer(Self::parse_address(val)?),
+            ALTERNATE_SERVER => Self::AlternateServer(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc7982", feature = "iana"))]
-            0x8025 => Self::TransactionTransmitCounter {
+            TRANSACTION_TRANSMIT_COUNTER => Self::TransactionTransmitCounter {
                 req: *val.get(2)?,
                 res: *val.get(3)?,
             },
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x8027 => {
+            CACHE_TIMEOUT => {
                 let timeout = val.get(0..4)
                     .map(carve)?
                     .map(u32::of_be)
@@ -1109,31 +1264,31 @@ impl<'a> Attr<'a> {
             }
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            0x8028 => Self::Fingerprint(Self::parse_fingerprint(val)?),
+            FINGERPRINT => Self::Fingerprint(Self::parse_fingerprint(val)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x8029 => Self::IceControlled(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            ICE_CONTROLLED => Self::IceControlled(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            0x802A => Self::IceControlling(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            ICE_CONTROLLING => Self::IceControlling(val.get(0..8).map(carve)?.map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x802B => Self::ResponseOrigin(Self::parse_address(val)?),
+            RESPONSE_ORIGIN => Self::ResponseOrigin(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            0x802C => Self::OtherAddress(Self::parse_address(val)?),
+            OTHER_ADDRESS => Self::OtherAddress(Self::parse_address(val)?),
 
             #[cfg(any(feature = "rfc6679", feature = "iana"))]
-            0x802D => Self::EcnCheck {
+            ECN_CHECK => Self::EcnCheck {
                 valid: val.get(3).map(|val| val & 128 != 0)?,
                 val: val.get(3).map(|val| (val & 96) >> 5)?,
             },
 
             #[cfg(any(feature = "rfc7635", feature = "iana"))]
-            0x802E => Self::ThirdPartyAuthorisation(Self::parse_string(val)?),
+            THIRD_PARTY_AUTHORISATION => Self::ThirdPartyAuthorisation(Self::parse_string(val)?),
 
             #[cfg(any(feature = "rfc8016", feature = "iana"))]
-            0x8030 => Self::MobilityTicket(val),
+            MOBILITY_TICKET => Self::MobilityTicket(val),
 
             typ => Self::Other { typ, val },
         })
@@ -1386,7 +1541,7 @@ impl<'a> Iterator for AttrIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let raw_attr = self.raw_iter.next()?;
-        Attr::from(raw_attr, self.tid)
+        Attr::from(raw_attr.typ()?, raw_attr.len()?, raw_attr.val()?, self.tid)
     }
 }
 
