@@ -83,6 +83,18 @@ mod lib {
         buf.try_into().ok()
     }
 
+    #[cfg(feature = "safe-copy")]
+    pub trait CopySafe<const N : usize, T: Sized + Copy> {
+        fn copy_from(&mut self, src: &[T; N]);
+    }
+
+    #[cfg(feature = "safe-copy")]
+    impl<const N : usize, T: Sized + Copy> CopySafe<N, T> for [T; N] {
+        fn copy_from(&mut self, src: &[T; N]) {
+            self.copy_from_slice(src);
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -113,6 +125,25 @@ mod lib {
                 .map(u16::of_be)
                 .unwrap();
             assert_eq!(0x0102 as u16, val);
+        }
+
+        #[test]
+        fn safe_copy() {
+            let mut buf = [0u8; 4];
+            let val1 = [1u8; 4];
+            let val2 = [2u8; 4];
+
+            buf.copy_from(&val1);
+
+            assert_eq!(&buf, &val1);
+
+            buf.get_mut(0..4)
+                .map(carve_mut)
+                .flatten()
+                .unwrap()
+                .copy_from(&val2);
+
+            assert_eq!(&buf, &val2);
         }
     }
 }

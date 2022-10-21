@@ -239,7 +239,7 @@ impl MsgType {
         }
     }
 
-    fn into(&self) -> [u8; 2] {
+    fn into_nums(&self) -> [u8; 2] {
         use crate::consts::msg_type::*;
 
         match self {
@@ -348,7 +348,7 @@ pub enum AddressFamily {
 }
 
 impl AddressFamily {
-    fn from(fam: &u8) -> Self {
+    fn from_nums(fam: &u8) -> Self {
         match fam {
             1 => Self::IPv4,
             2 => Self::IPv6,
@@ -356,7 +356,7 @@ impl AddressFamily {
         }
     }
 
-    fn into(&self) -> u8 {
+    fn into_nums(&self) -> u8 {
         match self {
             Self::IPv4 => 1,
             Self::IPv6 => 2,
@@ -373,14 +373,14 @@ pub enum TransportProtocol {
 }
 
 impl TransportProtocol {
-    fn from(proto: &u8) -> Self {
+    fn from_nums(proto: &u8) -> Self {
         match proto {
             17 => Self::UDP,
             proto => Self::Other(*proto),
         }
     }
 
-    fn into(&self) -> u8 {
+    fn into_nums(&self) -> u8 {
         match self {
             Self::UDP => 17,
             Self::Other(proto) => *proto, // TODO move to consts
@@ -464,7 +464,7 @@ pub enum ErrorCode {
 }
 
 impl ErrorCode {
-    fn from(buf: &[u8; 2]) -> Self {
+    fn from_nums(buf: &[u8; 2]) -> Self {
         use crate::consts::error_code::*;
 
         let class = buf[0] as u16 >> 5; // we only care about 3 MSB
@@ -546,7 +546,7 @@ impl ErrorCode {
         }
     }
 
-    pub fn into(&self) -> [u8; 2] {
+    pub fn into_nums(&self) -> [u8; 2] {
         use crate::consts::error_code::*;
 
         let code = match self {
@@ -787,7 +787,7 @@ pub enum Attr<'a> {
 }
 
 impl<'a> Attr<'a> {
-    fn from(typ: &'a [u8; 2], len: &'a [u8; 2], val: &'a [u8], tid: &'a [u8; 16]) -> Option<Attr<'a>> {
+    fn from_bytes(typ: &'a [u8; 2], len: &'a [u8; 2], val: &'a [u8], tid: &'a [u8; 16]) -> Option<Attr<'a>> {
         let typ = typ.to_be();
         let len: u16 = len.to_be();
         let val = val.get(0..len as usize)?;
@@ -856,13 +856,13 @@ impl<'a> Attr<'a> {
             XOR_RELAYED_ADDRESS => Self::XorRelayedAddress(Self::read_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            REQUESTED_ADDRESS_FAMILY => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from)?),
+            REQUESTED_ADDRESS_FAMILY => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from_nums)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             EVEN_PORT => Self::EvenPort(val.get(0).map(|val| val & 1 == 1)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            REQUESTED_TRANSPORT => Self::RequestedTransport(val.get(0).map(TransportProtocol::from)?),
+            REQUESTED_TRANSPORT => Self::RequestedTransport(val.get(0).map(TransportProtocol::from_nums)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             DONT_FRAGMENT => Self::DontFragment,
@@ -909,7 +909,7 @@ impl<'a> Attr<'a> {
             CONNECTION_ID => Self::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            ADDITIONAL_ADDRESS_FAMILY => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from)?),
+            ADDITIONAL_ADDRESS_FAMILY => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from_nums)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
             ADDRESS_ERROR_CODE => {
@@ -1072,7 +1072,7 @@ impl<'a> Attr<'a> {
     }
 
     fn read_error_code(buf: &[u8]) -> Option<(ErrorCode, &str)> {
-        let code = ErrorCode::from(buf.get(2..4).map(carve)??);
+        let code = ErrorCode::from_nums(buf.get(2..4).map(carve)??);
         let reason = buf.get(4..).map(Self::read_string)??;
         Some((code, reason))
     }
@@ -1139,11 +1139,11 @@ impl<'a> Attr<'a> {
 
     fn read_address_error_code(buf: &'a [u8]) -> Option<(AddressFamily, ErrorCode, &'a str)> {
         let address_family = buf.get(0)
-            .map(AddressFamily::from)?;
+            .map(AddressFamily::from_nums)?;
 
         let error_code = buf.get(2..4)
             .map(carve)?
-            .map(ErrorCode::from)?;
+            .map(ErrorCode::from_nums)?;
 
         let reason = Self::read_string(buf.get(4..)?)?;
 
@@ -1152,13 +1152,12 @@ impl<'a> Attr<'a> {
 }
 
 impl<'a> Attr<'a> {
-    fn into(&self, typ: &'a mut [u8; 2], len: &'a mut [u8; 2], val: &'a mut [u8], tid: &'a [u8; 16]) -> Option<usize> {
-
+    fn into_bytes(&self, typ: &'a mut [u8; 2], len: &'a mut [u8; 2], val: &'a mut [u8], tid: &'a [u8; 16]) -> Option<usize> {
         use crate::consts::attr_type::*;
 
         match self {
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            Self::MappedAddress(addr) => { self.w},
+            Self::MappedAddress(addr) => { self.w }
 
             #[cfg(feature = "rfc3489")]
             RESPONSE_ADDRESS => Self::ResponseAddress(Self::read_address(val)?),
@@ -1218,13 +1217,13 @@ impl<'a> Attr<'a> {
             XOR_RELAYED_ADDRESS => Self::XorRelayedAddress(Self::read_xor_address(val, tid)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            REQUESTED_ADDRESS_FAMILY => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from)?),
+            REQUESTED_ADDRESS_FAMILY => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from_nums)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             EVEN_PORT => Self::EvenPort(val.get(0).map(|val| val & 1 == 1)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            REQUESTED_TRANSPORT => Self::RequestedTransport(val.get(0).map(TransportProtocol::from)?),
+            REQUESTED_TRANSPORT => Self::RequestedTransport(val.get(0).map(TransportProtocol::from_nums)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             DONT_FRAGMENT => Self::DontFragment,
@@ -1271,7 +1270,7 @@ impl<'a> Attr<'a> {
             CONNECTION_ID => Self::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            ADDITIONAL_ADDRESS_FAMILY => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from)?),
+            ADDITIONAL_ADDRESS_FAMILY => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from_nums)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
             ADDRESS_ERROR_CODE => {
@@ -1362,8 +1361,8 @@ impl<'a> Attr<'a> {
             .map(carve_mut)??;
 
         match addr {
-            SocketAddr::V4(..) => addr_family.set_be(AddressFamily::IPv4.into() as u16),
-            SocketAddr::V6(..) => addr_family.set_be(AddressFamily::IPv6.into() as u16),
+            SocketAddr::V4(..) => addr_family.set_be(AddressFamily::IPv4.into_nums() as u16),
+            SocketAddr::V6(..) => addr_family.set_be(AddressFamily::IPv6.into_nums() as u16),
         }
 
         let port = buf.get_mut(2..4)
@@ -1374,12 +1373,12 @@ impl<'a> Attr<'a> {
                 port.set_be(*port_val);
                 buf.get_mut(4..8)?.copy_from_slice(ip);
                 Some(4)
-            },
+            }
             SocketAddr::V6(ip, port_val) => {
                 port.set_be(*port_val);
                 buf.get_mut(4..20)?.copy_from_slice(ip);
                 Some(16)
-            },
+            }
         }
     }
 
@@ -1400,7 +1399,7 @@ impl<'a> Attr<'a> {
                 let ip = (ip ^ cookie).to_be_bytes();
 
                 SocketAddr::V4(ip, port)
-            },
+            }
 
             SocketAddr::V6(ip, port) => {
                 let port = port ^ port_mask;
@@ -1430,7 +1429,7 @@ impl<'a> Attr<'a> {
     }
 
     fn write_error_code(code: &ErrorCode, desc: &str, buf: &mut [u8]) -> Option<usize> {
-        buf.get_mut(2..4)?.copy_from_slice(&code.into());
+        buf.get_mut(2..4)?.copy_from_slice(&code.into_nums());
         Self::write_string(desc, buf.get_mut(4..)?).map(|size| 4 + size) // '4' accounts for error code
     }
 
@@ -1442,7 +1441,7 @@ impl<'a> Attr<'a> {
         Some(4)
     }
 
-    fn write_access_token(nonce: &[u8], mac: &[u8], timeout: &core::time::Duration, lifetime: &core::time::Duration, buf: &mut [u8]) -> Option<usize> {
+    fn write_access_token(nonce: &[u8], mac: &[u8], timestamp: &core::time::Duration, lifetime: &core::time::Duration, buf: &mut [u8]) -> Option<usize> {
         let mut cursor = 0usize;
 
         let nonce_len = nonce.len();
@@ -1465,48 +1464,37 @@ impl<'a> Attr<'a> {
 
         cursor += mac_len;
 
-        let timestamp_bytes: &[u8; 8] = buf.get(cursor..cursor + 8)
-            .map(carve)??;
+        let timestamp_unix = timestamp.as_secs() << 4;
+        let timestamp_unix = timestamp_unix | (((timestamp.as_secs_f64() - timestamp.as_secs() as f64) * 64000_f64) as u16) as u64;
+
+        buf.get_mut(cursor..cursor + 8)?.copy_from_slice(&timestamp_unix.to_be_bytes());
 
         cursor += 8;
 
-        let timestamp_seconds = timestamp_bytes.get(0..4)
-            .map(carve)?
-            .map(u32::of_be)
-            .map(|val| (val as u64) << 16)? | timestamp_bytes.get(4..6)
-            .map(carve)?
-            .map(u16::of_be)? as u64;
+        buf.get_mut(cursor..cursor + 4)?.copy_from_slice(&(lifetime.as_secs() as u32).to_be_bytes());
 
-        let timestamp_frac = timestamp_bytes.get(6..8)
-            .map(carve)?
-            .map(u16::of_be)? as f64 / 64000_f64;
+        cursor += 4;
 
-        let timestamp = core::time::Duration::from_secs_f64(timestamp_seconds as f64 + timestamp_frac);
-
-        let lifetime_secs = buf.get(cursor..cursor + 4)
-            .map(carve)?
-            .map(u32::of_be)?;
-
-        let lifetime = core::time::Duration::from_secs(lifetime_secs as u64);
-
-        Some((nonce, mac, timestamp, lifetime))
+        Some(cursor)
     }
 
     fn write_password_algorithm(val: &PasswordAlgorithm, buf: &mut [u8]) -> Option<usize> {
-        PasswordAlgorithmIter { raw_iter: RawIter::from(&buf) }.next()
+        let (typ, params) = val.into_nums();
+
+        buf.get_mut(0..2)?.copy_from_slice(&typ.to_be_bytes());
+
+        let len = params.len();
+        buf.get_mut(2..4)?.copy_from_slice(&len.to_be_bytes());
+
+        buf.get_mut(4..4 + len)?.copy_from_slice(params);
+
+        Some(4 + len)
     }
 
     fn write_address_error_code(fam: &AddressFamily, code: &ErrorCode, desc: &str, buf: &mut [u8]) -> Option<usize> {
-        let address_family = buf.get(0)
-            .map(AddressFamily::from)?;
+        *buf.get_mut(0)? = fam.into_nums();
 
-        let error_code = buf.get(2..4)
-            .map(carve)?
-            .map(ErrorCode::from)?;
-
-        let reason = Self::read_string(buf.get(4..)?)?;
-
-        Some((address_family, error_code, reason))
+        Self::write_error_code(code, desc, buf)
     }
 }
 
@@ -1551,11 +1539,19 @@ pub enum PasswordAlgorithm<'a> {
 }
 
 impl<'a> PasswordAlgorithm<'a> {
-    fn from(typ: u16, params: &'a [u8]) -> Self {
+    fn from_nums(typ: u16, params: &'a [u8]) -> Self {
         match typ {
             1 => PasswordAlgorithm::Md5,
             2 => PasswordAlgorithm::Sha256,
             typ => PasswordAlgorithm::Other { typ, params },
+        }
+    }
+
+    fn into_nums(&self) -> (u16, &'a [u8]) {
+        match self {
+            Self::Md5 => (1, &[]),
+            Self::Sha256 => (2, &[]),
+            Self::Other { typ, params } => (*typ, *params),   // TODO move to consts
         }
     }
 }
@@ -1587,7 +1583,7 @@ impl<'a> Iterator for PasswordAlgorithmIter<'a> {
         let typ = attr.typ().map(u16::of_be)?;
         let len = attr.len().map(u16::of_be)?;
         let params = attr.val()?.get(0..len as usize)?;
-        Some(PasswordAlgorithm::from(typ, params))
+        Some(PasswordAlgorithm::from_nums(typ, params))
     }
 }
 
@@ -1601,7 +1597,7 @@ impl<'a> Iterator for AttrIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let raw_attr = self.raw_iter.next()?;
-        Attr::from(raw_attr.typ()?, raw_attr.len()?, raw_attr.val()?, self.tid)
+        Attr::from_bytes(raw_attr.typ()?, raw_attr.len()?, raw_attr.val()?, self.tid)
     }
 }
 
