@@ -787,10 +787,10 @@ pub enum Attr<'a> {
 }
 
 impl<'a> Attr<'a> {
-    fn from_bytes(typ: &'a [u8; 2], len: &'a [u8; 2], val: &'a [u8], tid: &'a [u8; 16]) -> Option<Attr<'a>> {
-        let typ = typ.to_be();
-        let len: u16 = len.to_be();
-        let val = val.get(0..len as usize)?;
+    fn from_buf(typ_buf: &'a [u8; 2], len_buf: &'a [u8; 2], val_buf: &'a [u8], tid_buf: &'a [u8; 16]) -> Option<Attr<'a>> {
+        let typ = typ_buf.to_be();
+        let len: u16 = len_buf.to_be();
+        let val = val_buf.get(0..len as usize)?;
 
         use crate::consts::attr_type::*;
 
@@ -841,7 +841,7 @@ impl<'a> Attr<'a> {
             LIFETIME => Self::Lifetime(core::time::Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            XOR_PEER_ADDRESS => Self::XorPeerAddress(Self::read_xor_address(val, tid)?),
+            XOR_PEER_ADDRESS => Self::XorPeerAddress(Self::read_xor_address(val, tid_buf)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             DATA => Self::Data(val),
@@ -853,7 +853,7 @@ impl<'a> Attr<'a> {
             NONCE => Self::Nonce(Self::read_string(val)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            XOR_RELAYED_ADDRESS => Self::XorRelayedAddress(Self::read_xor_address(val, tid)?),
+            XOR_RELAYED_ADDRESS => Self::XorRelayedAddress(Self::read_xor_address(val, tid_buf)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
             REQUESTED_ADDRESS_FAMILY => Self::RequestedAddressFamily(val.get(0).map(AddressFamily::from_nums)?),
@@ -888,7 +888,7 @@ impl<'a> Attr<'a> {
             USERHASH => Self::Userhash(val.get(0..32).map(carve)??),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            XOR_MAPPED_ADDRESS => Self::XorMappedAddress(Self::read_xor_address(val, tid)?),
+            XOR_MAPPED_ADDRESS => Self::XorMappedAddress(Self::read_xor_address(val, tid_buf)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             RESERVATION_TOKEN => Self::ReservationToken(val.get(0..8).map(carve)?.map(u64::of_be)?),
@@ -939,7 +939,7 @@ impl<'a> Attr<'a> {
             },
 
             #[cfg(any(feature = "rfc3489"))]
-            OPT_XOR_MAPPED_ADDRESS => Self::OptXorMappedAddress(Self::read_xor_address(val, tid)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
+            OPT_XOR_MAPPED_ADDRESS => Self::OptXorMappedAddress(Self::read_xor_address(val, tid_buf)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             SOFTWARE => Self::Software(Self::read_string(val)?),
@@ -1152,312 +1152,421 @@ impl<'a> Attr<'a> {
 }
 
 impl<'a> Attr<'a> {
-    fn into_bytes(&self, typ: &'a mut [u8; 2], len: &'a mut [u8; 2], val: &'a mut [u8], tid: &'a [u8; 16]) -> Option<usize> {
+    fn into_buf(&self, typ_buf: &'a mut [u8; 2], len_buf: &'a mut [u8; 2], val_buf: &'a mut [u8], tid_buf: &'a [u8; 16]) -> Option<usize> {
         use crate::consts::attr_type::*;
 
         match self {
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             Self::MappedAddress(addr) => {
-                typ.set_be(MAPPED_ADDRESS);
-                let size = Self::write_address(&addr, val)?;
-                len.set_be(size as u16);
+                typ_buf.set_be(MAPPED_ADDRESS);
+                let size = Self::write_address(&addr, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             },
 
             #[cfg(feature = "rfc3489")]
             Self::ResponseAddress(addr) => {
-                typ.set_be(RESPONSE_ADDRESS);
-                let size = Self::write_address(&addr, val)?;
-                len.set_be(size as u16);
+                typ_buf.set_be(RESPONSE_ADDRESS);
+                let size = Self::write_address(&addr, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             },
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5780", feature = "iana"))]
             Self::ChangeRequest { change_ip, change_port } => {
-                typ.set_be(CHANGE_REQUEST);
-                let size = Self::write_change_request(change_ip, change_port, val)?;
-                len.set_be(size as u16);
+                typ_buf.set_be(CHANGE_REQUEST);
+                let size = Self::write_change_request(*change_ip, *change_port, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             },
 
             #[cfg(feature = "rfc3489")]
             Self::SourceAddress(addr) => {
-                typ.set_be(SOURCE_ADDRESS);
-                let size = Self::write_address(&addr, val)?;
-                len.set_be(size as u16);
+                typ_buf.set_be(SOURCE_ADDRESS);
+                let size = Self::write_address(&addr, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             },
 
             #[cfg(feature = "rfc3489")]
             Self::ChangedAddress(addr) => {
-                typ.set_be(CHANGED_ADDRESS);
-                let size = Self::write_address(&addr, val)?;
-                len.set_be(size as u16);
+                typ_buf.set_be(CHANGED_ADDRESS);
+                let size = Self::write_address(&addr, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             },
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            Self::Username(username) => {
-                typ.set_be(USERNAME);
-                let size = Self::write_string(username, val)?;
-                len.set_be(size as u16);
+            Self::Username(uname) => {
+                typ_buf.set_be(USERNAME);
+                let size = Self::write_string(uname, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
-            },
+            }
 
             #[cfg(feature = "rfc3489")]
-            Self::Password(password) => {
-                typ.set_be(PASSWORD);
-                let size = Self::write_string(username, val)?;
-                len.set_be(size as u16);
+            Self::Password(pwd) => {
+                typ_buf.set_be(PASSWORD);
+                let size = Self::write_string(pwd, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             }
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             Self::MessageIntegrity(digest) => {
-                typ.set_be(MESSAGE_INTEGRITY);
-                val.get_mut(0..20).map(carve_mut)??.copy_from(digest);
-                len.set_be(20u16);
+                typ_buf.set_be(MESSAGE_INTEGRITY);
+                val_buf.get_mut(0..20).map(carve_mut)??.copy_from(digest);
+                len_buf.set_be(20 as u16);
                 Some(20)
             }
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             Self::ErrorCode { code, desc} => {
-                typ.set_be(ERROR_CODE);
-                Self::write_error_code(code, desc, val)
+                typ_buf.set_be(ERROR_CODE);
+                Self::write_error_code(code, desc, val_buf)
             }
 
-            // #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            // UNKNOWN_ATTRIBUTES => Self::UnknownAttributes(UnknownAttrIter { buf: val }),
+            #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::UnknownAttributes(iter) => {
+                typ_buf.set_be(UNKNOWN_ATTRIBUTES);
+                todo!()
+            }
 
             #[cfg(feature = "rfc3489")]
             Self::ReflectedFrom(addr) => {
-                typ.set_be(REFLECTED_FROM);
-                let size = Self::write_address(&addr, val)?;
-                len.set_be(size as u16);
+                typ_buf.set_be(REFLECTED_FROM);
+                let size = Self::write_address(&addr, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             },
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             Self::ChannelNumber(num) => {
-                typ.set_be(CHANNEL_NUMBER);
-                val.get_mut(0..2).map(carve_mut)??.copy_from(num.to_be());
-                len.set_be(2);
+                typ_buf.set_be(CHANNEL_NUMBER);
+                val_buf.get_mut(0..2).map(carve_mut)??.set_be(*num);
+                len_buf.set_be(2 as u16);
                 Some(2)
             }
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            LIFETIME => Self::Lifetime(core::time::Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
             Self::Lifetime(lifetime) => {
-                typ.set_be(LIFETIME);
-                val.get_mut(0..4).map(carve_mut)??.copy_from(&(lifetime.as_secs() as u32).to_be_bytes());
-                len.set_be(4);
+                typ_buf.set_be(LIFETIME);
+                val_buf.get_mut(0..4).map(carve_mut)??.copy_from(&(lifetime.as_secs() as u32).to_be_bytes());
+                len_buf.set_be(4 as u16);
                 Some(4)
             }
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            XOR_PEER_ADDRESS => Self::XorPeerAddress(Self::read_xor_address(val, tid)?),
-            Self::XorMappedAddress(addr) => {
-                typ.set_be(XOR_MAPPED_ADDRESS);
-                let size = Self::write_xor_address(&addr, val, tid)?;
-                len.set_be(size as u16);
+            Self::XorPeerAddress(addr) => {
+                typ_buf.set_be(XOR_PEER_ADDRESS);
+                let size = Self::write_xor_address(&addr, val_buf, tid_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             }
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            DATA => Self::Data(val),
             Self::Data(data) => {
-                typ.set_be(DATA);
-                val.get_mut(0..data.len())?.copy_from_slice(data);
+                typ_buf.set_be(DATA);
+                val_buf.get_mut(0..data.len())?.copy_from_slice(data);
+                len_buf.set_be(data.len() as u16);
                 Some(data.len())
             }
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             Self::Realm(realm) => {
-                typ.set_be(REALM);
-                let size = Self::write_string(realm, val)?;
-                len.set_be(size);
+                typ_buf.set_be(REALM);
+                let size = Self::write_string(realm, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             }
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             Self::Nonce(nonce) => {
-                typ.set_be(NONCE);
-                let size = Self::write_string(nonce, val)?;
-                len.set_be(size);
+                typ_buf.set_be(NONCE);
+                let size = Self::write_string(nonce, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             }
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             Self::XorRelayedAddress(addr) => {
-                typ.set_be(XOR_RELAYED_ADDRESS);
-                let size = Self::write_xor_address(addr, val, tid)?;
-                len.set_be(size);
+                typ_buf.set_be(XOR_RELAYED_ADDRESS);
+                let size = Self::write_xor_address(addr, val_buf, tid_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             }
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
             Self::RequestedAddressFamily(fam) => {
-                typ.set_be(REQUESTED_ADDRESS_FAMILY);
-                *val.get_mut(0)? = fam.into_nums();
-                len.set_be(1);
+                typ_buf.set_be(REQUESTED_ADDRESS_FAMILY);
+                *val_buf.get_mut(0)? = fam.into_nums();
+                len_buf.set_be(1 as u16);
                 Some(1)
             }
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             Self::EvenPort(even_port) => {
-                typ.set_be(EVEN_PORT);
-                *val.get_mut(0)? = even_port as u8;
-                len.set_be(1);
+                typ_buf.set_be(EVEN_PORT);
+                *val_buf.get_mut(0)? = *even_port as u8;
+                len_buf.set_be(1 as u16);
                 Some(1)
             }
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             Self::RequestedTransport(proto) => {
-                typ.set_be(REQUESTED_TRANSPORT);
-                *val.get_mut(0)? = proto.into_nums();
-                len.set_be(1);
+                typ_buf.set_be(REQUESTED_TRANSPORT);
+                *val_buf.get_mut(0)? = proto.into_nums();
+                len_buf.set_be(1 as u16);
                 Some(1)
             }
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            DONT_FRAGMENT => Self::DontFragment,
             Self::DontFragment => {
-                typ.set_be(DONT_FRAGMENT);
-                len.set_be(0);
+                typ_buf.set_be(DONT_FRAGMENT);
+                len_buf.set_be(0 as u16);
                 Some(0)
             }
 
             #[cfg(any(feature = "rfc7635", feature = "iana"))]
-            ACCESS_TOKEN => {
-                let (nonce, mac, timestamp, lifetime) = Self::read_access_token(val)?;
-                Self::AccessToken {
-                    nonce,
-                    mac,
-                    timestamp,
-                    lifetime,
-                }
-            }
             Self::AccessToken { nonce, mac, timestamp, lifetime} => {
-                typ.set_be(ACCESS_TOKEN);
-                let size = Self::write_access_token(nonce, mac, timestamp, lifetime, val)?;
-                len.set_be(size);
+                typ_buf.set_be(ACCESS_TOKEN);
+                let size = Self::write_access_token(nonce, mac, timestamp, lifetime, val_buf)?;
+                len_buf.set_be(size as u16);
                 Some(size)
             }
 
-            // #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            // MESSAGE_INTEGRITY_SHA256 => Self::MessageIntegritySha256(val.get(0..32).map(carve)??),
-            //
-            // #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            // PASSWORD_ALGORITHM => Self::PasswordAlgorithm(Self::read_password_algorithm(val)?),
-            //
-            // #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            // USERHASH => Self::Userhash(val.get(0..32).map(carve)??),
-            //
-            // #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            // XOR_MAPPED_ADDRESS => Self::XorMappedAddress(Self::read_xor_address(val, tid)?),
-            //
-            // #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            // RESERVATION_TOKEN => Self::ReservationToken(val.get(0..8).map(carve)?.map(u64::of_be)?),
-            //
-            // #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            // PRIORITY => Self::Priority(val.get(0..4).map(carve)?.map(u32::of_be)?),
-            //
-            // #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            // USE_CANDIDATE => Self::UseCandidate,
-            //
-            // #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            // PADDING => Self::Padding(val),
-            //
-            // #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            // RESPONSE_PORT => Self::ResponsePort(val.get(0..2).map(carve)?.map(u16::of_be)?),
-            //
-            // #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            // CONNECTION_ID => Self::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
-            //
-            // #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            // ADDITIONAL_ADDRESS_FAMILY => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from_nums)?),
-            //
-            // #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            // ADDRESS_ERROR_CODE => {
-            //     let (family, code, reason) = Self::read_address_error_code(val)?;
-            //     Self::AddressErrorCode {
-            //         family,
-            //         code,
-            //         reason,
-            //     }
-            // }
-            //
-            // #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            // PASSWORD_ALGORITHMS => {
-            //     Self::PasswordAlgorithms(PasswordAlgorithmIter {
-            //         raw_iter: RawIter::from(val),
-            //     })
-            // }
-            //
-            // #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            // ALTERNATE_DOMAIN => Self::AlternateDomain(Self::read_string(val)?),
-            //
-            // #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            // ICMP => Self::Icmp {
-            //     typ: *val.get(2)?,
-            //     code: *val.get(3)?,
-            //     data: val.get(4..8).map(carve)?.map(u32::of_be)?,
-            // },
-            //
-            // #[cfg(any(feature = "rfc3489"))]
-            // OPT_XOR_MAPPED_ADDRESS => Self::OptXorMappedAddress(Self::read_xor_address(val, tid)?), // Vovida.org encodes XorMappedAddress as 0x8020 for backwards compat with RFC3489
-            //
-            // #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            // SOFTWARE => Self::Software(Self::read_string(val)?),
-            //
-            // #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            // ALTERNATE_SERVER => Self::AlternateServer(Self::read_address(val)?),
-            //
-            // #[cfg(any(feature = "rfc7982", feature = "iana"))]
-            // TRANSACTION_TRANSMIT_COUNTER => Self::TransactionTransmitCounter {
-            //     req: *val.get(2)?,
-            //     res: *val.get(3)?,
-            // },
-            //
-            // #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            // CACHE_TIMEOUT => {
-            //     let timeout = val.get(0..4)
-            //         .map(carve)?
-            //         .map(u32::of_be)
-            //         .map(|val| val as u64)
-            //         .map(core::time::Duration::from_secs)?;
-            //
-            //     Self::CacheTimeout(timeout)
-            // }
-            //
-            // #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            // FINGERPRINT => Self::Fingerprint(Self::read_fingerprint(val)?),
-            //
-            // #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            // ICE_CONTROLLED => Self::IceControlled(val.get(0..8).map(carve)?.map(u64::of_be)?),
-            //
-            // #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            // ICE_CONTROLLING => Self::IceControlling(val.get(0..8).map(carve)?.map(u64::of_be)?),
-            //
-            // #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            // RESPONSE_ORIGIN => Self::ResponseOrigin(Self::read_address(val)?),
-            //
-            // #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            // OTHER_ADDRESS => Self::OtherAddress(Self::read_address(val)?),
-            //
-            // #[cfg(any(feature = "rfc6679", feature = "iana"))]
-            // ECN_CHECK => Self::EcnCheck {
-            //     valid: val.get(3).map(|val| val & 128 != 0)?,
-            //     val: val.get(3).map(|val| (val & 96) >> 5)?,
-            // },
-            //
-            // #[cfg(any(feature = "rfc7635", feature = "iana"))]
-            // THIRD_PARTY_AUTHORISATION => Self::ThirdPartyAuthorisation(Self::read_string(val)?),
-            //
-            // #[cfg(any(feature = "rfc8016", feature = "iana"))]
-            // MOBILITY_TICKET => Self::MobilityTicket(val),
-            //
-            // typ => Self::Other { typ, val },
+            #[cfg(any(feature = "rfc8489", feature = "iana"))]
+            Self::MessageIntegritySha256(digest) => {
+                typ_buf.set_be(MESSAGE_INTEGRITY_SHA256);
+                val_buf.get_mut(0..32).map(carve_mut)??.copy_from(digest);
+                len_buf.set_be(32 as u16);
+                Some(32)
+            }
+
+            #[cfg(any(feature = "rfc8489", feature = "iana"))]
+            Self::PasswordAlgorithm(alg) => {
+                typ_buf.set_be(PASSWORD_ALGORITHM);
+                let size = Self::write_password_algorithm(alg, val_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc8489", feature = "iana"))]
+            Self::Userhash(digest) => {
+                typ_buf.set_be(USERHASH);
+                val_buf.get_mut(0..32).map(carve_mut)??.copy_from(digest);
+                len_buf.set_be(32 as u16);
+                Some(32)
+            }
+
+            #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::XorMappedAddress(addr) => {
+                typ_buf.set_be(XOR_MAPPED_ADDRESS);
+                let size = Self::write_xor_address(&addr, val_buf, tid_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
+            Self::ReservationToken(token) => {
+                typ_buf.set_be(RESERVATION_TOKEN);
+                val_buf.get_mut(0..8).map(carve_mut)??.set_be(*token);
+                len_buf.set_be(8 as u16);
+                Some(8)
+            }
+
+            #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+            Self::Priority(priority) => {
+                typ_buf.set_be(PRIORITY);
+                val_buf.get_mut(0..4).map(carve_mut)??.set_be(*priority);
+                len_buf.set_be(4 as u16);
+                Some(4)
+            }
+
+            #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+            Self::UseCandidate => {
+                typ_buf.set_be(USE_CANDIDATE);
+                len_buf.set_be(0 as u16);
+                Some(0)
+            }
+
+            #[cfg(any(feature = "rfc5780", feature = "iana"))]
+            Self::Padding(pad) => {
+                typ_buf.set_be(PADDING);
+                val_buf.get_mut(0..pad.len())?.copy_from_slice(pad);
+                len_buf.set_be(pad.len() as u16);
+                Some(pad.len())
+            }
+
+            #[cfg(any(feature = "rfc5780", feature = "iana"))]
+            Self::ResponsePort(port) => {
+                typ_buf.set_be(RESPONSE_PORT);
+                val_buf.get_mut(0..2).map(carve_mut)??.set_be(*port);
+                len_buf.set_be(2 as u16);
+                Some(2)
+            }
+
+            #[cfg(any(feature = "rfc6062", feature = "iana"))]
+            Self::ConnectionId(cid) => {
+                typ_buf.set_be(CONNECTION_ID);
+                val_buf.get_mut(0..4).map(carve_mut)??.set_be(*cid);
+                len_buf.set_be(4 as u16);
+                Some(4)
+            }
+
+            #[cfg(any(feature = "rfc8656", feature = "iana"))]
+            Self::AdditionalAddressFamily(fam) => {
+                typ_buf.set_be(ADDITIONAL_ADDRESS_FAMILY);
+                *val_buf.get_mut(0)? = fam.into_nums();
+                len_buf.set_be(1 as u16);
+                Some(1)
+            }
+
+            #[cfg(any(feature = "rfc8656", feature = "iana"))]
+            Self::AddressErrorCode { family, code, desc} => {
+                typ_buf.set_be(ADDRESS_ERROR_CODE);
+                let size = Self::write_address_error_code(family, code, desc, val_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc8489", feature = "iana"))]
+            Self::PasswordAlgorithms(iter) => {
+                typ_buf.set_be(PASSWORD_ALGORITHMS);
+                todo!()
+            }
+
+            #[cfg(any(feature = "rfc8489", feature = "iana"))]
+            Self::AlternateDomain(domain) => {
+                typ_buf.set_be(ALTERNATE_DOMAIN);
+                let size = Self::write_string(domain, val_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc8656", feature = "iana"))]
+            Self::Icmp { typ, code, data } => {
+                typ_buf.set_be(ICMP);
+                *val_buf.get_mut(2)? = *typ;
+                *val_buf.get_mut(3)? = *code;
+                val_buf.get_mut(4..8).map(carve_mut)??.set_be(*data);
+                len_buf.set_be(8 as u16);
+                Some(8)
+            }
+
+            #[cfg(any(feature = "rfc3489"))]
+            Self::OptXorMappedAddress(addr) => {
+                typ_buf.set_be(OPT_XOR_MAPPED_ADDRESS);
+                let size = Self::write_xor_address(addr, val_buf, tid_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::Software(software) => {
+                typ_buf.set_be(SOFTWARE);
+                let size = Self::write_string(software, val_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::AlternateServer(addr) => {
+                typ_buf.set_be(ALTERNATE_SERVER);
+                let size = Self::write_address(addr, val_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc7982", feature = "iana"))]
+            Self::TransactionTransmitCounter {req, res} => {
+                typ_buf.set_be(TRANSACTION_TRANSMIT_COUNTER);
+                *val_buf.get_mut(2)? = *req;
+                *val_buf.get_mut(3)? = *res;
+                len_buf.set_be(4 as u16);
+                Some(4)
+            }
+
+            #[cfg(any(feature = "rfc5780", feature = "iana"))]
+            Self::CacheTimeout(timeout) => {
+                typ_buf.set_be(CACHE_TIMEOUT);
+                val_buf.get_mut(0..4).map(carve_mut)??.set_be(timeout.as_secs() as u32);
+                len_buf.set_be(4 as u16);
+                Some(4)
+            }
+
+            #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+            Self::Fingerprint(digest) => {
+                typ_buf.set_be(FINGERPRINT);
+                val_buf.get_mut(0..4).map(carve_mut)??.set_be(*digest ^ 0x5354554E);
+                len_buf.set_be(4 as u16);
+                Some(4)
+            }
+
+            #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+            Self::IceControlled(token) => {
+                typ_buf.set_be(ICE_CONTROLLED);
+                val_buf.get_mut(0..8).map(carve_mut)??.set_be(*token);
+                len_buf.set_be(8 as u16);
+                Some(8)
+            }
+
+            #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+            Self::IceControlling(token) => {
+                typ_buf.set_be(ICE_CONTROLLING);
+                val_buf.get_mut(0..8).map(carve_mut)??.set_be(*token);
+                len_buf.set_be(8 as u16);
+                Some(8)
+            }
+
+            #[cfg(any(feature = "rfc5780", feature = "iana"))]
+            Self::ResponseOrigin(addr) => {
+                typ_buf.set_be(RESPONSE_ORIGIN);
+                let size = Self::write_address(addr, val_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc5780", feature = "iana"))]
+            Self::OtherAddress(addr) => {
+                typ_buf.set_be(OTHER_ADDRESS);
+                let size = Self::write_address(addr, val_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc6679", feature = "iana"))]
+            Self::EcnCheck { valid, val } => {
+                typ_buf.set_be(ECN_CHECK);
+                let valid = (*valid as u8) << 7;
+                let val = (val & 3) << 5;
+                *val_buf.get_mut(3)? = val | valid;
+                len_buf.set_be(4 as u16);
+                Some(4)
+            }
+
+            #[cfg(any(feature = "rfc7635", feature = "iana"))]
+            Self::ThirdPartyAuthorisation(token) => {
+                typ_buf.set_be(THIRD_PARTY_AUTHORISATION);
+                let size = Self::write_string(token, val_buf)?;
+                len_buf.set_be(size as u16);
+                Some(size)
+            }
+
+            #[cfg(any(feature = "rfc8016", feature = "iana"))]
+            Self::MobilityTicket(data) => {
+                typ_buf.set_be(MOBILITY_TICKET);
+                val_buf.get_mut(0..data.len())?.copy_from_slice(data);
+                len_buf.set_be(data.len() as u16);
+                Some(data.len())
+            }
+
+            Self::Other { typ, val } => {
+                typ_buf.set_be(*typ);
+                val_buf.get_mut(0..val.len())?.copy_from_slice(val);
+                len_buf.set_be(val.len() as u16);
+                Some(val.len())
+            }
         }
     }
 
@@ -1525,12 +1634,6 @@ impl<'a> Attr<'a> {
         let len = val.len();
         buf.get_mut(0..len)?.copy_from_slice(val.as_bytes());
         Some(len)
-    }
-
-    fn write_fingerprint(val: u32, buf: &mut [u8]) -> Option<usize> {
-        let val = val ^ 0x5354554E;
-        buf.get_mut(0..4).map(carve_mut)??.copy_from(&val.to_be_bytes());
-        Some(4)
     }
 
     fn write_error_code(code: &ErrorCode, desc: &str, buf: &mut [u8]) -> Option<usize> {
@@ -1702,7 +1805,7 @@ impl<'a> Iterator for AttrIter<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         let raw_attr = self.raw_iter.next()?;
-        Attr::from_bytes(raw_attr.typ()?, raw_attr.len()?, raw_attr.val()?, self.tid)
+        Attr::from_buf(raw_attr.typ()?, raw_attr.len()?, raw_attr.val()?, self.tid)
     }
 }
 
@@ -3520,7 +3623,7 @@ mod attr {
 
     #[cfg(any(feature = "rfc6679", feature = "iana"))]
     #[test]
-    fn enc_check() {
+    fn ecn_check() {
         let buf = [
             0x80, 0x2D, // type: Ecn Check
             0x00, 0x04, // len: 4
@@ -3564,38 +3667,68 @@ mod attr {
         if let Some(Attr::EcnCheck { valid: true, val: 3 }) = attr {} else { assert!(false); }
     }
 
+    const THIRD_PARTY_AUTHORISATION: [u8; 12] = [
+        0x80, 0x2E,                         // type: Third Party Authorisation
+        0x00, 0x06,                         // len: 6
+        0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // val: 'string'
+        0x00, 0x00,                         // padding
+    ];
+
     #[cfg(any(feature = "rfc7635", feature = "iana"))]
     #[test]
-    fn third_party_authorisation() {
-        let buf = [
-            0x80, 0x2E,                         // type: Third Party Authorisation
-            0x00, 0x06,                         // len: 6
-            0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // val: 'string'
-            0x00, 0x00,                         // padding
-        ];
-
+    fn third_party_authorisation_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&THIRD_PARTY_AUTHORISATION),
             tid: &TID,
         }.next();
 
         if let Some(Attr::ThirdPartyAuthorisation("string")) = attr {} else { assert!(false); }
     }
 
+    #[cfg(any(feature = "rfc7635", feature = "iana"))]
+    #[test]
+    fn third_party_authorisation_write() {
+        let mut buf = [0u8; 12];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::ThirdPartyAuthorisation("string").into_buf(typ, len, val, &TID);
+
+        assert_eq!(&THIRD_PARTY_AUTHORISATION, &buf);
+    }
+
+    #[cfg(any(feature = "rfc8016", feature = "iana"))]
+    const MOBILITY_TICKET: [u8; 8] = [
+        0x80, 0x30,             // type: Mobility Ticket
+        0x00, 0x04,             // len: 4
+        0x01, 0x02, 0x03, 0x04, // val
+    ];
+
     #[cfg(any(feature = "rfc8016", feature = "iana"))]
     #[test]
-    fn mobility_ticket() {
-        let buf = [
-            0x80, 0x30,             // type: Mobility Ticket
-            0x00, 0x04,             // len: 4
-            0x01, 0x02, 0x03, 0x04, // val
-        ];
-
+    fn mobility_ticket_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&MOBILITY_TICKET),
             tid: &TID,
         }.next();
 
         if let Some(Attr::MobilityTicket(&[1, 2, 3, 4])) = attr {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc8016", feature = "iana"))]
+    #[test]
+    fn mobility_ticket_write() {
+        let mut buf = [0u8; 8];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::MobilityTicket(&[1, 2, 3, 4]).into_buf(typ, len, val, &TID);
+
+        assert_eq!(&MOBILITY_TICKET, &buf);
+    }
+
+    fn split_into_tlv<const N: usize>(buf: &mut [u8; N]) -> (&mut [u8; 2], &mut [u8; 2], &mut[u8]) {
+        let (typ, buf) = buf.split_at_mut(2);
+        let (len, buf) = buf.split_at_mut(2);
+
+        (typ.try_into().unwrap(), len.try_into().unwrap(), buf)
     }
 }
