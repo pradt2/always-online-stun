@@ -1586,12 +1586,12 @@ impl<'a> Attr<'a> {
             SocketAddr::V4(ip, port_val) => {
                 port.set_be(*port_val);
                 buf.get_mut(4..8).map(carve_mut)??.copy_from(ip);
-                Some(4)
+                Some(8)
             }
             SocketAddr::V6(ip, port_val) => {
                 port.set_be(*port_val);
                 buf.get_mut(4..20).map(carve_mut)??.copy_from(ip);
-                Some(16)
+                Some(20)
             }
         }
     }
@@ -3637,7 +3637,7 @@ mod attr {
         let (typ, len, val) = split_into_tlv(&mut buf);
 
         Attr::OtherAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
-            .into_buf(typ, len, buf, &TID);
+            .into_buf(typ, len, val, &TID);
 
         assert_eq!(&OTHER_ADDRESS_IPv4, &buf);
 
@@ -3649,7 +3649,7 @@ mod attr {
             0x04, 0x05, 0x06, 0x07,
             0x08, 0x09, 0x0A, 0x0B,
             0x0C, 0x0D, 0x0E, 0x0F,
-        ], 0x0102)).into_buf(typ, len, buf, &TID);
+        ], 0x0102)).into_buf(typ, len, val, &TID);
 
         assert_eq!(&OTHER_ADDRESS_IPv6, &buf);
     }
