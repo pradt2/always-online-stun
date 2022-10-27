@@ -38,8 +38,8 @@ mod lib {
             }
 
             impl EndianTo<Option<$typ>> for Option<&[u8]> {
-                fn to_be(&self) -> Option<$typ> { self.map(carve).flatten().map(|val| <$typ>::from_be_bytes(*val)) }
-                fn to_le(&self) -> Option<$typ> { self.map(carve).flatten().map(|val| <$typ>::from_le_bytes(*val)) }
+                fn to_be(&self) -> Option<$typ> { Some(<$typ>::from_be_bytes(*self.as_ref()?.carve()?)) }
+                fn to_le(&self) -> Option<$typ> { Some(<$typ>::from_le_bytes(*self.as_ref()?.carve()?)) }
             }
 
             impl EndianOf<$typ, [u8; core::mem::size_of::<$typ>()]> for $typ {
@@ -74,23 +74,30 @@ mod lib {
     impl_endian_traits!(i128);
 
     #[cfg(feature = "carve")]
-    pub fn carve<const N: usize, T>(buf: &[T]) -> Option<&[T; N]> {
-        buf.try_into().ok()
+    pub trait CarveSafe<const N: usize, T: Sized + Copy> {
+        fn carve(&self) -> Option<&[T; N]>;
+        fn carve_mut(&mut self) -> Option<&mut [T; N]>;
     }
 
     #[cfg(feature = "carve")]
-    pub fn carve_mut<const N: usize, T>(buf: &mut [T]) -> Option<&mut [T; N]> {
-        buf.try_into().ok()
+    impl<const N: usize, T: Sized + Copy> CarveSafe<N, T> for [T] {
+        fn carve(&self) -> Option<&[T; N]> {
+            self.try_into().ok()
+        }
+
+        fn carve_mut(&mut self) -> Option<&mut [T; N]> {
+            self.try_into().ok()
+        }
     }
 
     #[cfg(feature = "safe-copy")]
-    pub trait CopySafe<const N : usize, T: Sized + Copy> {
+    pub trait CopySafe<const N: usize, T: Sized + Copy> {
         fn copy_from(&mut self, src: &[T; N]);
     }
 
     #[cfg(feature = "safe-copy")]
-    impl<const N : usize, T: Sized + Copy> CopySafe<N, T> for [T; N] {
-        fn copy_from(&mut self, src: &[T; N]) {
+    impl<const N: usize, T: Sized + Copy> CopySafe<N, T> for [T; N] {
+        fn copy_from(&mut self, src: &Self) {
             self.copy_from_slice(src);
         }
     }
@@ -119,11 +126,8 @@ mod lib {
             let val = opt.map(u16::of_be).unwrap();
             assert_eq!(0x0102 as u16, val);
 
-            let opt = Some(buf.as_slice());
-            let val = opt.map(carve)
-                .flatten()
-                .map(u16::of_be)
-                .unwrap();
+            let opt = buf.as_slice();
+            let val = opt.carve().unwrap().to_be();
             assert_eq!(0x0102 as u16, val);
         }
 
@@ -138,8 +142,8 @@ mod lib {
             assert_eq!(&buf, &val1);
 
             buf.get_mut(0..4)
-                .map(carve_mut)
-                .flatten()
+                .unwrap()
+                .carve_mut()
                 .unwrap()
                 .copy_from(&val2);
 
