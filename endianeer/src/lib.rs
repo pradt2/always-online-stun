@@ -38,22 +38,6 @@ mod lib {
                 fn set_le(&mut self, val: $typ) { self.copy_from_slice(&val.to_le_bytes()); }
             }
 
-            impl EndianTo<Option<$typ>> for Option<&[u8; core::mem::size_of::<$typ>()]> {
-                #[inline]
-                fn to_be(&self) -> Option<$typ> { self.map(|val| <$typ>::from_be_bytes(*val)) }
-
-                #[inline]
-                fn to_le(&self) -> Option<$typ> { self.map(|val| <$typ>::from_le_bytes(*val)) }
-            }
-
-            impl EndianTo<Option<$typ>> for Option<&[u8]> {
-                #[inline]
-                fn to_be(&self) -> Option<$typ> { Some(<$typ>::from_be_bytes(*self.as_ref()?.carved()?)) }
-
-                #[inline]
-                fn to_le(&self) -> Option<$typ> { Some(<$typ>::from_le_bytes(*self.as_ref()?.carved()?)) }
-            }
-
             impl EndianOf<$typ, [u8; core::mem::size_of::<$typ>()]> for $typ {
                 #[inline]
                 fn of_be(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_be() }
@@ -89,73 +73,74 @@ mod lib {
     impl_endian_traits!(i128);
 
     #[cfg(feature = "carve")]
-    pub trait Carve<const N: usize, T: Sized + Copy> {
-        fn carve(&self, idx: core::ops::Range<usize>) -> Option<&[T; N]>;
-        fn carve_mut(&mut self, idx: core::ops::Range<usize>) -> Option<&mut [T; N]>;
+    pub trait Carve<T: Sized + Copy> {
+        fn carve<const N: usize>(&self, idx: core::ops::Range<usize>) -> Option<&[T; N]>;
+        fn carve_mut<const N: usize>(&mut self, idx: core::ops::Range<usize>) -> Option<&mut [T; N]>;
     }
 
     #[cfg(feature = "carve")]
-    impl<const N: usize, T: Sized + Copy> Carve<N, T> for [T] {
+    impl<T: Sized + Copy> Carve<T> for [T] {
         #[inline]
-        fn carve(&self, idx: core::ops::Range<usize>) -> Option<&[T; N]> {
+        fn carve<const N: usize>(&self, idx: core::ops::Range<usize>) -> Option<&[T; N]> {
             self.get(idx)?.try_into().ok()
         }
 
         #[inline]
-        fn carve_mut(&mut self, idx: core::ops::Range<usize>) -> Option<&mut [T; N]> {
+        fn carve_mut<const N: usize>(&mut self, idx: core::ops::Range<usize>) -> Option<&mut [T; N]> {
             self.get_mut(idx)?.try_into().ok()
         }
     }
 
     #[cfg(feature = "carve")]
-    pub trait Carved<const N: usize, T: Sized + Copy> {
-        fn carved(&self) -> Option<&[T; N]>;
-        fn carved_mut(&mut self) -> Option<&mut [T; N]>;
+    pub trait Carved<T: Sized + Copy> {
+        fn carved<const N: usize>(&self) -> Option<&[T; N]>;
+        fn carved_mut<const N: usize>(&mut self) -> Option<&mut [T; N]>;
     }
 
     #[cfg(feature = "carve")]
-    impl<const N: usize, T: Sized + Copy> Carved<N, T> for [T] {
+    impl<T: Sized + Copy> Carved<T> for [T] {
         #[inline]
-        fn carved(&self) -> Option<&[T; N]> {
+        fn carved<const N: usize>(&self) -> Option<&[T; N]> {
             self.try_into().ok()
         }
 
         #[inline]
-        fn carved_mut(&mut self) -> Option<&mut [T; N]> {
+        fn carved_mut<const N: usize>(&mut self) -> Option<&mut [T; N]> {
             self.try_into().ok()
         }
     }
 
     #[cfg(feature = "splice")]
-    pub trait Splice<const N: usize, T: Sized + Copy> {
-        fn splice(&self) -> Option<(&[T; N], &[T])>;
-        fn splice_mut(&mut self) -> Option<(&mut [T; N], &mut [T])>;
+    pub trait Splice<T: Sized + Copy> {
+        fn splice<const N: usize>(&self) -> Option<(&[T; N], &[T])>;
+        fn splice_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])>;
     }
 
     #[cfg(feature = "splice")]
-    impl<const N: usize, T: Sized + Copy> Splice<N, T> for [T] {
+    impl<T: Sized + Copy> Splice<T> for [T] {
         #[inline]
-        fn splice(&self) -> Option<(&[T; N], &[T])> {
+        fn splice<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
             if self.len() < N { return None; }
             let (a, b) = self.split_at(N);
             Some((a.try_into().ok()?, b))
         }
 
         #[inline]
-        fn splice_mut(&mut self) -> Option<(&mut [T; N], &mut [T])> {
+        fn splice_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])> {
             if self.len() < N { return None; }
             let (a, b) = self.split_at_mut(N);
             Some((a.try_into().ok()?, b))
         }
     }
 
-    #[cfg(feature = "safe-copy")]
-    pub trait CopySafe<const N: usize, T: Sized + Copy> {
+    #[cfg(feature = "copy-from")]
+    pub trait CopySafe<T: Sized + Copy, const N: usize> {
         fn copy_from(&mut self, src: &[T; N]);
     }
 
-    #[cfg(feature = "safe-copy")]
-    impl<const N: usize, T: Sized + Copy> CopySafe<N, T> for [T; N] {
+    #[cfg(feature = "copy-from")]
+    impl<T: Sized + Copy, const N: usize> CopySafe<T, N> for [T; N] {
+        #[inline]
         fn copy_from(&mut self, src: &Self) {
             self.copy_from_slice(src);
         }
@@ -184,31 +169,59 @@ mod lib {
             let opt = Some(&buf);
             let val = opt.map(u16::of_be).unwrap();
             assert_eq!(0x0102 as u16, val);
-
-            let opt = buf.as_slice();
-            let val = opt.carved().map(u16::of_be).unwrap();
-            assert_eq!(0x0102 as u16, val);
         }
 
+        #[cfg(feature = "carve")]
         #[test]
-        fn safe_copy() {
+        fn carve() {
             let mut buf = [0u8; 4];
             let val1 = [1u8; 4];
-            let val2 = [2u8; 4];
+
+            fn copy(src: &[u8; 4], dst: &mut [u8; 4]) {
+                dst.copy_from_slice(src);
+            }
+
+            copy(&val1, buf.carve_mut(0..4).unwrap());
+            assert_eq!(&val1, buf.carve(0..4).unwrap());
+
+            let val1 = [2u8; 4];
+
+            copy(&val1, buf.carved_mut().unwrap());
+            assert_eq!(&val1, buf.carved().unwrap());
+        }
+
+        #[cfg(feature = "splice")]
+        #[test]
+        fn splice() {
+            let mut buf = [0u8; 2];
+
+            let (_, tail): (&[u8; 0], _) = buf.splice().unwrap();
+            assert_eq!(2, tail.len());
+
+            let (_, tail): (&[u8; 2], _) = buf.splice().unwrap();
+            assert_eq!(0, tail.len());
+
+            let x: Option<(&[u8; 4], &[u8])> = buf.splice();
+            assert_eq!(None, x);
+
+            let (_, tail): (&mut [u8; 0], _) = buf.splice_mut().unwrap();
+            assert_eq!(2, tail.len());
+
+            let (_, tail): (&mut [u8; 2], _) = buf.splice_mut().unwrap();
+            assert_eq!(0, tail.len());
+
+            let x: Option<(&mut [u8; 4], &mut [u8])> = buf.splice_mut();
+            assert_eq!(None, x);
+        }
+
+        #[cfg(feature = "copy-from")]
+        #[test]
+        fn copy_from() {
+            let mut buf = [0u8; 4];
+            let val1 = [1u8; 4];
 
             buf.copy_from(&val1);
-
             assert_eq!(&buf, &val1);
-
-            buf.carve_mut(0..4)
-                .unwrap()
-                .copy_from(&val2);
-
-            buf.carve_mut(0..4)
-                .unwrap()
-                .copy_from(&val2);
-
-            assert_eq!(&buf, &val2);
         }
     }
 }
