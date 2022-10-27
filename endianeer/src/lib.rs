@@ -89,19 +89,13 @@ mod lib {
     impl_endian_traits!(i128);
 
     #[cfg(feature = "carve")]
-    pub trait Carve<const N : usize, T: Sized + Copy> {
+    pub trait Carve<const N: usize, T: Sized + Copy> {
         fn carve(&self, idx: core::ops::Range<usize>) -> Option<&[T; N]>;
         fn carve_mut(&mut self, idx: core::ops::Range<usize>) -> Option<&mut [T; N]>;
     }
 
     #[cfg(feature = "carve")]
-    pub trait Carved<const N : usize, T: Sized + Copy> {
-        fn carved(&self) -> Option<&[T; N]>;
-        fn carved_mut(&mut self) -> Option<&mut [T; N]>;
-    }
-
-    #[cfg(feature = "carve")]
-    impl<const N : usize, T: Sized + Copy> Carve<N, T> for [T] {
+    impl<const N: usize, T: Sized + Copy> Carve<N, T> for [T] {
         #[inline]
         fn carve(&self, idx: core::ops::Range<usize>) -> Option<&[T; N]> {
             self.get(idx)?.try_into().ok()
@@ -114,7 +108,13 @@ mod lib {
     }
 
     #[cfg(feature = "carve")]
-    impl<const N : usize, T: Sized + Copy> Carved<N, T> for [T] {
+    pub trait Carved<const N: usize, T: Sized + Copy> {
+        fn carved(&self) -> Option<&[T; N]>;
+        fn carved_mut(&mut self) -> Option<&mut [T; N]>;
+    }
+
+    #[cfg(feature = "carve")]
+    impl<const N: usize, T: Sized + Copy> Carved<N, T> for [T] {
         #[inline]
         fn carved(&self) -> Option<&[T; N]> {
             self.try_into().ok()
@@ -123,6 +123,29 @@ mod lib {
         #[inline]
         fn carved_mut(&mut self) -> Option<&mut [T; N]> {
             self.try_into().ok()
+        }
+    }
+
+    #[cfg(feature = "splice")]
+    pub trait Splice<const N: usize, T: Sized + Copy> {
+        fn splice(&self) -> Option<(&[T; N], &[T])>;
+        fn splice_mut(&mut self) -> Option<(&mut [T; N], &mut [T])>;
+    }
+
+    #[cfg(feature = "splice")]
+    impl<const N: usize, T: Sized + Copy> Splice<N, T> for [T] {
+        #[inline]
+        fn splice(&self) -> Option<(&[T; N], &[T])> {
+            if self.len() < N { return None; }
+            let (a, b) = self.split_at(N);
+            Some((a.try_into().ok()?, b))
+        }
+
+        #[inline]
+        fn splice_mut(&mut self) -> Option<(&mut [T; N], &mut [T])> {
+            if self.len() < N { return None; }
+            let (a, b) = self.split_at_mut(N);
+            Some((a.try_into().ok()?, b))
         }
     }
 

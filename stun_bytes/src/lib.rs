@@ -6,16 +6,16 @@ pub struct RawMsg<'a> {
 
 impl<'a> RawMsg<'a> {
     pub fn from(buf: &'a [u8]) -> Self {
-        let buf = buf.get(2..4)
+        let buf = buf.carve(2..4)
             .map(u16::of_be)
             .map(|len| buf.get(0..(20 + len) as usize))
             .flatten()
             .unwrap_or(buf);
         Self { buf }
     }
-    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.get(0..2)?.carve() }
-    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.get(2..4)?.carve() }
-    pub fn tid(&self) -> Option<&'a [u8; 16]> { self.buf.get(4..20)?.carve() }
+    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.carve(0..2) }
+    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.carve(2..4) }
+    pub fn tid(&self) -> Option<&'a [u8; 16]> { self.buf.carve(4..20) }
     pub fn attrs(&self) -> Option<&'a [u8]> { self.buf.get(20..) }
     pub fn attr_iter(&self) -> RawIter {
         RawIter { buf: self.attrs().unwrap_or(&[]) }
@@ -28,8 +28,8 @@ pub struct RawAttr<'a> {
 
 impl<'a> RawAttr<'a> {
     pub fn from(buf: &'a [u8]) -> Self { Self { buf } }
-    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.get(0..2)?.carve() }
-    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.get(2..4).map(CarveSafe::carve)? }
+    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.carve(0..2) }
+    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.carve(2..4) }
     pub fn val(&self) -> Option<&'a [u8]> {
         self.len()
             .map(u16::of_be)
@@ -80,15 +80,15 @@ impl<'a> RawMsgMut<'a> {
     }
 
     pub fn typ(&mut self) -> Option<&mut [u8; 2]> {
-        self.buf.get_mut(0..2).map(carve_mut)?
+        self.buf.carve_mut(0..2)
     }
 
     pub fn len(&mut self) -> Option<&mut [u8; 2]> {
-        self.buf.get_mut(2..4).map(carve_mut)?
+        self.buf.carve_mut(2..4)
     }
 
     pub fn tid(&mut self) -> Option<&mut [u8; 16]> {
-        self.buf.get_mut(4..20).map(carve_mut)?
+        self.buf.carve_mut(4..20)
     }
 
     pub fn attrs(&mut self) -> Option<&mut [u8]> {
@@ -96,10 +96,10 @@ impl<'a> RawMsgMut<'a> {
     }
 
     pub fn attr_add<T: FnOnce(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> Option<usize>>(&mut self, f: T) -> Option<()> {
-        let (typ, bytes) = split_at_mut(self.buf.get_mut(self.idx..)?);
-        let (len, val) = split_at_mut(bytes);
+        let (typ, bytes) = self.buf.get_mut(self.idx..)?.splice_mut()?;
+        let (len, val) = bytes.splice_mut()?;
 
-        let used = f(typ?, len?, val)?;
+        let used = f(typ, len, val)?;
 
         self.idx += (4 + used + 3) & !3; // include padding
 
@@ -107,14 +107,6 @@ impl<'a> RawMsgMut<'a> {
     }
 
     pub fn size(&self) -> usize { self.idx }
-}
-
-fn split_at_mut<const N: usize>(bytes: &mut [u8]) -> (Option<&mut [u8; N]>, &mut [u8]) {
-    if N > bytes.len() {
-        return (None, bytes);
-    }
-    let (chunk, rest) = bytes.split_at_mut(N);
-    (chunk.try_into().ok(), rest)
 }
 
 #[cfg(test)]
@@ -161,7 +153,7 @@ mod tests {
         msg.attr_add(|typ, len, val| {
             typ.set_be(0x0003);
             len.set_be(0x0004);
-            val.get_mut(0..4).map(carve_mut)??.set_be(0x40u32 | 0x20u32);
+            val.carve_mut(0..4)?.set_be(0x40u32 | 0x20u32);
             Some(4)
         }).unwrap();
 
