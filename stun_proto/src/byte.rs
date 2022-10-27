@@ -1,5 +1,5 @@
 use endianeer::prelude::*;
-use stun_bytes::{RawAttr, RawMsg, RawIter};
+use stun_bytes::{RawMsg, RawIter};
 
 pub struct Msg<'a> {
     reader: RawMsg<'a>,
@@ -19,9 +19,9 @@ impl<'a> Msg<'a> {
 
     #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
     pub fn cookie(&self) -> Option<u32> {
-        self.reader.tid()?
-            .get(0..4)?
-            .to_be()?
+        Some(self.reader.tid()?
+            .carve(0..4)?
+            .to_be())
     }
 
     pub fn tid(&self) -> Option<u128> {
@@ -819,7 +819,7 @@ impl<'a> Attr<'a> {
             PASSWORD => Self::Password(Self::read_string(val)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            MESSAGE_INTEGRITY => Self::MessageIntegrity(val.get(0..20).map(carve)??),
+            MESSAGE_INTEGRITY => Self::MessageIntegrity(val.carve(0..20)?),
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             ERROR_CODE => {
@@ -834,10 +834,10 @@ impl<'a> Attr<'a> {
             REFLECTED_FROM => Self::ReflectedFrom(Self::read_address(val)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            CHANNEL_NUMBER => Self::ChannelNumber(val.get(0..2).map(carve)?.map(u16::of_be)?),
+            CHANNEL_NUMBER => Self::ChannelNumber(val.carve(0..2).map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            LIFETIME => Self::Lifetime(core::time::Duration::from_secs(val.get(0..4).map(carve)?.map(u32::of_be)? as u64)),
+            LIFETIME => Self::Lifetime(core::time::Duration::from_secs(val.carve(0..4).map(u32::of_be)? as u64)),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             XOR_PEER_ADDRESS => Self::XorPeerAddress(Self::read_xor_address(val, tid_buf)?),
@@ -878,22 +878,22 @@ impl<'a> Attr<'a> {
             }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            MESSAGE_INTEGRITY_SHA256 => Self::MessageIntegritySha256(val.get(0..32).map(carve)??),
+            MESSAGE_INTEGRITY_SHA256 => Self::MessageIntegritySha256(val.carve(0..32)?),
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             PASSWORD_ALGORITHM => Self::PasswordAlgorithm(Self::read_password_algorithm(val)?),
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
-            USERHASH => Self::Userhash(val.get(0..32).map(carve)??),
+            USERHASH => Self::Userhash(val.carve(0..32)?),
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             XOR_MAPPED_ADDRESS => Self::XorMappedAddress(Self::read_xor_address(val, tid_buf)?),
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            RESERVATION_TOKEN => Self::ReservationToken(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            RESERVATION_TOKEN => Self::ReservationToken(val.carve(0..8).map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            PRIORITY => Self::Priority(val.get(0..4).map(carve)?.map(u32::of_be)?),
+            PRIORITY => Self::Priority(val.carve(0..4).map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
             USE_CANDIDATE => Self::UseCandidate,
@@ -902,10 +902,10 @@ impl<'a> Attr<'a> {
             PADDING => Self::Padding(val),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
-            RESPONSE_PORT => Self::ResponsePort(val.get(0..2).map(carve)?.map(u16::of_be)?),
+            RESPONSE_PORT => Self::ResponsePort(val.carve(0..2).map(u16::of_be)?),
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            CONNECTION_ID => Self::ConnectionId(val.get(0..4).map(carve)?.map(u32::of_be)?),
+            CONNECTION_ID => Self::ConnectionId(val.carve(0..4).map(u32::of_be)?),
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
             ADDITIONAL_ADDRESS_FAMILY => Self::AdditionalAddressFamily(val.get(0).map(AddressFamily::from_nums)?),
@@ -934,7 +934,7 @@ impl<'a> Attr<'a> {
             ICMP => Self::Icmp {
                 typ: *val.get(2)?,
                 code: *val.get(3)?,
-                data: val.get(4..8).map(carve)?.map(u32::of_be)?,
+                data: val.carve(4..8).map(u32::of_be)?,
             },
 
             #[cfg(any(feature = "rfc3489"))]
@@ -954,8 +954,7 @@ impl<'a> Attr<'a> {
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
             CACHE_TIMEOUT => {
-                let timeout = val.get(0..4)
-                    .map(carve)?
+                let timeout = val.carve(0..4)
                     .map(u32::of_be)
                     .map(|val| val as u64)
                     .map(core::time::Duration::from_secs)?;
@@ -967,10 +966,10 @@ impl<'a> Attr<'a> {
             FINGERPRINT => Self::Fingerprint(Self::read_fingerprint(val)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            ICE_CONTROLLED => Self::IceControlled(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            ICE_CONTROLLED => Self::IceControlled(val.carve(0..8).map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
-            ICE_CONTROLLING => Self::IceControlling(val.get(0..8).map(carve)?.map(u64::of_be)?),
+            ICE_CONTROLLING => Self::IceControlling(val.carve(0..8).map(u64::of_be)?),
 
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
             RESPONSE_ORIGIN => Self::ResponseOrigin(Self::read_address(val)?),
@@ -995,25 +994,19 @@ impl<'a> Attr<'a> {
     }
 
     fn read_address(buf: &[u8]) -> Option<SocketAddr> {
-        let addr_family = buf.get(0..2)
-            .map(carve)?
+        let addr_family = buf.carve(0..2)
             .map(u16::of_be)?;
 
-        let port = buf.get(2..4)
-            .map(carve)?
+        let port = buf.carve(2..4)
             .map(u16::of_be)?;
 
         if addr_family == 1 {
-            let ip = buf.get(4..8)
-                .map(carve)??;
-
+            let ip = buf.carve(4..8)?;
             return Some(SocketAddr::V4(*ip, port));
         }
 
         if addr_family == 2 {
-            let ip = buf.get(4..20)
-                .map(carve)??;
-
+            let ip = buf.carve(4..20)?;
             return Some(SocketAddr::V6(*ip, port));
         }
 
@@ -1021,26 +1014,21 @@ impl<'a> Attr<'a> {
     }
 
     fn read_xor_address(buf: &[u8], tid: &[u8; 16]) -> Option<SocketAddr> {
-        let addr_family = buf.get(0..2)
-            .map(carve)?
+        let addr_family = buf.carve(0..2)
             .map(u16::of_be)?;
 
-        let port_mask = tid.get(0..2)
-            .map(carve)?
+        let port_mask = tid.carve(0..2)
             .map(u16::of_be)?;
 
-        let port = buf.get(2..4)
-            .map(carve)?
+        let port = buf.carve(2..4)
             .map(u16::of_be)
             .map(|port| port ^ port_mask)?;
 
         if addr_family == 1 {
-            let cookie = tid.get(0..4)
-                .map(carve)?
+            let cookie = tid.carve(0..4)
                 .map(u32::of_be)?;
 
-            let ip = buf.get(4..8)
-                .map(carve)?
+            let ip = buf.carve(4..8)
                 .map(u32::of_be)
                 .map(|ip| ip ^ cookie)
                 .map(u32::to_be_bytes)?;
@@ -1049,8 +1037,7 @@ impl<'a> Attr<'a> {
         } else if addr_family == 2 {
             let tid: u128 = tid.to_be();
 
-            let ip = buf.get(4..20)
-                .map(carve)?
+            let ip = buf.carve(4..20)
                 .map(u128::of_be)
                 .map(|ip| ip ^ tid)
                 .map(u128::to_be_bytes)?;
@@ -1064,14 +1051,13 @@ impl<'a> Attr<'a> {
     }
 
     fn read_fingerprint(buf: &[u8]) -> Option<u32> {
-        buf.get(0..4)
-            .map(carve)?
+        buf.carve(0..4)
             .map(u32::of_be)
             .map(|val| val ^ 0x5354554E)
     }
 
     fn read_error_code(buf: &[u8]) -> Option<(ErrorCode, &str)> {
-        let code = ErrorCode::from_nums(buf.get(2..4).map(carve)??);
+        let code = ErrorCode::from_nums(buf.carve(2..4)?);
         let desc = buf.get(4..).map(Self::read_string)??;
         Some((code, desc))
     }
@@ -1085,8 +1071,7 @@ impl<'a> Attr<'a> {
     fn read_access_token(buf: &[u8]) -> Option<(&[u8], &[u8], core::time::Duration, core::time::Duration)> {
         let mut cursor = 0usize;
 
-        let nonce_len = buf.get(cursor..cursor + 2)
-            .map(carve)?
+        let nonce_len = buf.carve(cursor..cursor + 2)
             .map(u16::of_be)? as usize;
 
         cursor += 2;
@@ -1095,8 +1080,7 @@ impl<'a> Attr<'a> {
 
         cursor += nonce_len;
 
-        let mac_len = buf.get(cursor..cursor + 2)
-            .map(carve)?
+        let mac_len = buf.carve(cursor..cursor + 2)
             .map(u16::of_be)? as usize;
 
         cursor += 2;
@@ -1105,26 +1089,21 @@ impl<'a> Attr<'a> {
 
         cursor += mac_len;
 
-        let timestamp_bytes: &[u8; 8] = buf.get(cursor..cursor + 8)
-            .map(carve)??;
+        let timestamp_bytes: &[u8; 8] = buf.carve(cursor..cursor + 8)?;
 
         cursor += 8;
 
-        let timestamp_seconds = timestamp_bytes.get(0..4)
-            .map(carve)?
+        let timestamp_seconds = timestamp_bytes.carve(0..4)
             .map(u32::of_be)
-            .map(|val| (val as u64) << 16)? | timestamp_bytes.get(4..6)
-            .map(carve)?
+            .map(|val| (val as u64) << 16)? | timestamp_bytes.carve(4..6)
             .map(u16::of_be)? as u64;
 
-        let timestamp_frac = timestamp_bytes.get(6..8)
-            .map(carve)?
+        let timestamp_frac = timestamp_bytes.carve(6..8)
             .map(u16::of_be)? as f64 / 64000_f64;
 
         let timestamp = core::time::Duration::from_secs_f64(timestamp_seconds as f64 + timestamp_frac);
 
-        let lifetime_secs = buf.get(cursor..cursor + 4)
-            .map(carve)?
+        let lifetime_secs = buf.carve(cursor..cursor + 4)
             .map(u32::of_be)?;
 
         let lifetime = core::time::Duration::from_secs(lifetime_secs as u64);
@@ -1140,8 +1119,7 @@ impl<'a> Attr<'a> {
         let address_family = buf.get(0)
             .map(AddressFamily::from_nums)?;
 
-        let error_code = buf.get(2..4)
-            .map(carve)?
+        let error_code = buf.carve(2..4)
             .map(ErrorCode::from_nums)?;
 
         let desc = Self::read_string(buf.get(4..)?)?;
@@ -1214,7 +1192,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             Self::MessageIntegrity(digest) => {
                 typ_buf.set_be(MESSAGE_INTEGRITY);
-                val_buf.get_mut(0..20).map(carve_mut)??.copy_from(digest);
+                val_buf.carve_mut(0..20)?.copy_from(digest);
                 len_buf.set_be(20 as u16);
                 Some(20)
             }
@@ -1242,7 +1220,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             Self::ChannelNumber(num) => {
                 typ_buf.set_be(CHANNEL_NUMBER);
-                val_buf.get_mut(0..2).map(carve_mut)??.set_be(*num);
+                val_buf.carve_mut(0..2)?.set_be(*num);
                 len_buf.set_be(2 as u16);
                 Some(2)
             }
@@ -1250,7 +1228,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             Self::Lifetime(lifetime) => {
                 typ_buf.set_be(LIFETIME);
-                val_buf.get_mut(0..4).map(carve_mut)??.copy_from(&(lifetime.as_secs() as u32).to_be_bytes());
+                val_buf.carve_mut(0..4)?.copy_from(&(lifetime.as_secs() as u32).to_be_bytes());
                 len_buf.set_be(4 as u16);
                 Some(4)
             }
@@ -1337,7 +1315,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             Self::MessageIntegritySha256(digest) => {
                 typ_buf.set_be(MESSAGE_INTEGRITY_SHA256);
-                val_buf.get_mut(0..32).map(carve_mut)??.copy_from(digest);
+                val_buf.carve_mut(0..32)?.copy_from(digest);
                 len_buf.set_be(32 as u16);
                 Some(32)
             }
@@ -1353,7 +1331,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             Self::Userhash(digest) => {
                 typ_buf.set_be(USERHASH);
-                val_buf.get_mut(0..32).map(carve_mut)??.copy_from(digest);
+                val_buf.carve_mut(0..32)?.copy_from(digest);
                 len_buf.set_be(32 as u16);
                 Some(32)
             }
@@ -1369,7 +1347,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
             Self::ReservationToken(token) => {
                 typ_buf.set_be(RESERVATION_TOKEN);
-                val_buf.get_mut(0..8).map(carve_mut)??.set_be(*token);
+                val_buf.carve_mut(0..8)?.set_be(*token);
                 len_buf.set_be(8 as u16);
                 Some(8)
             }
@@ -1377,7 +1355,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
             Self::Priority(priority) => {
                 typ_buf.set_be(PRIORITY);
-                val_buf.get_mut(0..4).map(carve_mut)??.set_be(*priority);
+                val_buf.carve_mut(0..4)?.set_be(*priority);
                 len_buf.set_be(4 as u16);
                 Some(4)
             }
@@ -1400,7 +1378,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
             Self::ResponsePort(port) => {
                 typ_buf.set_be(RESPONSE_PORT);
-                val_buf.get_mut(0..2).map(carve_mut)??.set_be(*port);
+                val_buf.carve_mut(0..2)?.set_be(*port);
                 len_buf.set_be(2 as u16);
                 Some(2)
             }
@@ -1408,7 +1386,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
             Self::ConnectionId(cid) => {
                 typ_buf.set_be(CONNECTION_ID);
-                val_buf.get_mut(0..4).map(carve_mut)??.set_be(*cid);
+                val_buf.carve_mut(0..4)?.set_be(*cid);
                 len_buf.set_be(4 as u16);
                 Some(4)
             }
@@ -1448,7 +1426,7 @@ impl<'a> Attr<'a> {
                 typ_buf.set_be(ICMP);
                 *val_buf.get_mut(2)? = *typ;
                 *val_buf.get_mut(3)? = *code;
-                val_buf.get_mut(4..8).map(carve_mut)??.set_be(*data);
+                val_buf.carve_mut(4..8)?.set_be(*data);
                 len_buf.set_be(8 as u16);
                 Some(8)
             }
@@ -1489,7 +1467,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5780", feature = "iana"))]
             Self::CacheTimeout(timeout) => {
                 typ_buf.set_be(CACHE_TIMEOUT);
-                val_buf.get_mut(0..4).map(carve_mut)??.set_be(timeout.as_secs() as u32);
+                val_buf.carve_mut(0..4)?.set_be(timeout.as_secs() as u32);
                 len_buf.set_be(4 as u16);
                 Some(4)
             }
@@ -1497,7 +1475,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             Self::Fingerprint(digest) => {
                 typ_buf.set_be(FINGERPRINT);
-                val_buf.get_mut(0..4).map(carve_mut)??.set_be(*digest ^ 0x5354554E);
+                val_buf.carve_mut(0..4)?.set_be(*digest ^ 0x5354554E);
                 len_buf.set_be(4 as u16);
                 Some(4)
             }
@@ -1505,7 +1483,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
             Self::IceControlled(token) => {
                 typ_buf.set_be(ICE_CONTROLLED);
-                val_buf.get_mut(0..8).map(carve_mut)??.set_be(*token);
+                val_buf.carve_mut(0..8)?.set_be(*token);
                 len_buf.set_be(8 as u16);
                 Some(8)
             }
@@ -1513,7 +1491,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
             Self::IceControlling(token) => {
                 typ_buf.set_be(ICE_CONTROLLING);
-                val_buf.get_mut(0..8).map(carve_mut)??.set_be(*token);
+                val_buf.carve_mut(0..8)?.set_be(*token);
                 len_buf.set_be(8 as u16);
                 Some(8)
             }
@@ -1570,42 +1548,38 @@ impl<'a> Attr<'a> {
     }
 
     fn write_address(addr: &SocketAddr, buf: &mut [u8]) -> Option<usize> {
-        let addr_family = buf.get_mut(0..2)
-            .map(carve_mut)??;
+        let addr_family = buf.carve_mut(0..2)?;
 
         match addr {
             SocketAddr::V4(..) => addr_family.set_be(AddressFamily::IPv4.into_nums() as u16),
             SocketAddr::V6(..) => addr_family.set_be(AddressFamily::IPv6.into_nums() as u16),
         }
 
-        let port = buf.get_mut(2..4)
-            .map(carve_mut)??;
+        let port = buf.carve_mut(2..4)?;
 
         match addr {
             SocketAddr::V4(ip, port_val) => {
                 port.set_be(*port_val);
-                buf.get_mut(4..8).map(carve_mut)??.copy_from(ip);
+                buf.carve_mut(4..8)?.copy_from(ip);
                 Some(8)
             }
             SocketAddr::V6(ip, port_val) => {
                 port.set_be(*port_val);
-                buf.get_mut(4..20).map(carve_mut)??.copy_from(ip);
+                buf.carve_mut(4..20)?.copy_from(ip);
                 Some(20)
             }
         }
     }
 
     fn write_xor_address(addr: &SocketAddr, buf: &mut [u8], tid: &[u8; 16]) -> Option<usize> {
-        let port_mask = tid.get(0..2)
-            .map(carve)?
+        let port_mask = tid.carve(0..2)
             .map(u16::of_be)?;
 
         let xor_addr = match addr {
             SocketAddr::V4(ip, port) => {
                 let port = port ^ port_mask;
 
-                let cookie = tid.get(0..4)
-                    .map(carve)?
+                let cookie = tid.carve(0..4)
                     .map(u32::of_be)?;
 
                 let ip: u32 = ip.to_be();
@@ -1636,7 +1610,7 @@ impl<'a> Attr<'a> {
     }
 
     fn write_error_code(code: &ErrorCode, desc: &str, buf: &mut [u8]) -> Option<usize> {
-        buf.get_mut(2..4).map(carve_mut)??.copy_from(&code.into_nums());
+        buf.carve_mut(2..4)?.copy_from(&code.into_nums());
         Self::write_string(desc, buf.get_mut(4..)?).map(|size| 4 + size) // '4' accounts for error code
     }
 
@@ -1653,7 +1627,7 @@ impl<'a> Attr<'a> {
 
         let nonce_len = nonce.len();
 
-        buf.get_mut(cursor..cursor + 2).map(carve_mut)??.copy_from(&(nonce_len as u16).to_be_bytes());
+        buf.carve_mut(cursor..cursor + 2)?.copy_from(&(nonce_len as u16).to_be_bytes());
 
         cursor += 2;
 
@@ -1663,7 +1637,7 @@ impl<'a> Attr<'a> {
 
         let mac_len = mac.len();
 
-        buf.get_mut(cursor..cursor + 2).map(carve_mut)??.copy_from(&(mac_len as u16).to_be_bytes());
+        buf.carve_mut(cursor..cursor + 2)?.copy_from(&(mac_len as u16).to_be_bytes());
 
         cursor += 2;
 
@@ -1674,11 +1648,11 @@ impl<'a> Attr<'a> {
         let timestamp_unix = timestamp.as_secs() << 4;
         let timestamp_unix = timestamp_unix | (((timestamp.as_secs_f64() - timestamp.as_secs() as f64) * 64000_f64) as u16) as u64;
 
-        buf.get_mut(cursor..cursor + 8).map(carve_mut)??.copy_from(&timestamp_unix.to_be_bytes());
+        buf.carve_mut(cursor..cursor + 8)?.copy_from(&timestamp_unix.to_be_bytes());
 
         cursor += 8;
 
-        buf.get_mut(cursor..cursor + 4).map(carve_mut)??.copy_from(&(lifetime.as_secs() as u32).to_be_bytes());
+        buf.carve_mut(cursor..cursor + 4)?.copy_from(&(lifetime.as_secs() as u32).to_be_bytes());
 
         cursor += 4;
 
@@ -1688,10 +1662,10 @@ impl<'a> Attr<'a> {
     fn write_password_algorithm(val: &PasswordAlgorithm, buf: &mut [u8]) -> Option<usize> {
         let (typ, params) = val.into_nums();
 
-        buf.get_mut(0..2).map(carve_mut)??.copy_from(&typ.to_be_bytes());
+        buf.carve_mut(0..2)?.copy_from(&typ.to_be_bytes());
 
         let len = params.len();
-        buf.get_mut(2..4).map(carve_mut)??.copy_from(&len.to_be_bytes());
+        buf.carve_mut(2..4)?.copy_from(&len.to_be_bytes());
 
         buf.get_mut(4..4 + len)?.copy_from_slice(params);
 
@@ -1727,8 +1701,7 @@ impl<'a> Iterator for UnknownAttrIter<'a> {
     type Item = u16;
 
     fn next(&mut self) -> Option<Self::Item> {
-        let attr = self.buf.get(0..2)
-            .map(carve)?
+        let attr = self.buf.carve(0..2)
             .map(u16::of_be)?;
 
         self.buf = self.buf.get(2..)?;
@@ -2171,7 +2144,6 @@ mod head {
 
 #[cfg(test)]
 mod attr {
-    use crate::byte::Attr::EcnCheck;
     use super::*;
 
     const TID: [u8; 16] = [1u8; 16];
