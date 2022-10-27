@@ -7,18 +7,15 @@ pub struct RawMsg<'a> {
 impl<'a> RawMsg<'a> {
     pub fn from(buf: &'a [u8]) -> Self {
         let buf = buf.get(2..4)
-            .map(carve)
-            .flatten()
             .map(u16::of_be)
-            .map(|len| 20 + len)
-            .map(|len| buf.get(0..len as usize))
+            .map(|len| buf.get(0..(20 + len) as usize))
             .flatten()
             .unwrap_or(buf);
         Self { buf }
     }
-    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.get(0..2).map(carve)? }
-    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.get(2..4).map(carve)? }
-    pub fn tid(&self) -> Option<&'a [u8; 16]> { self.buf.get(4..20).map(carve)? }
+    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.get(0..2)?.carve() }
+    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.get(2..4)?.carve() }
+    pub fn tid(&self) -> Option<&'a [u8; 16]> { self.buf.get(4..20)?.carve() }
     pub fn attrs(&self) -> Option<&'a [u8]> { self.buf.get(20..) }
     pub fn attr_iter(&self) -> RawIter {
         RawIter { buf: self.attrs().unwrap_or(&[]) }
@@ -31,8 +28,8 @@ pub struct RawAttr<'a> {
 
 impl<'a> RawAttr<'a> {
     pub fn from(buf: &'a [u8]) -> Self { Self { buf } }
-    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.get(0..2).map(carve)? }
-    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.get(2..4).map(carve)? }
+    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.get(0..2)?.carve() }
+    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.get(2..4).map(CarveSafe::carve)? }
     pub fn val(&self) -> Option<&'a [u8]> {
         self.len()
             .map(u16::of_be)

@@ -23,27 +23,42 @@ mod lib {
     macro_rules! impl_endian_traits {
         ($typ:ty) => {
             impl EndianTo<$typ> for [u8; core::mem::size_of::<$typ>()] {
+                #[inline]
                 fn to_be(&self) -> $typ { <$typ>::from_be_bytes(*self) }
+
+                #[inline]
                 fn to_le(&self) -> $typ { <$typ>::from_le_bytes(*self) }
             }
 
             impl EndianSet<$typ> for [u8; core::mem::size_of::<$typ>()] {
+                #[inline]
                 fn set_be(&mut self, val: $typ) { self.copy_from_slice(&val.to_be_bytes()); }
+
+                #[inline]
                 fn set_le(&mut self, val: $typ) { self.copy_from_slice(&val.to_le_bytes()); }
             }
 
             impl EndianTo<Option<$typ>> for Option<&[u8; core::mem::size_of::<$typ>()]> {
+                #[inline]
                 fn to_be(&self) -> Option<$typ> { self.map(|val| <$typ>::from_be_bytes(*val)) }
+
+                #[inline]
                 fn to_le(&self) -> Option<$typ> { self.map(|val| <$typ>::from_le_bytes(*val)) }
             }
 
             impl EndianTo<Option<$typ>> for Option<&[u8]> {
-                fn to_be(&self) -> Option<$typ> { Some(<$typ>::from_be_bytes(*self.as_ref()?.carve()?)) }
-                fn to_le(&self) -> Option<$typ> { Some(<$typ>::from_le_bytes(*self.as_ref()?.carve()?)) }
+                #[inline]
+                fn to_be(&self) -> Option<$typ> { Some(<$typ>::from_be_bytes(*self.as_ref()?.carved()?)) }
+
+                #[inline]
+                fn to_le(&self) -> Option<$typ> { Some(<$typ>::from_le_bytes(*self.as_ref()?.carved()?)) }
             }
 
             impl EndianOf<$typ, [u8; core::mem::size_of::<$typ>()]> for $typ {
+                #[inline]
                 fn of_be(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_be() }
+
+                #[inline]
                 fn of_le(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_le() }
             }
         };
@@ -74,18 +89,39 @@ mod lib {
     impl_endian_traits!(i128);
 
     #[cfg(feature = "carve")]
-    pub trait CarveSafe<const N: usize, T: Sized + Copy> {
-        fn carve(&self) -> Option<&[T; N]>;
-        fn carve_mut(&mut self) -> Option<&mut [T; N]>;
+    pub trait Carve<const N : usize, T: Sized + Copy> {
+        fn carve(&self, idx: core::ops::Range<usize>) -> Option<&[T; N]>;
+        fn carve_mut(&mut self, idx: core::ops::Range<usize>) -> Option<&mut [T; N]>;
     }
 
     #[cfg(feature = "carve")]
-    impl<const N: usize, T: Sized + Copy> CarveSafe<N, T> for [T] {
-        fn carve(&self) -> Option<&[T; N]> {
+    pub trait Carved<const N : usize, T: Sized + Copy> {
+        fn carved(&self) -> Option<&[T; N]>;
+        fn carved_mut(&mut self) -> Option<&mut [T; N]>;
+    }
+
+    #[cfg(feature = "carve")]
+    impl<const N : usize, T: Sized + Copy> Carve<N, T> for [T] {
+        #[inline]
+        fn carve(&self, idx: core::ops::Range<usize>) -> Option<&[T; N]> {
+            self.get(idx)?.try_into().ok()
+        }
+
+        #[inline]
+        fn carve_mut(&mut self, idx: core::ops::Range<usize>) -> Option<&mut [T; N]> {
+            self.get_mut(idx)?.try_into().ok()
+        }
+    }
+
+    #[cfg(feature = "carve")]
+    impl<const N : usize, T: Sized + Copy> Carved<N, T> for [T] {
+        #[inline]
+        fn carved(&self) -> Option<&[T; N]> {
             self.try_into().ok()
         }
 
-        fn carve_mut(&mut self) -> Option<&mut [T; N]> {
+        #[inline]
+        fn carved_mut(&mut self) -> Option<&mut [T; N]> {
             self.try_into().ok()
         }
     }
@@ -127,7 +163,7 @@ mod lib {
             assert_eq!(0x0102 as u16, val);
 
             let opt = buf.as_slice();
-            let val = opt.carve().unwrap().to_be();
+            let val = opt.carved().map(u16::of_be).unwrap();
             assert_eq!(0x0102 as u16, val);
         }
 
@@ -141,9 +177,11 @@ mod lib {
 
             assert_eq!(&buf, &val1);
 
-            buf.get_mut(0..4)
+            buf.carve_mut(0..4)
                 .unwrap()
-                .carve_mut()
+                .copy_from(&val2);
+
+            buf.carve_mut(0..4)
                 .unwrap()
                 .copy_from(&val2);
 

@@ -20,9 +20,8 @@ impl<'a> Msg<'a> {
     #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
     pub fn cookie(&self) -> Option<u32> {
         self.reader.tid()?
-            .get(0..4)
-            .map(carve)?
-            .map(u32::of_be)
+            .get(0..4)?
+            .to_be()?
     }
 
     pub fn tid(&self) -> Option<u128> {
