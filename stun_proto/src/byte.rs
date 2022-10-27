@@ -14,7 +14,7 @@ impl<'a> Msg<'a> {
 
     pub fn typ(&self) -> Option<MsgType> {
         self.reader.typ()
-            .map(MsgType::from)
+            .map(MsgType::from_ref)
     }
 
     #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
@@ -144,191 +144,204 @@ pub enum MsgType {
     Other(u16),
 }
 
-impl MsgType {
-    fn from(val: &[u8; 2]) -> Self {
-        use crate::consts::msg_type::*;
+impl From<[u8; 2]> for MsgType {
+    fn from(val: [u8; 2]) -> Self {
+        let val: u16 = val.to_be();
+        MsgType::from(val)
+    }
+}
 
-        let val = val.to_be();
+impl From<u16> for MsgType {
+    fn from(val: u16) -> Self {
+        use crate::consts::msg_type::*;
 
         match val {
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            BINDING_REQUEST => MsgType::BindingRequest,
+            BINDING_REQUEST => Self::BindingRequest,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            BINDING_RESPONSE => MsgType::BindingResponse,
+            BINDING_RESPONSE => Self::BindingResponse,
 
             #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            BINDING_INDICATION => MsgType::BindingIndication,
+            BINDING_INDICATION => Self::BindingIndication,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            BINDING_ERROR_RESPONSE => MsgType::BindingErrorResponse,
+            BINDING_ERROR_RESPONSE => Self::BindingErrorResponse,
 
             #[cfg(feature = "rfc3489")]
-            SHARED_SECRET_REQUEST => MsgType::SharedSecretRequest,
+            SHARED_SECRET_REQUEST => Self::SharedSecretRequest,
 
             #[cfg(feature = "rfc3489")]
-            SHARED_SECRET_RESPONSE => MsgType::SharedSecretResponse,
+            SHARED_SECRET_RESPONSE => Self::SharedSecretResponse,
 
             #[cfg(feature = "rfc3489")]
-            SHARED_SECRET_ERROR_RESPONSE => MsgType::SharedSecretErrorResponse,
+            SHARED_SECRET_ERROR_RESPONSE => Self::SharedSecretErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            ALLOCATE_REQUEST => MsgType::AllocateRequest,
+            ALLOCATE_REQUEST => Self::AllocateRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            ALLOCATE_RESPONSE => MsgType::AllocateResponse,
+            ALLOCATE_RESPONSE => Self::AllocateResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            ALLOCATE_ERROR_RESPONSE => MsgType::AllocateErrorResponse,
+            ALLOCATE_ERROR_RESPONSE => Self::AllocateErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            REFRESH_REQUEST => MsgType::RefreshRequest,
+            REFRESH_REQUEST => Self::RefreshRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            REFRESH_RESPONSE => MsgType::RefreshResponse,
+            REFRESH_RESPONSE => Self::RefreshResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            REFRESH_ERROR_RESPONSE => MsgType::RefreshErrorResponse,
+            REFRESH_ERROR_RESPONSE => Self::RefreshErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            SEND_INDICATION => MsgType::SendIndication,
+            SEND_INDICATION => Self::SendIndication,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            DATA_INDICATION => MsgType::DataIndication,
+            DATA_INDICATION => Self::DataIndication,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            CREATE_PERMISSION_REQUEST => MsgType::CreatePermissionRequest,
+            CREATE_PERMISSION_REQUEST => Self::CreatePermissionRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            CREATE_PERMISSION_RESPONSE => MsgType::CreatePermissionResponse,
+            CREATE_PERMISSION_RESPONSE => Self::CreatePermissionResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            CREATE_PERMISSION_ERROR_RESPONSE => MsgType::CreatePermissionErrorResponse,
+            CREATE_PERMISSION_ERROR_RESPONSE => Self::CreatePermissionErrorResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            CHANNEL_BIND_REQUEST => MsgType::ChannelBindRequest,
+            CHANNEL_BIND_REQUEST => Self::ChannelBindRequest,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            CHANNEL_BIND_RESPONSE => MsgType::ChannelBindResponse,
+            CHANNEL_BIND_RESPONSE => Self::ChannelBindResponse,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            CHANNEL_BIND_ERROR_RESPONSE => MsgType::ChannelBindErrorResponse,
+            CHANNEL_BIND_ERROR_RESPONSE => Self::ChannelBindErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            CONNECT_REQUEST => MsgType::ConnectRequest,
+            CONNECT_REQUEST => Self::ConnectRequest,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            CONNECT_RESPONSE => MsgType::ConnectResponse,
+            CONNECT_RESPONSE => Self::ConnectResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            CONNECT_ERROR_RESPONSE => MsgType::ConnectErrorResponse,
+            CONNECT_ERROR_RESPONSE => Self::ConnectErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            CONNECTION_BIND_REQUEST => MsgType::ConnectionBindRequest,
+            CONNECTION_BIND_REQUEST => Self::ConnectionBindRequest,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            CONNECTION_BIND_RESPONSE => MsgType::ConnectionBindResponse,
+            CONNECTION_BIND_RESPONSE => Self::ConnectionBindResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            CONNECTION_BIND_ERROR_RESPONSE => MsgType::ConnectionBindErrorResponse,
+            CONNECTION_BIND_ERROR_RESPONSE => Self::ConnectionBindErrorResponse,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            CONNECTION_ATTEMPT_INDICATION => MsgType::ConnectionAttemptIndication,
+            CONNECTION_ATTEMPT_INDICATION => Self::ConnectionAttemptIndication,
 
-            val => MsgType::Other(val),
+            val => Self::Other(val),
         }
     }
+}
 
-    fn into_nums(&self) -> [u8; 2] {
+impl From<MsgType> for u16 {
+    fn from(typ: MsgType) -> Self {
         use crate::consts::msg_type::*;
 
-        match self {
+        match typ {
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            Self::BindingRequest => BINDING_REQUEST,
+            MsgType::BindingRequest => BINDING_REQUEST,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            Self::BindingResponse => BINDING_RESPONSE,
+            MsgType::BindingResponse => BINDING_RESPONSE,
 
             #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            Self::BindingIndication => BINDING_INDICATION,
+            MsgType::BindingIndication => BINDING_INDICATION,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            Self::BindingErrorResponse => BINDING_ERROR_RESPONSE,
+            MsgType::BindingErrorResponse => BINDING_ERROR_RESPONSE,
 
             #[cfg(feature = "rfc3489")]
-            Self::SharedSecretRequest => SHARED_SECRET_REQUEST,
+            MsgType::SharedSecretRequest => SHARED_SECRET_REQUEST,
 
             #[cfg(feature = "rfc3489")]
-            Self::SharedSecretResponse => SHARED_SECRET_RESPONSE,
+            MsgType::SharedSecretResponse => SHARED_SECRET_RESPONSE,
 
             #[cfg(feature = "rfc3489")]
-            Self::SharedSecretErrorResponse => SHARED_SECRET_ERROR_RESPONSE,
+            MsgType::SharedSecretErrorResponse => SHARED_SECRET_ERROR_RESPONSE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::AllocateRequest => ALLOCATE_REQUEST,
+            MsgType::AllocateRequest => ALLOCATE_REQUEST,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::AllocateResponse => ALLOCATE_RESPONSE,
+            MsgType::AllocateResponse => ALLOCATE_RESPONSE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::AllocateErrorResponse => ALLOCATE_ERROR_RESPONSE,
+            MsgType::AllocateErrorResponse => ALLOCATE_ERROR_RESPONSE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::RefreshRequest => REFRESH_REQUEST,
+            MsgType::RefreshRequest => REFRESH_REQUEST,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::RefreshResponse => REFRESH_RESPONSE,
+            MsgType::RefreshResponse => REFRESH_RESPONSE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::RefreshErrorResponse => REFRESH_ERROR_RESPONSE,
+            MsgType::RefreshErrorResponse => REFRESH_ERROR_RESPONSE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::SendIndication => SEND_INDICATION,
+            MsgType::SendIndication => SEND_INDICATION,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::DataIndication => DATA_INDICATION,
+            MsgType::DataIndication => DATA_INDICATION,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::CreatePermissionRequest => CREATE_PERMISSION_REQUEST,
+            MsgType::CreatePermissionRequest => CREATE_PERMISSION_REQUEST,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::CreatePermissionResponse => CREATE_PERMISSION_RESPONSE,
+            MsgType::CreatePermissionResponse => CREATE_PERMISSION_RESPONSE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::CreatePermissionErrorResponse => CREATE_PERMISSION_ERROR_RESPONSE,
+            MsgType::CreatePermissionErrorResponse => CREATE_PERMISSION_ERROR_RESPONSE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::ChannelBindRequest => CHANNEL_BIND_REQUEST,
+            MsgType::ChannelBindRequest => CHANNEL_BIND_REQUEST,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::ChannelBindResponse => CHANNEL_BIND_RESPONSE,
+            MsgType::ChannelBindResponse => CHANNEL_BIND_RESPONSE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::ChannelBindErrorResponse => CHANNEL_BIND_ERROR_RESPONSE,
+            MsgType::ChannelBindErrorResponse => CHANNEL_BIND_ERROR_RESPONSE,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectRequest => CONNECT_REQUEST,
+            MsgType::ConnectRequest => CONNECT_REQUEST,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectResponse => CONNECT_RESPONSE,
+            MsgType::ConnectResponse => CONNECT_RESPONSE,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectErrorResponse => CONNECT_ERROR_RESPONSE,
+            MsgType::ConnectErrorResponse => CONNECT_ERROR_RESPONSE,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectionBindRequest => CONNECTION_BIND_REQUEST,
+            MsgType::ConnectionBindRequest => CONNECTION_BIND_REQUEST,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectionBindResponse => CONNECTION_BIND_RESPONSE,
+            MsgType::ConnectionBindResponse => CONNECTION_BIND_RESPONSE,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectionBindErrorResponse => CONNECTION_BIND_ERROR_RESPONSE,
+            MsgType::ConnectionBindErrorResponse => CONNECTION_BIND_ERROR_RESPONSE,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectionAttemptIndication => CONNECTION_ATTEMPT_INDICATION,
+            MsgType::ConnectionAttemptIndication => CONNECTION_ATTEMPT_INDICATION,
 
-            Self::Other(val) => *val,
-        }.to_be_bytes()
+            MsgType::Other(val) => val,
+        }
+    }
+}
+
+impl From<MsgType> for [u8; 2] {
+    fn from(typ: MsgType) -> Self {
+        u16::from(typ).to_be_bytes()
     }
 }
 
@@ -463,16 +476,11 @@ pub enum ErrorCode {
     Other(u16),
 }
 
-impl ErrorCode {
-    fn from_nums(buf: &[u8; 2]) -> Self {
+impl From<u16> for ErrorCode {
+    fn from(val: u16) -> Self {
         use crate::consts::error_code::*;
 
-        let class = buf[0] as u16 >> 5; // we only care about 3 MSB
-        let num = buf[1] as u16;
-
-        let code = class * 100 + num;
-
-        match code {
+        match val {
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             TRY_ALTERNATE => Self::TryAlternate,
 
@@ -545,85 +553,102 @@ impl ErrorCode {
             code => Self::Other(code),
         }
     }
+}
 
-    pub fn into_nums(&self) -> [u8; 2] {
+impl From<[u8; 2]> for ErrorCode {
+    fn from(val: [u8; 2]) -> Self {
+        let class = val[0] as u16 >> 5; // we only care about 3 MSB
+        let num = val[1] as u16;
+
+        let code = class * 100 + num;
+        ErrorCode::from(code)
+    }
+}
+
+impl From<ErrorCode> for u16 {
+    fn from(code: ErrorCode) -> Self {
         use crate::consts::error_code::*;
 
-        let code = match self {
+        match code {
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            Self::TryAlternate => TRY_ALTERNATE,
+            ErrorCode::TryAlternate => TRY_ALTERNATE,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            Self::BadRequest => BAD_REQUEST,
+            ErrorCode::BadRequest => BAD_REQUEST,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            Self::Unauthorised => UNAUTHORISED,
+            ErrorCode::Unauthorised => UNAUTHORISED,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::Forbidden => FORBIDDEN,
+            ErrorCode::Forbidden => FORBIDDEN,
 
             #[cfg(any(feature = "rfc8016", feature = "iana"))]
-            Self::MobilityForbidden => MOBILITY_FORBIDDEN,
+            ErrorCode::MobilityForbidden => MOBILITY_FORBIDDEN,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            Self::UnknownAttribute => UNKNOWN_ATTRIBUTE,
+            ErrorCode::UnknownAttribute => UNKNOWN_ATTRIBUTE,
 
             #[cfg(any(feature = "rfc3489"))]
-            Self::StaleCredentials => STALE_CREDENTIALS,
+            ErrorCode::StaleCredentials => STALE_CREDENTIALS,
 
             #[cfg(any(feature = "rfc3489"))]
-            Self::IntegrityCheckFailure => INTEGRITY_CHECK_FAILURE,
+            ErrorCode::IntegrityCheckFailure => INTEGRITY_CHECK_FAILURE,
 
             #[cfg(any(feature = "rfc3489"))]
-            Self::MissingUsername => MISSING_USERNAME,
+            ErrorCode::MissingUsername => MISSING_USERNAME,
 
             #[cfg(any(feature = "rfc3489"))]
-            Self::UseTls => USE_TLS,
+            ErrorCode::UseTls => USE_TLS,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::AllocationMismatch => ALLOCATION_MISMATCH,
+            ErrorCode::AllocationMismatch => ALLOCATION_MISMATCH,
 
             #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            Self::StaleNonce => STALE_NONCE,
+            ErrorCode::StaleNonce => STALE_NONCE,
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            Self::AddressFamilyNotSupported => ADDRESS_FAMILY_NOT_SUPPORTED,
+            ErrorCode::AddressFamilyNotSupported => ADDRESS_FAMILY_NOT_SUPPORTED,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::WrongCredentials => WRONG_CREDENTIALS,
+            ErrorCode::WrongCredentials => WRONG_CREDENTIALS,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::UnsupportedTransportProtocol => UNSUPPORTED_TRANSPORT_PROTOCOL,
+            ErrorCode::UnsupportedTransportProtocol => UNSUPPORTED_TRANSPORT_PROTOCOL,
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
-            Self::PeerAddressFamilyMismatch => PEER_ADDRESS_FAMILY_MISMATCH,
+            ErrorCode::PeerAddressFamilyMismatch => PEER_ADDRESS_FAMILY_MISMATCH,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectionAlreadyExists => CONNECTION_ALREADY_EXISTS,
+            ErrorCode::ConnectionAlreadyExists => CONNECTION_ALREADY_EXISTS,
 
             #[cfg(any(feature = "rfc6062", feature = "iana"))]
-            Self::ConnectionTimeoutOrFailure => CONNECTION_TIMEOUT_OR_FAILURE,
+            ErrorCode::ConnectionTimeoutOrFailure => CONNECTION_TIMEOUT_OR_FAILURE,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::AllocationQuotaReached => ALLOCATION_QUOTA_REACHED,
+            ErrorCode::AllocationQuotaReached => ALLOCATION_QUOTA_REACHED,
 
             #[cfg(any(feature = "rfc5245", feature = "rfc8445", feature = "iana"))]
-            Self::RoleConflict => ROLE_CONFLICT,
+            ErrorCode::RoleConflict => ROLE_CONFLICT,
 
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-            Self::ServerError => SERVER_ERROR,
+            ErrorCode::ServerError => SERVER_ERROR,
 
             #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-            Self::InsufficientCapacity => INSUFFICIENT_CAPACITY,
+            ErrorCode::InsufficientCapacity => INSUFFICIENT_CAPACITY,
 
             #[cfg(any(feature = "rfc3489"))]
-            Self::GlobalFailure => GLOBAL_FAILURE,
+            ErrorCode::GlobalFailure => GLOBAL_FAILURE,
 
-            Self::Other(code) => *code,
-        };
+            ErrorCode::Other(code) => code,
+        }
+    }
+}
 
+impl From<ErrorCode> for [u8; 2] {
+    fn from(code: ErrorCode) -> Self {
+        let code = u16::from(code);
         let code_100s = code / 100;
-        [(code_100s as u8) << 5, (code - code_100s) as u8]
+        [(code_100s as u8) << 5, (code - code_100s * 100) as u8]
     }
 }
 
@@ -1058,7 +1083,7 @@ impl<'a> Attr<'a> {
     }
 
     fn read_error_code(buf: &[u8]) -> Option<(ErrorCode, &str)> {
-        let code = ErrorCode::from_nums(buf.carve(2..4)?);
+        let code = ErrorCode::from_ref(buf.carve(2..4)?);
         let desc = buf.get(4..).map(Self::read_string)??;
         Some((code, desc))
     }
@@ -1121,7 +1146,7 @@ impl<'a> Attr<'a> {
             .map(AddressFamily::from_nums)?;
 
         let error_code = buf.carve(2..4)
-            .map(ErrorCode::from_nums)?;
+            .map(ErrorCode::from_ref)?;
 
         let desc = Self::read_string(buf.get(4..)?)?;
 
@@ -1396,8 +1421,8 @@ impl<'a> Attr<'a> {
             Self::AdditionalAddressFamily(fam) => {
                 typ_buf.set_be(ADDITIONAL_ADDRESS_FAMILY);
                 *val_buf.get_mut(0)? = fam.into_nums();
-                len_buf.set_be(1 as u16);
-                Some(1)
+                len_buf.set_be(4 as u16);
+                Some(4)
             }
 
             #[cfg(any(feature = "rfc8656", feature = "iana"))]
@@ -1611,7 +1636,8 @@ impl<'a> Attr<'a> {
     }
 
     fn write_error_code(code: &ErrorCode, desc: &str, buf: &mut [u8]) -> Option<usize> {
-        buf.carve_mut(2..4)?.copy_from(&code.into_nums());
+        let code_bytes: [u8; 2] = code.ref_into();
+        buf.carve_mut(2..4)?.copy_from(&code_bytes);
         Self::write_string(desc, buf.get_mut(4..)?).map(|size| 4 + size) // '4' accounts for error code
     }
 
@@ -2145,6 +2171,7 @@ mod head {
 
 #[cfg(test)]
 mod attr {
+    use crate::consts::error_code::TRY_ALTERNATE;
     use super::*;
 
     const TID: [u8; 16] = [1u8; 16];
@@ -3161,42 +3188,45 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
-    #[test]
-    fn additional_address_family() {
-        let buf = [
-            0x80, 0x00,             // type: Additional Address Family
-            0x00, 0x04,             // len: 4
-            0x01, 0x00, 0x00, 0x00, // family: IPv4
-        ];
+    const ADDITIONAL_ADDRESS_FAMILY_IPv4: [u8; 8] = [
+        0x80, 0x00,             // type: Additional Address Family
+        0x00, 0x04,             // len: 4
+        0x01, 0x00, 0x00, 0x00, // family: IPv4
+    ];
 
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    const ADDITIONAL_ADDRESS_FAMILY_IPv6: [u8; 8] = [
+        0x80, 0x00,             // type: Additional Address Family
+        0x00, 0x04,             // len: 4
+        0x02, 0x00, 0x00, 0x00, // family: IPv6
+    ];
+
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    const ADDITIONAL_ADDRESS_FAMILY_OTHER: [u8; 8] = [
+        0x80, 0x00,             // type: Additional Address Family
+        0x00, 0x04,             // len: 4
+        0x04, 0x00, 0x00, 0x00, // family: Other(4)
+    ];
+
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn additional_address_family_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&ADDITIONAL_ADDRESS_FAMILY_IPv4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::AdditionalAddressFamily(AddressFamily::IPv4)) = attr {} else { assert!(false); }
 
-        let buf = [
-            0x80, 0x00,             // type: Additional Address Family
-            0x00, 0x04,             // len: 4
-            0x02, 0x00, 0x00, 0x00, // family: IPv4
-        ];
-
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&ADDITIONAL_ADDRESS_FAMILY_IPv6),
             tid: &TID,
         }.next();
 
         if let Some(Attr::AdditionalAddressFamily(AddressFamily::IPv6)) = attr {} else { assert!(false); }
 
-        let buf = [
-            0x80, 0x00,             // type: Additional Address Family
-            0x00, 0x04,             // len: 4
-            0x04, 0x00, 0x00, 0x00, // family: Other(4)
-        ];
-
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&ADDITIONAL_ADDRESS_FAMILY_OTHER),
             tid: &TID,
         }.next();
 
@@ -3205,18 +3235,42 @@ mod attr {
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
     #[test]
-    fn address_error_code() {
-        let buf = [
-            0x80, 0x01,                         // type: Address Error Code
-            0x00, 0x0A,                         // len: 10
-            0x01, 0x00,                         // family: IPv4
-            0x06 << 5, 0x10,                    // code: 616
-            0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // desc: 'string'
-            0x00, 0x00,                         // padding
-        ];
+    fn additional_address_family_write() {
+        let mut buf = [0u8; 8];
 
+        let (typ, len, val) = split_into_tlv(&mut buf);
+        Attr::AdditionalAddressFamily(AddressFamily::IPv4)
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ADDITIONAL_ADDRESS_FAMILY_IPv4, &buf);
+
+        let (typ, len, val) = split_into_tlv(&mut buf);
+        Attr::AdditionalAddressFamily(AddressFamily::IPv6)
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ADDITIONAL_ADDRESS_FAMILY_IPv6, &buf);
+
+        let (typ, len, val) = split_into_tlv(&mut buf);
+        Attr::AdditionalAddressFamily(AddressFamily::Other(4))
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ADDITIONAL_ADDRESS_FAMILY_OTHER, &buf);
+    }
+
+    const ADDRESS_ERROR_CODE: [u8; 16] = [
+        0x80, 0x01,                         // type: Address Error Code
+        0x00, 0x0A,                         // len: 10
+        0x01, 0x00,                         // family: IPv4
+        0x06 << 5, 0x10,                    // code: 616
+        0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // desc: 'string'
+        0x00, 0x00,                         // padding
+    ];
+
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn address_error_code_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&ADDRESS_ERROR_CODE),
             tid: &TID,
         }.next();
 
@@ -3225,6 +3279,21 @@ mod attr {
                         code: ErrorCode::Other(616),
                         desc: "string"
                     }) = attr {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn address_error_code_write() {
+        let mut buf = [0u8; 16];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::AddressErrorCode {
+            family: AddressFamily::IPv4,
+            code: ErrorCode::Other(616),
+            desc: "string"
+        }.into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ADDRESS_ERROR_CODE, &buf);
     }
 
     #[cfg(any(feature = "rfc8489", feature = "iana"))]
@@ -3256,77 +3325,102 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc8489", feature = "iana"))]
-    #[test]
-    fn alternate_domain() {
-        let buf = [
-            0x80, 0x03,                         // type: Alternate Domain
-            0x00, 0x06,                         // len: 6
-            0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // val: 'string'
-            0x00, 0x00,                         // padding
-        ];
+    const ALTERNATE_DOMAIN: [u8; 12] = [
+        0x80, 0x03,                         // type: Alternate Domain
+        0x00, 0x06,                         // len: 6
+        0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // val: 'string'
+        0x00, 0x00,                         // padding
+    ];
 
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn alternate_domain_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&ALTERNATE_DOMAIN),
             tid: &TID,
         }.next();
 
         if let Some(Attr::AlternateDomain("string")) = attr {} else { assert!(false); }
     }
 
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn alternate_domain_write() {
+        let mut buf = [0u8; 12];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::AlternateDomain("string")
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ALTERNATE_DOMAIN, &buf);
+    }
+
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    const ICMP: [u8; 12] = [
+        0x80, 0x04,             // type: Icmp
+        0x00, 0x08,             // len: 8
+        0x00, 0x00,             // RFFU
+        0x01,                   // typ
+        0x02,                   // code
+        0x01, 0x02, 0x03, 0x04, // data
+    ];
+
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
     #[test]
-    fn icmp() {
-        let buf = [
-            0x80, 0x04,             // type: Icmp
-            0x00, 0x08,             // len: 8
-            0x00, 0x00,             // RFFU
-            0x01,                   // typ
-            0x02,                   // code
-            0x01, 0x02, 0x03, 0x04, // data
-        ];
-
+    fn icmp_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&ICMP),
             tid: &TID,
         }.next();
 
         if let Some(Attr::Icmp { typ: 1, code: 2, data: 0x01020304 }) = attr {} else { assert!(false); }
     }
 
+    #[cfg(any(feature = "rfc8656", feature = "iana"))]
+    #[test]
+    fn icmp_write() {
+        let mut buf = [0u8; 12];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::Icmp { typ: 1, code: 2, data: 0x01020304 }
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ICMP, &buf);
+    }
+
+    #[cfg(any(feature = "rfc3489"))]
+    const OPT_XOR_MAPPED_ADDRESS_IPv4: [u8; 12] = [
+        0x80, 0x20,                                                 // type: Opt Xor Mapped Address
+        0x00, 0x08,                                                 // len: 8
+        0x00, 0x01,                                                 // family: IPv4
+        0x01 ^ TID[0], 0x02 ^ TID[1],                               // port: 0x0102
+        0x0A ^ TID[0], 0x0B ^ TID[1], 0x0C ^ TID[2], 0x0D ^ TID[3], // ip: 10.11.12.13
+    ];
+
+    #[cfg(any(feature = "rfc3489"))]
+    const OPT_XOR_MAPPED_ADDRESS_IPv6: [u8; 24] = [
+        0x80, 0x20,                                                     // type: Opt Xor Mapped Address
+        0x00, 0x14,                                                     // len: 20
+        0x00, 0x02,                                                     // family: IPv6
+        0x01 ^ TID[0], 0x02 ^ TID[1],                                   // port: 0x0102
+        0x00 ^ TID[0], 0x01 ^ TID[1], 0x02 ^ TID[2], 0x03 ^ TID[3],
+        0x04 ^ TID[4], 0x05 ^ TID[5], 0x06 ^ TID[6], 0x07 ^ TID[7],
+        0x08 ^ TID[8], 0x09 ^ TID[9], 0x0A ^ TID[10], 0x0B ^ TID[11],
+        0x0C ^ TID[12], 0x0D ^ TID[13], 0x0E ^ TID[14], 0x0F ^ TID[15], // ip: 0123:4567:89AB:CDEF
+    ];
+
     #[cfg(any(feature = "rfc3489"))]
     #[test]
     fn opt_xor_mapped_address() {
-        let buf = [
-            0x80, 0x20,                                                 // type: Opt Xor Mapped Address
-            0x00, 0x08,                                                 // len: 8
-            0x00, 0x01,                                                 // family: IPv4
-            0x01 ^ TID[0], 0x02 ^ TID[1],                               // port: 0x0102
-            0x0A ^ TID[0], 0x0B ^ TID[1], 0x0C ^ TID[2], 0x0D ^ TID[3], // ip: 10.11.12.13
-        ];
-
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&OPT_XOR_MAPPED_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
-        if let Some(Attr::OptXorMappedAddress(SocketAddr::V4(ip, port))) = attr {
-            assert_eq!([10, 11, 12, 13], ip);
-            assert_eq!(0x0102, port);
-        } else { assert!(false); }
-
-        let buf = [
-            0x80, 0x20,                                                     // type: Opt Xor Mapped Address
-            0x00, 0x14,                                                     // len: 20
-            0x00, 0x02,                                                     // family: IPv6
-            0x01 ^ TID[0], 0x02 ^ TID[1],                                   // port: 0x0102
-            0x00 ^ TID[0], 0x01 ^ TID[1], 0x02 ^ TID[2], 0x03 ^ TID[3],
-            0x04 ^ TID[4], 0x05 ^ TID[5], 0x06 ^ TID[6], 0x07 ^ TID[7],
-            0x08 ^ TID[8], 0x09 ^ TID[9], 0x0A ^ TID[10], 0x0B ^ TID[11],
-            0x0C ^ TID[12], 0x0D ^ TID[13], 0x0E ^ TID[14], 0x0F ^ TID[15], // ip: 0123:4567:89AB:CDEF
-        ];
+        if let Some(Attr::OptXorMappedAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&OPT_XOR_MAPPED_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -3342,17 +3436,18 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    #[test]
-    fn software() {
-        let buf = [
-            0x80, 0x22,                         // type: Software
-            0x00, 0x06,                         // len: 6
-            0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // val: 'string'
-            0x00, 0x00,                         // padding
-        ];
+    const SOFTWARE: [u8; 12] = [
+        0x80, 0x22,                         // type: Software
+        0x00, 0x06,                         // len: 6
+        0x73, 0x74, 0x72, 0x69, 0x6E, 0x67, // val: 'string'
+        0x00, 0x00,                         // padding
+    ];
 
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn software_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&SOFTWARE),
             tid: &TID,
         }.next();
 
@@ -3361,17 +3456,42 @@ mod attr {
 
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     #[test]
-    fn alternate_server() {
-        let buf = [
-            0x80, 0x23,             // type: Alternate Server
-            0x00, 0x08,             // len: 8
-            0x00, 0x01,             // family: IPv4
-            0x01, 0x02,             // port: 0x0102
-            0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
-        ];
+    fn software_write() {
+        let mut buf = [0u8; 12];
+        let (typ, len, val) = split_into_tlv(&mut buf);
 
+        Attr::Software("string")
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&SOFTWARE, &buf);
+    }
+
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    const ALTERNATE_SERVER_IPv4: [u8; 12] = [
+        0x80, 0x23,             // type: Alternate Server
+        0x00, 0x08,             // len: 8
+        0x00, 0x01,             // family: IPv4
+        0x01, 0x02,             // port: 0x0102
+        0x0A, 0x0B, 0x0C, 0x0D, // ip: 10.11.12.13
+    ];
+
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    const ALTERNATE_SERVER_IPv6: [u8; 24] = [
+        0x80, 0x23,             // type: Alternate Server
+        0x00, 0x14,             // len: 20
+        0x00, 0x02,             // family: IPv6
+        0x01, 0x02,             // port: 0x0102
+        0x00, 0x01, 0x02, 0x03,
+        0x04, 0x05, 0x06, 0x07,
+        0x08, 0x09, 0x0A, 0x0B,
+        0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
+    ];
+
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn alternate_server_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&ALTERNATE_SERVER_IPv4),
             tid: &TID,
         }.next();
 
@@ -3380,19 +3500,8 @@ mod attr {
             assert_eq!(0x0102, port);
         } else { assert!(false); }
 
-        let buf = [
-            0x80, 0x23,             // type: Alternate Server
-            0x00, 0x14,             // len: 20
-            0x00, 0x02,             // family: IPv6
-            0x01, 0x02,             // port: 0x0102
-            0x00, 0x01, 0x02, 0x03,
-            0x04, 0x05, 0x06, 0x07,
-            0x08, 0x09, 0x0A, 0x0B,
-            0x0C, 0x0D, 0x0E, 0x0F, // ip: 0123:4567:89AB:CDEF
-        ];
-
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&ALTERNATE_SERVER_IPv6),
             tid: &TID,
         }.next();
 
@@ -3407,36 +3516,74 @@ mod attr {
         } else { assert!(false); }
     }
 
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn alternate_server_write() {
+        let mut buf = [0u8; 12];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::AlternateServer(SocketAddr::V4([10, 11, 12, 13], 0x0102))
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ALTERNATE_SERVER_IPv4, &buf);
+
+        let mut buf = [0u8; 24];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::AlternateServer(SocketAddr::V6([
+                                                0x00, 0x01, 0x02, 0x03,
+                                                0x04, 0x05, 0x06, 0x07,
+                                                0x08, 0x09, 0x0A, 0x0B,
+                                                0x0C, 0x0D, 0x0E, 0x0F,
+                                            ], 0x0102)).into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ALTERNATE_SERVER_IPv6, &buf);
+    }
+
+    #[cfg(any(feature = "rfc7982", feature = "iana"))]
+    const TRANSACTION_TRANSMIT_COUNTER: [u8; 8] = [
+        0x80, 0x25, // type: Transaction Transmit Counter
+        0x00, 0x04, // len: 4
+        0x00, 0x00, // RFFU
+        0x01,       // req: 1
+        0x02,       // res: 2
+    ];
+
     #[cfg(any(feature = "rfc7982", feature = "iana"))]
     #[test]
-    fn transaction_transmit_counter() {
-        let buf = [
-            0x80, 0x25, // type: Transaction Transmit Counter
-            0x00, 0x04, // len: 4
-            0x00, 0x00, // RFFU
-            0x01,       // req: 1
-            0x02,       // res: 2
-        ];
-
+    fn transaction_transmit_counter_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&TRANSACTION_TRANSMIT_COUNTER),
             tid: &TID,
         }.next();
 
         if let Some(Attr::TransactionTransmitCounter { req: 1, res: 2 }) = attr {} else { assert!(false); }
     }
 
+    #[cfg(any(feature = "rfc7982", feature = "iana"))]
+    #[test]
+    fn transaction_transmit_counter_write() {
+        let mut buf = [0u8; 8];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::TransactionTransmitCounter { req: 1, res: 2 }
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&TRANSACTION_TRANSMIT_COUNTER, &buf);
+    }
+
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
+    const CACHE_TIMEOUT: [u8; 8] = [
+        0x80, 0x27,             // type: Cache Timeout
+        0x00, 0x04,             // len: 4
+        0x01, 0x02, 0x03, 0x04, // timemout: 0x01020304
+    ];
+
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
     #[test]
-    fn cache_timeout() {
-        let buf = [
-            0x80, 0x27,             // type: Cache Timeout
-            0x00, 0x04,             // len: 4
-            0x01, 0x02, 0x03, 0x04, // timemout: 0x01020304
-        ];
-
+    fn cache_timeout_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&CACHE_TIMEOUT),
             tid: &TID,
         }.next();
 
@@ -3445,23 +3592,49 @@ mod attr {
         } else { assert!(false); }
     }
 
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
+    #[test]
+    fn cache_timeout_write() {
+        let mut buf = [0u8; 8];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::CacheTimeout(core::time::Duration::from_secs(0x01020304))
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&CACHE_TIMEOUT, &buf);
+    }
+
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    const FINGERPRINT: [u8; 8] = [
+        0x80, 0x28, // type: Fingerprint
+        0x00, 0x04, // len: 4
+        0x01 ^ 0x53,
+        0x02 ^ 0x54,
+        0x03 ^ 0x55,
+        0x04 ^ 0x4E, // val: 0x01020304
+    ];
+
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
     #[test]
-    fn fingerprint() {
-        let buf = [
-            0x80, 0x28,             // type: Fingerprint
-            0x00, 0x04,             // len: 4
-            0x01, 0x02, 0x03, 0x04, // val: 0x01020304 ^ 0x5354554E
-        ];
-
+    fn fingerprint_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: RawIter::from(&FINGERPRINT),
             tid: &TID,
         }.next();
 
-        const VAL: u32 = 0x01020304 ^ 0x5354554E;
+        if let Some(Attr::Fingerprint(0x01020304)) = attr {} else { assert!(false); }
+    }
 
-        if let Some(Attr::Fingerprint(VAL)) = attr {} else { assert!(false); }
+    #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn fingerprint_write() {
+        let mut buf = [0u8; 8];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::Fingerprint(0x01020304)
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&FINGERPRINT, &buf);
     }
 
     #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
@@ -3474,13 +3647,25 @@ mod attr {
 
     #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
     #[test]
-    fn ice_controlled() {
+    fn ice_controlled_read() {
         let attr = AttrIter {
             raw_iter: RawIter::from(&ICE_CONTROLLED),
             tid: &TID,
         }.next();
 
         if let Some(Attr::IceControlled(0x0102030405060708)) = attr {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+    #[test]
+    fn ice_controlled_write() {
+        let mut buf = [0u8; 12];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::IceControlled(0x0102030405060708)
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ICE_CONTROLLED, &buf);
     }
 
     #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
@@ -3493,13 +3678,25 @@ mod attr {
 
     #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
     #[test]
-    fn ice_controlling() {
+    fn ice_controlling_read() {
         let attr = AttrIter {
             raw_iter: RawIter::from(&ICE_CONTROLLING),
             tid: &TID,
         }.next();
 
         if let Some(Attr::IceControlling(0x0102030405060708)) = attr {} else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5425", feature = "rfc8445", feature = "iana"))]
+    #[test]
+    fn ice_controlling_write() {
+        let mut buf = [0u8; 12];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::IceControlling(0x0102030405060708)
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&ICE_CONTROLLING, &buf);
     }
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
@@ -3525,7 +3722,7 @@ mod attr {
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
     #[test]
-    fn response_origin() {
+    fn response_origin_read() {
         let attr = AttrIter {
             raw_iter: RawIter::from(&RESPONSE_ORIGIN_IPv4),
             tid: &TID,
@@ -3550,6 +3747,30 @@ mod attr {
                        ], ip);
             assert_eq!(0x0102, port);
         } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc5780", feature = "iana"))]
+    #[test]
+    fn response_origin_write() {
+        let mut buf = [0u8; 12];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::ResponseOrigin(SocketAddr::V4([10, 11, 12, 13], 0x0102))
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&RESPONSE_ORIGIN_IPv4, &buf);
+
+        let mut buf = [0u8; 24];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::ResponseOrigin(SocketAddr::V6([
+                                                0x00, 0x01, 0x02, 0x03,
+                                                0x04, 0x05, 0x06, 0x07,
+                                                0x08, 0x09, 0x0A, 0x0B,
+                                                0x0C, 0x0D, 0x0E, 0x0F,
+                                            ], 0x0102)).into_buf(typ, len, val, &TID);
+
+        assert_eq!(&RESPONSE_ORIGIN_IPv6, &buf);
     }
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
@@ -3617,11 +3838,11 @@ mod attr {
         let (typ, len, val) = split_into_tlv(&mut buf);
 
         Attr::OtherAddress(SocketAddr::V6([
-            0x00, 0x01, 0x02, 0x03,
-            0x04, 0x05, 0x06, 0x07,
-            0x08, 0x09, 0x0A, 0x0B,
-            0x0C, 0x0D, 0x0E, 0x0F,
-        ], 0x0102)).into_buf(typ, len, val, &TID);
+                                              0x00, 0x01, 0x02, 0x03,
+                                              0x04, 0x05, 0x06, 0x07,
+                                              0x08, 0x09, 0x0A, 0x0B,
+                                              0x0C, 0x0D, 0x0E, 0x0F,
+                                          ], 0x0102)).into_buf(typ, len, val, &TID);
 
         assert_eq!(&OTHER_ADDRESS_IPv6, &buf);
     }
@@ -3716,9 +3937,8 @@ mod attr {
     }
 
     fn split_into_tlv<const N: usize>(buf: &mut [u8; N]) -> (&mut [u8; 2], &mut [u8; 2], &mut [u8]) {
-        let (typ, buf) = buf.split_at_mut(2);
-        let (len, buf) = buf.split_at_mut(2);
-
-        (typ.try_into().unwrap(), len.try_into().unwrap(), buf)
+        let (typ, buf) = buf.splice_mut().unwrap();
+        let (len, buf) = buf.splice_mut().unwrap();
+        (typ, len, buf)
     }
 }

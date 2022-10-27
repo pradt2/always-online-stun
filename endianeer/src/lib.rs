@@ -146,6 +146,34 @@ mod lib {
         }
     }
 
+    #[cfg(feature = "ref-from")]
+    pub trait RefFrom<T>: Sized {
+        fn from_ref(_: &T) -> Self;
+    }
+
+    #[cfg(feature = "ref-from")]
+    impl <T: Clone, U: From<T>> RefFrom<T> for U {
+        #[inline]
+        fn from_ref(val_ref: &T) -> Self {
+            let val = val_ref.clone();
+            Self::from(val)
+        }
+    }
+
+    #[cfg(feature = "ref-from")]
+    pub trait RefInto<T: Sized>: Clone {
+        fn ref_into(&self) -> T;
+    }
+
+    #[cfg(feature = "ref-from")]
+    impl <T, U: Into<T> + Clone> RefInto<T> for U {
+        #[inline]
+        fn ref_into(&self) -> T {
+            let val = self.clone();
+            val.into()
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
