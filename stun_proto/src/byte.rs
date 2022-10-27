@@ -25,11 +25,12 @@ impl<'a> Msg<'a> {
     }
 
     pub fn tid(&self) -> Option<u128> {
-        let tid = self.reader.tid()
+        let mut tid = self.reader.tid()
             .map(u128::of_be);
 
-        #[cfg(any(feature = "rfc5349", feature = "rfc8489", feature = "iana"))]
-            let tid = tid.map(|val| val & ((1u128 << 96) - 1));
+        if cfg!(any(feature = "rfc5349", feature = "rfc8489", feature = "iana")) {
+            tid = tid.map(|val| val & ((1u128 << 96) - 1));
+        }
 
         tid
     }
@@ -2471,7 +2472,7 @@ mod attr {
             tid: &TID,
         }.next();
 
-        if let Some(Attr::ErrorCode { code: ErrorCode::Other(code), desc: desc }) = attr {
+        if let Some(Attr::ErrorCode { code: ErrorCode::Other(code), desc }) = attr {
             assert_eq!(616, code);
             assert_eq!("string", desc);
         } else { assert!(false); }
