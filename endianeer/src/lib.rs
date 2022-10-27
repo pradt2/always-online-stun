@@ -40,10 +40,10 @@ mod lib {
 
             impl EndianOf<$typ, [u8; core::mem::size_of::<$typ>()]> for $typ {
                 #[inline]
-                fn of_be(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_be() }
+                fn of_be(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { <$typ>::from_be_bytes(*buf) }
 
                 #[inline]
-                fn of_le(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { buf.to_le() }
+                fn of_le(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { <$typ>::from_be_bytes(*buf) }
             }
         };
     }
