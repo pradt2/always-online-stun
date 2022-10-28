@@ -120,17 +120,29 @@ mod lib {
     impl<T: Sized + Copy> Splice<T> for [T] {
         #[inline]
         fn splice<const N: usize>(&self) -> Option<(&[T; N], &[T])> {
-            if self.len() < N { return None; }
-            let (a, b) = self.split_at(N);
-            Some((a.try_into().ok()?, b))
+            splice(self)
         }
 
         #[inline]
         fn splice_mut<const N: usize>(&mut self) -> Option<(&mut [T; N], &mut [T])> {
-            if self.len() < N { return None; }
-            let (a, b) = self.split_at_mut(N);
-            Some((a.try_into().ok()?, b))
+            splice_mut(self)
         }
+    }
+
+    #[cfg(feature = "splice")]
+    #[inline]
+    pub fn splice<T: Sized + Copy, const N : usize>(val: &[T]) -> Option<(&[T; N], &[T])> {
+        if val.len() < N { return None; }
+        let (head, tail) = val.split_at(N);
+        Some((head.try_into().ok()?, tail))
+    }
+
+    #[cfg(feature = "splice")]
+    #[inline]
+    pub fn splice_mut<T: Sized + Copy, const N : usize>(val: &mut [T]) -> Option<(&mut [T; N], &mut [T])> {
+        if val.len() < N { return None; }
+        let (head, tail) = val.split_at_mut(N);
+        Some((head.try_into().ok()?, tail))
     }
 
     #[cfg(feature = "copy-from")]
@@ -152,7 +164,7 @@ mod lib {
     }
 
     #[cfg(feature = "ref-from")]
-    impl <T: Clone, U: From<T>> RefFrom<T> for U {
+    impl<T: Clone, U: From<T>> RefFrom<T> for U {
         #[inline]
         fn from_ref(val_ref: &T) -> Self {
             let val = val_ref.clone();
@@ -166,7 +178,7 @@ mod lib {
     }
 
     #[cfg(feature = "ref-from")]
-    impl <T, U: Into<T> + Clone> RefInto<T> for U {
+    impl<T, U: Into<T> + Clone> RefInto<T> for U {
         #[inline]
         fn ref_into(&self) -> T {
             let val = self.clone();
@@ -220,25 +232,34 @@ mod lib {
 
         #[cfg(feature = "splice")]
         #[test]
-        fn splice() {
+        fn splice_t() {
             let mut buf = [0u8; 2];
 
-            let (_, tail): (&[u8; 0], _) = buf.splice().unwrap();
+            let (head, tail) = buf.splice::<0>().unwrap();
+            assert_eq!(0, head.len());
             assert_eq!(2, tail.len());
 
-            let (_, tail): (&[u8; 2], _) = buf.splice().unwrap();
+            let (head, tail) = buf.splice::<2>().unwrap();
+            assert_eq!(2, head.len());
             assert_eq!(0, tail.len());
 
-            let x: Option<(&[u8; 4], &[u8])> = buf.splice();
+            let x = buf.splice::<4>();
             assert_eq!(None, x);
 
-            let (_, tail): (&mut [u8; 0], _) = buf.splice_mut().unwrap();
+            let (head, tail) = buf.splice_mut::<0>().unwrap();
+            assert_eq!(0, head.len());
             assert_eq!(2, tail.len());
 
-            let (_, tail): (&mut [u8; 2], _) = buf.splice_mut().unwrap();
+            let (head, tail) = buf.splice_mut::<2>().unwrap();
+            assert_eq!(2, head.len());
             assert_eq!(0, tail.len());
 
-            let x: Option<(&mut [u8; 4], &mut [u8])> = buf.splice_mut();
+            if let Some((head, tail)) = Some(buf.as_slice()).map(splice::<_, 2>).unwrap() {
+                assert_eq!(2, head.len());
+                assert_eq!(0, tail.len());
+            } else { assert!(false); }
+
+            let x = buf.splice_mut::<4>();
             assert_eq!(None, x);
         }
 
