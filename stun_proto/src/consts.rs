@@ -311,8 +311,8 @@ pub mod error_code {
 }
 
 pub mod addr_family {
-    pub const IPv4: u8 = 1;
-    pub const IPv6: u8 = 2;
+    pub const IP4: u8 = 1;
+    pub const IP6: u8 = 2;
 }
 
 pub mod transport_proto {

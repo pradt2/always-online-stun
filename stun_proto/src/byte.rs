@@ -374,8 +374,8 @@ impl From<u8> for AddressFamily {
         use crate::consts::addr_family::*;
 
         match fam {
-            IPv4 => AddressFamily::IPv4,
-            IPv6 => AddressFamily::IPv6,
+            IP4 => AddressFamily::IPv4,
+            IP6 => AddressFamily::IPv6,
             other => AddressFamily::Other(other),
         }
     }
@@ -386,8 +386,8 @@ impl From<AddressFamily> for u8 {
         use crate::consts::addr_family::*;
 
         match fam {
-            AddressFamily::IPv4 => IPv4,
-            AddressFamily::IPv6 => IPv6,
+            AddressFamily::IPv4 => IP4,
+            AddressFamily::IPv6 => IP6,
             AddressFamily::Other(other) => other,
         }
     }
@@ -2196,7 +2196,7 @@ mod attr {
     const TID: [u8; 16] = [1u8; 16];
 
     #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    const MAPPED_ADDRESS_IPv4: [u8; 12] = [
+    const MAPPED_ADDRESS_IP4: [u8; 12] = [
         0x00, 0x01,             // type: Mapped Address
         0x00, 0x08,             // len: 8
         0x00, 0x01,             // family: IPv4
@@ -2205,7 +2205,7 @@ mod attr {
     ];
 
     #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    const MAPPED_ADDRESS_IPv6: [u8; 24] = [
+    const MAPPED_ADDRESS_IP6: [u8; 24] = [
         0x00, 0x01,             // type: Mapped Address
         0x00, 0x14,             // len: 20
         0x00, 0x02,             // family: IPv6
@@ -2220,7 +2220,7 @@ mod attr {
     #[test]
     fn mapped_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&MAPPED_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&MAPPED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -2230,7 +2230,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&MAPPED_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&MAPPED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2254,7 +2254,7 @@ mod attr {
         Attr::MappedAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&MAPPED_ADDRESS_IPv4, &buf);
+        assert_eq!(&MAPPED_ADDRESS_IP4, &buf);
 
         let mut buf = [0u8; 24];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -2266,11 +2266,11 @@ mod attr {
                                                0x0C, 0x0D, 0x0E, 0x0F,
                                            ], 0x0102)).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&MAPPED_ADDRESS_IPv6, &buf);
+        assert_eq!(&MAPPED_ADDRESS_IP6, &buf);
     }
 
     #[cfg(feature = "rfc3489")]
-    const RESPONSE_ADDRESS_IPv4: [u8; 12] = [
+    const RESPONSE_ADDRESS_IP4: [u8; 12] = [
         0x00, 0x02,             // type: Response Address
         0x00, 0x08,             // len: 8
         0x00, 0x01,             // family: IPv4
@@ -2279,7 +2279,7 @@ mod attr {
     ];
 
     #[cfg(feature = "rfc3489")]
-    const RESPONSE_ADDRESS_IPv6: [u8; 24] = [
+    const RESPONSE_ADDRESS_IP6: [u8; 24] = [
         0x00, 0x02,             // type: Response Address
         0x00, 0x14,             // len: 20
         0x00, 0x02,             // family: IPv6
@@ -2294,7 +2294,7 @@ mod attr {
     #[test]
     fn response_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&RESPONSE_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -2304,7 +2304,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&RESPONSE_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2328,7 +2328,7 @@ mod attr {
         Attr::ResponseAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&RESPONSE_ADDRESS_IPv4, &buf);
+        assert_eq!(&RESPONSE_ADDRESS_IP4, &buf);
 
         let mut buf = [0u8; 24];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -2340,7 +2340,7 @@ mod attr {
                                                0x0C, 0x0D, 0x0E, 0x0F,
                                            ], 0x0102)).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&RESPONSE_ADDRESS_IPv6, &buf);
+        assert_eq!(&RESPONSE_ADDRESS_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc3489", feature = "rfc5780", feature = "iana"))]
@@ -2396,7 +2396,7 @@ mod attr {
     }
 
     #[cfg(feature = "rfc3489")]
-    const SOURCE_ADDRESS_IPv4: [u8; 12] = [
+    const SOURCE_ADDRESS_IP4: [u8; 12] = [
         0x00, 0x04,             // type: Source Address
         0x00, 0x08,             // len: 8
         0x00, 0x01,             // family: IPv4
@@ -2405,7 +2405,7 @@ mod attr {
     ];
 
     #[cfg(feature = "rfc3489")]
-    const SOURCE_ADDRESS_IPv6: [u8; 24] = [
+    const SOURCE_ADDRESS_IP6: [u8; 24] = [
         0x00, 0x04,             // type: Source Address
         0x00, 0x14,             // len: 20
         0x00, 0x02,             // family: IPv6
@@ -2420,7 +2420,7 @@ mod attr {
     #[test]
     fn source_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&SOURCE_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&SOURCE_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -2430,7 +2430,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&SOURCE_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&SOURCE_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2454,7 +2454,7 @@ mod attr {
         Attr::SourceAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&SOURCE_ADDRESS_IPv4, &buf);
+        assert_eq!(&SOURCE_ADDRESS_IP4, &buf);
 
         let mut buf = [0u8; 24];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -2466,11 +2466,11 @@ mod attr {
                                                 0x0C, 0x0D, 0x0E, 0x0F,
                                             ], 0x0102)).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&SOURCE_ADDRESS_IPv6, &buf);
+        assert_eq!(&SOURCE_ADDRESS_IP6, &buf);
     }
 
     #[cfg(feature = "rfc3489")]
-    const CHANGED_ADDRESS_IPv4: [u8; 12] = [
+    const CHANGED_ADDRESS_IP4: [u8; 12] = [
         0x00, 0x05,             // type: Changed Address
         0x00, 0x08,             // len: 8
         0x00, 0x01,             // family: IPv4
@@ -2479,7 +2479,7 @@ mod attr {
     ];
 
     #[cfg(feature = "rfc3489")]
-    const CHANGED_ADDRESS_IPv6: [u8; 24] = [
+    const CHANGED_ADDRESS_IP6: [u8; 24] = [
         0x00, 0x05,             // type: Changed Address
         0x00, 0x14,             // len: 20
         0x00, 0x02,             // family: IPv6
@@ -2494,7 +2494,7 @@ mod attr {
     #[test]
     fn changed_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CHANGED_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&CHANGED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -2504,7 +2504,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CHANGED_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&CHANGED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2528,7 +2528,7 @@ mod attr {
         Attr::ChangedAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&CHANGED_ADDRESS_IPv4, &buf);
+        assert_eq!(&CHANGED_ADDRESS_IP4, &buf);
 
         let mut buf = [0u8; 24];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -2540,7 +2540,7 @@ mod attr {
                                                0x0C, 0x0D, 0x0E, 0x0F,
                                            ], 0x0102)).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&CHANGED_ADDRESS_IPv6, &buf);
+        assert_eq!(&CHANGED_ADDRESS_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
@@ -2703,7 +2703,7 @@ mod attr {
     }
 
     #[cfg(feature = "rfc3489")]
-    const REFLECTED_FROM_IPv4: [u8; 12] = [
+    const REFLECTED_FROM_IP4: [u8; 12] = [
         0x00, 0x0B,             // type: Reflected From
         0x00, 0x08,             // len: 8
         0x00, 0x01,             // family: IPv4
@@ -2712,7 +2712,7 @@ mod attr {
     ];
 
     #[cfg(feature = "rfc3489")]
-    const REFLECTED_FROM_IPv6: [u8; 24] = [
+    const REFLECTED_FROM_IP6: [u8; 24] = [
         0x00, 0x0B,             // type: Reflected From
         0x00, 0x14,             // len: 20
         0x00, 0x02,             // family: IPv6
@@ -2727,7 +2727,7 @@ mod attr {
     #[test]
     fn reflected_from_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REFLECTED_FROM_IPv4),
+            raw_iter: ParserAttrIter::from(&REFLECTED_FROM_IP4),
             tid: &TID,
         }.next();
 
@@ -2737,7 +2737,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REFLECTED_FROM_IPv6),
+            raw_iter: ParserAttrIter::from(&REFLECTED_FROM_IP6),
             tid: &TID,
         }.next();
 
@@ -2761,7 +2761,7 @@ mod attr {
         Attr::ReflectedFrom(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&REFLECTED_FROM_IPv4, &buf);
+        assert_eq!(&REFLECTED_FROM_IP4, &buf);
 
         let mut buf = [0u8; 24];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -2773,7 +2773,7 @@ mod attr {
                                                 0x0C, 0x0D, 0x0E, 0x0F,
                                             ], 0x0102)).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&REFLECTED_FROM_IPv6, &buf);
+        assert_eq!(&REFLECTED_FROM_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
@@ -2840,7 +2840,7 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-    const XOR_PEER_ADDRESS_IPv4: [u8; 12] = [
+    const XOR_PEER_ADDRESS_IP4: [u8; 12] = [
         0x00, 0x12,                                                 // type: Xor Peer Address
         0x00, 0x08,                                                 // len: 8
         0x00, 0x01,                                                 // family: IPv4
@@ -2849,7 +2849,7 @@ mod attr {
     ];
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-    const XOR_PEER_ADDRESS_IPv6: [u8; 24] = [
+    const XOR_PEER_ADDRESS_IP6: [u8; 24] = [
         0x00, 0x12,                                                     // type: Xor Peer Address
         0x00, 0x14,                                                     // len: 20
         0x00, 0x02,                                                     // family: IPv6
@@ -2864,14 +2864,14 @@ mod attr {
     #[test]
     fn xor_peer_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_PEER_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&XOR_PEER_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::XorPeerAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_PEER_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&XOR_PEER_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2895,7 +2895,7 @@ mod attr {
         Attr::XorPeerAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&XOR_PEER_ADDRESS_IPv4, &buf);
+        assert_eq!(&XOR_PEER_ADDRESS_IP4, &buf);
 
         let mut buf = [0u8; 24];
 
@@ -2908,7 +2908,7 @@ mod attr {
                                                ], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&XOR_PEER_ADDRESS_IPv6, &buf);
+        assert_eq!(&XOR_PEER_ADDRESS_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
@@ -3001,7 +3001,7 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-    const XOR_RELAYED_ADDRESS_IPv4: [u8; 12] = [
+    const XOR_RELAYED_ADDRESS_IP4: [u8; 12] = [
         0x00, 0x16,                                                 // type: Xor Relayed Address
         0x00, 0x08,                                                 // len: 8
         0x00, 0x01,                                                 // family: IPv4
@@ -3010,7 +3010,7 @@ mod attr {
     ];
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
-    const XOR_RELAYED_ADDRESS_IPv6: [u8; 24] = [
+    const XOR_RELAYED_ADDRESS_IP6: [u8; 24] = [
         0x00, 0x16,                                                     // type: Xor Relayed Address
         0x00, 0x14,                                                     // len: 20
         0x00, 0x02,                                                     // family: IPv6
@@ -3025,7 +3025,7 @@ mod attr {
     #[test]
     fn xor_relayed_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_RELAYED_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&XOR_RELAYED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -3035,7 +3035,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_RELAYED_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&XOR_RELAYED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -3059,7 +3059,7 @@ mod attr {
         Attr::XorRelayedAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&XOR_RELAYED_ADDRESS_IPv4, &buf);
+        assert_eq!(&XOR_RELAYED_ADDRESS_IP4, &buf);
 
         let mut buf = [0u8; 24];
 
@@ -3072,18 +3072,18 @@ mod attr {
                                               ], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&XOR_RELAYED_ADDRESS_IPv6, &buf);
+        assert_eq!(&XOR_RELAYED_ADDRESS_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
-    const REQUESTED_ADDRESS_FAMILY_IPv4: [u8; 8] = [
+    const REQUESTED_ADDRESS_FAMILY_IP4: [u8; 8] = [
         0x00, 0x17,             // type: Requested Address Family
         0x00, 0x04,             // len: 4
         0x01, 0x00, 0x00, 0x00, // family: IPv4
     ];
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
-    const REQUESTED_ADDRESS_FAMILY_IPv6: [u8; 8] = [
+    const REQUESTED_ADDRESS_FAMILY_IP6: [u8; 8] = [
         0x00, 0x17,             // type: Requested Address Family
         0x00, 0x04,             // len: 4
         0x02, 0x00, 0x00, 0x00, // family: IPv6
@@ -3100,14 +3100,14 @@ mod attr {
     #[test]
     fn requested_address_family_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REQUESTED_ADDRESS_FAMILY_IPv4),
+            raw_iter: ParserAttrIter::from(&REQUESTED_ADDRESS_FAMILY_IP4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::RequestedAddressFamily(AddressFamily::IPv4)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REQUESTED_ADDRESS_FAMILY_IPv6),
+            raw_iter: ParserAttrIter::from(&REQUESTED_ADDRESS_FAMILY_IP6),
             tid: &TID,
         }.next();
 
@@ -3129,14 +3129,14 @@ mod attr {
 
         Attr::RequestedAddressFamily(AddressFamily::IPv4).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&REQUESTED_ADDRESS_FAMILY_IPv4, &buf);
+        assert_eq!(&REQUESTED_ADDRESS_FAMILY_IP4, &buf);
 
         let mut buf = [0u8; 8];
         let (typ, len, val) = split_into_tlv(&mut buf);
 
         Attr::RequestedAddressFamily(AddressFamily::IPv6).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&REQUESTED_ADDRESS_FAMILY_IPv6, &buf);
+        assert_eq!(&REQUESTED_ADDRESS_FAMILY_IP6, &buf);
 
         let mut buf = [0u8; 8];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -3513,7 +3513,7 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    const XOR_MAPPED_ADDRESS_IPv4: [u8; 12] = [
+    const XOR_MAPPED_ADDRESS_IP4: [u8; 12] = [
         0x00, 0x20,                                                 // type: Xor Mapped Address
         0x00, 0x08,                                                 // len: 8
         0x00, 0x01,                                                 // family: IPv4
@@ -3522,7 +3522,7 @@ mod attr {
     ];
 
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    const XOR_MAPPED_ADDRESS_IPv6: [u8; 24] = [
+    const XOR_MAPPED_ADDRESS_IP6: [u8; 24] = [
         0x00, 0x20,                                                     // type: Xor Mapped Address
         0x00, 0x14,                                                     // len: 20
         0x00, 0x02,                                                     // family: IPv6
@@ -3537,7 +3537,7 @@ mod attr {
     #[test]
     fn xor_mapped_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_MAPPED_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&XOR_MAPPED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -3547,7 +3547,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_MAPPED_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&XOR_MAPPED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -3571,7 +3571,7 @@ mod attr {
         Attr::XorMappedAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&XOR_MAPPED_ADDRESS_IPv4, &buf);
+        assert_eq!(&XOR_MAPPED_ADDRESS_IP4, &buf);
 
         let mut buf = [0u8; 24];
 
@@ -3584,7 +3584,7 @@ mod attr {
                                               ], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&XOR_MAPPED_ADDRESS_IPv6, &buf);
+        assert_eq!(&XOR_MAPPED_ADDRESS_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc5766", feature = "rfc8656", feature = "iana"))]
@@ -3763,14 +3763,14 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
-    const ADDITIONAL_ADDRESS_FAMILY_IPv4: [u8; 8] = [
+    const ADDITIONAL_ADDRESS_FAMILY_IP4: [u8; 8] = [
         0x80, 0x00,             // type: Additional Address Family
         0x00, 0x04,             // len: 4
         0x01, 0x00, 0x00, 0x00, // family: IPv4
     ];
 
     #[cfg(any(feature = "rfc8656", feature = "iana"))]
-    const ADDITIONAL_ADDRESS_FAMILY_IPv6: [u8; 8] = [
+    const ADDITIONAL_ADDRESS_FAMILY_IP6: [u8; 8] = [
         0x80, 0x00,             // type: Additional Address Family
         0x00, 0x04,             // len: 4
         0x02, 0x00, 0x00, 0x00, // family: IPv6
@@ -3787,14 +3787,14 @@ mod attr {
     #[test]
     fn additional_address_family_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_IPv4),
+            raw_iter: ParserAttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_IP4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::AdditionalAddressFamily(AddressFamily::IPv4)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_IPv6),
+            raw_iter: ParserAttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_IP6),
             tid: &TID,
         }.next();
 
@@ -3817,13 +3817,13 @@ mod attr {
         Attr::AdditionalAddressFamily(AddressFamily::IPv4)
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&ADDITIONAL_ADDRESS_FAMILY_IPv4, &buf);
+        assert_eq!(&ADDITIONAL_ADDRESS_FAMILY_IP4, &buf);
 
         let (typ, len, val) = split_into_tlv(&mut buf);
         Attr::AdditionalAddressFamily(AddressFamily::IPv6)
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&ADDITIONAL_ADDRESS_FAMILY_IPv6, &buf);
+        assert_eq!(&ADDITIONAL_ADDRESS_FAMILY_IP6, &buf);
 
         let (typ, len, val) = split_into_tlv(&mut buf);
         Attr::AdditionalAddressFamily(AddressFamily::Other(4))
@@ -3964,7 +3964,7 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc3489"))]
-    const OPT_XOR_MAPPED_ADDRESS_IPv4: [u8; 12] = [
+    const OPT_XOR_MAPPED_ADDRESS_IP4: [u8; 12] = [
         0x80, 0x20,                                                 // type: Opt Xor Mapped Address
         0x00, 0x08,                                                 // len: 8
         0x00, 0x01,                                                 // family: IPv4
@@ -3973,7 +3973,7 @@ mod attr {
     ];
 
     #[cfg(any(feature = "rfc3489"))]
-    const OPT_XOR_MAPPED_ADDRESS_IPv6: [u8; 24] = [
+    const OPT_XOR_MAPPED_ADDRESS_IP6: [u8; 24] = [
         0x80, 0x20,                                                     // type: Opt Xor Mapped Address
         0x00, 0x14,                                                     // len: 20
         0x00, 0x02,                                                     // family: IPv6
@@ -3988,14 +3988,14 @@ mod attr {
     #[test]
     fn opt_xor_mapped_address() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&OPT_XOR_MAPPED_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&OPT_XOR_MAPPED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::OptXorMappedAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&OPT_XOR_MAPPED_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&OPT_XOR_MAPPED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -4042,7 +4042,7 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    const ALTERNATE_SERVER_IPv4: [u8; 12] = [
+    const ALTERNATE_SERVER_IP4: [u8; 12] = [
         0x80, 0x23,             // type: Alternate Server
         0x00, 0x08,             // len: 8
         0x00, 0x01,             // family: IPv4
@@ -4051,7 +4051,7 @@ mod attr {
     ];
 
     #[cfg(any(feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    const ALTERNATE_SERVER_IPv6: [u8; 24] = [
+    const ALTERNATE_SERVER_IP6: [u8; 24] = [
         0x80, 0x23,             // type: Alternate Server
         0x00, 0x14,             // len: 20
         0x00, 0x02,             // family: IPv6
@@ -4066,7 +4066,7 @@ mod attr {
     #[test]
     fn alternate_server_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ALTERNATE_SERVER_IPv4),
+            raw_iter: ParserAttrIter::from(&ALTERNATE_SERVER_IP4),
             tid: &TID,
         }.next();
 
@@ -4076,7 +4076,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ALTERNATE_SERVER_IPv6),
+            raw_iter: ParserAttrIter::from(&ALTERNATE_SERVER_IP6),
             tid: &TID,
         }.next();
 
@@ -4100,7 +4100,7 @@ mod attr {
         Attr::AlternateServer(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&ALTERNATE_SERVER_IPv4, &buf);
+        assert_eq!(&ALTERNATE_SERVER_IP4, &buf);
 
         let mut buf = [0u8; 24];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -4112,7 +4112,7 @@ mod attr {
                                                 0x0C, 0x0D, 0x0E, 0x0F,
                                             ], 0x0102)).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&ALTERNATE_SERVER_IPv6, &buf);
+        assert_eq!(&ALTERNATE_SERVER_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc7982", feature = "iana"))]
@@ -4275,7 +4275,7 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
-    const RESPONSE_ORIGIN_IPv4: [u8; 12] = [
+    const RESPONSE_ORIGIN_IP4: [u8; 12] = [
         0x80, 0x2B,             // type: Response Origin
         0x00, 0x08,             // len: 8
         0x00, 0x01,             // family: IPv4
@@ -4284,7 +4284,7 @@ mod attr {
     ];
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
-    const RESPONSE_ORIGIN_IPv6: [u8; 24] = [
+    const RESPONSE_ORIGIN_IP6: [u8; 24] = [
         0x80, 0x2B,             // type: Response Origin
         0x00, 0x14,             // len: 20
         0x00, 0x02,             // family: IPv6
@@ -4299,7 +4299,7 @@ mod attr {
     #[test]
     fn response_origin_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_ORIGIN_IPv4),
+            raw_iter: ParserAttrIter::from(&RESPONSE_ORIGIN_IP4),
             tid: &TID,
         }.next();
 
@@ -4309,7 +4309,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_ORIGIN_IPv6),
+            raw_iter: ParserAttrIter::from(&RESPONSE_ORIGIN_IP6),
             tid: &TID,
         }.next();
 
@@ -4333,7 +4333,7 @@ mod attr {
         Attr::ResponseOrigin(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&RESPONSE_ORIGIN_IPv4, &buf);
+        assert_eq!(&RESPONSE_ORIGIN_IP4, &buf);
 
         let mut buf = [0u8; 24];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -4345,11 +4345,11 @@ mod attr {
                                                 0x0C, 0x0D, 0x0E, 0x0F,
                                             ], 0x0102)).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&RESPONSE_ORIGIN_IPv6, &buf);
+        assert_eq!(&RESPONSE_ORIGIN_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
-    const OTHER_ADDRESS_IPv4: [u8; 12] = [
+    const OTHER_ADDRESS_IP4: [u8; 12] = [
         0x80, 0x2C,             // type: Other Address
         0x00, 0x08,             // len: 8
         0x00, 0x01,             // family: IPv4
@@ -4358,7 +4358,7 @@ mod attr {
     ];
 
     #[cfg(any(feature = "rfc5780", feature = "iana"))]
-    const OTHER_ADDRESS_IPv6: [u8; 24] = [
+    const OTHER_ADDRESS_IP6: [u8; 24] = [
         0x80, 0x2C,             // type: Other Address
         0x00, 0x14,             // len: 20
         0x00, 0x02,             // family: IPv6
@@ -4373,7 +4373,7 @@ mod attr {
     #[test]
     fn other_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&OTHER_ADDRESS_IPv4),
+            raw_iter: ParserAttrIter::from(&OTHER_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -4383,7 +4383,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&OTHER_ADDRESS_IPv6),
+            raw_iter: ParserAttrIter::from(&OTHER_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -4407,7 +4407,7 @@ mod attr {
         Attr::OtherAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))
             .into_buf(typ, len, val, &TID);
 
-        assert_eq!(&OTHER_ADDRESS_IPv4, &buf);
+        assert_eq!(&OTHER_ADDRESS_IP4, &buf);
 
         let mut buf = [0u8; 24];
         let (typ, len, val) = split_into_tlv(&mut buf);
@@ -4419,7 +4419,7 @@ mod attr {
                                               0x0C, 0x0D, 0x0E, 0x0F,
                                           ], 0x0102)).into_buf(typ, len, val, &TID);
 
-        assert_eq!(&OTHER_ADDRESS_IPv6, &buf);
+        assert_eq!(&OTHER_ADDRESS_IP6, &buf);
     }
 
     #[cfg(any(feature = "rfc6679", feature = "iana"))]
