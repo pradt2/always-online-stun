@@ -8,7 +8,7 @@ mut = []
 default = []
 
 [dependencies]
-endianeer = { path = "../endianeer", default-features = false, features = ["u16", "carve", "splice"] }
+endianeer = { path = "../endianeer", default-features = false, features = ["u16", "carve", "copy-from", "splice"] }
 
 [dev-dependencies]
 endianeer = { path = "../endianeer", default-features = false, features = ["u32", "u128"] }

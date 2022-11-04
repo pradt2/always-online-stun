@@ -1,14 +1,14 @@
 use endianeer::prelude::*;
-use stun_bytes::{RawMsg, RawIter};
+use stun_bytes::{Parser, AttrIter};
 
 pub struct Msg<'a> {
-    reader: RawMsg<'a>,
+    reader: Parser<'a>,
 }
 
 impl<'a> Msg<'a> {
     pub fn from(buf: &'a [u8]) -> Self {
         Self {
-            reader: RawMsg::from(buf)
+            reader: Parser::from(buf)
         }
     }
 
@@ -949,7 +949,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             PASSWORD_ALGORITHMS => {
                 Self::PasswordAlgorithms(PasswordAlgorithmIter {
-                    raw_iter: RawIter::from(val),
+                    raw_iter: AttrIter::from(val),
                 })
             }
 
@@ -1138,7 +1138,7 @@ impl<'a> Attr<'a> {
     }
 
     fn read_password_algorithm(buf: &[u8]) -> Option<PasswordAlgorithm> {
-        PasswordAlgorithmIter { raw_iter: RawIter::from(&buf) }.next()
+        PasswordAlgorithmIter { raw_iter: AttrIter::from(&buf) }.next()
     }
 
     fn read_address_error_code(buf: &'a [u8]) -> Option<(AddressFamily, ErrorCode, &'a str)> {
@@ -1768,7 +1768,7 @@ impl<'a> PasswordAlgorithm<'a> {
 #[cfg(any(feature = "rfc8489", feature = "iana"))]
 #[derive(Copy, Clone)]
 pub struct PasswordAlgorithmIter<'a> {
-    raw_iter: RawIter<'a>,
+    raw_iter: AttrIter<'a>,
 }
 
 #[cfg(feature = "fmt")]
@@ -1797,7 +1797,7 @@ impl<'a> Iterator for PasswordAlgorithmIter<'a> {
 }
 
 pub struct AttrIter<'a> {
-    raw_iter: RawIter<'a>,
+    raw_iter: AttrIter<'a>,
     tid: &'a [u8; 16],
 }
 
@@ -2205,7 +2205,7 @@ mod attr {
     #[test]
     fn mapped_address_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&MAPPED_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&MAPPED_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
@@ -2215,7 +2215,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&MAPPED_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&MAPPED_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -2279,7 +2279,7 @@ mod attr {
     #[test]
     fn response_address_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&RESPONSE_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&RESPONSE_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
@@ -2289,7 +2289,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&RESPONSE_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&RESPONSE_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -2346,14 +2346,14 @@ mod attr {
     #[test]
     fn change_request_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&CHANGE_REQUEST_IP),
+            raw_iter: AttrIter::from(&CHANGE_REQUEST_IP),
             tid: &TID,
         }.next();
 
         if let Some(Attr::ChangeRequest { change_ip: true, change_port: false }) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&CHANGE_REQUEST_PORT),
+            raw_iter: AttrIter::from(&CHANGE_REQUEST_PORT),
             tid: &TID,
         }.next();
 
@@ -2405,7 +2405,7 @@ mod attr {
     #[test]
     fn source_address_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&SOURCE_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&SOURCE_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
@@ -2415,7 +2415,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&SOURCE_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&SOURCE_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -2479,7 +2479,7 @@ mod attr {
     #[test]
     fn changed_address_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&CHANGED_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&CHANGED_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
@@ -2489,7 +2489,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&CHANGED_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&CHANGED_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -2540,7 +2540,7 @@ mod attr {
     #[test]
     fn username_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&USERNAME),
+            raw_iter: AttrIter::from(&USERNAME),
             tid: &TID,
         }.next();
 
@@ -2570,7 +2570,7 @@ mod attr {
     #[test]
     fn password_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&PASSWORD),
+            raw_iter: AttrIter::from(&PASSWORD),
             tid: &TID,
         }.next();
 
@@ -2603,7 +2603,7 @@ mod attr {
     #[test]
     fn message_integrity_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&MESSAGE_INTEGRITY),
+            raw_iter: AttrIter::from(&MESSAGE_INTEGRITY),
             tid: &TID,
         }.next();
 
@@ -2644,7 +2644,7 @@ mod attr {
     #[test]
     fn error_code_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ERROR_CODE),
+            raw_iter: AttrIter::from(&ERROR_CODE),
             tid: &TID,
         }.next();
 
@@ -2674,7 +2674,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: AttrIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -2712,7 +2712,7 @@ mod attr {
     #[test]
     fn reflected_from_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&REFLECTED_FROM_IPv4),
+            raw_iter: AttrIter::from(&REFLECTED_FROM_IPv4),
             tid: &TID,
         }.next();
 
@@ -2722,7 +2722,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&REFLECTED_FROM_IPv6),
+            raw_iter: AttrIter::from(&REFLECTED_FROM_IPv6),
             tid: &TID,
         }.next();
 
@@ -2773,7 +2773,7 @@ mod attr {
     #[test]
     fn channel_number_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&CHANNEL_NUMBER),
+            raw_iter: AttrIter::from(&CHANNEL_NUMBER),
             tid: &TID,
         }.next();
 
@@ -2803,7 +2803,7 @@ mod attr {
     #[test]
     fn lifetime_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&LIFETIME),
+            raw_iter: AttrIter::from(&LIFETIME),
             tid: &TID,
         }.next();
 
@@ -2849,14 +2849,14 @@ mod attr {
     #[test]
     fn xor_peer_address_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&XOR_PEER_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&XOR_PEER_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::XorPeerAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&XOR_PEER_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&XOR_PEER_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -2907,7 +2907,7 @@ mod attr {
     #[test]
     fn data_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&DATA),
+            raw_iter: AttrIter::from(&DATA),
             tid: &TID,
         }.next();
 
@@ -2937,7 +2937,7 @@ mod attr {
     #[test]
     fn realm_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&REALM),
+            raw_iter: AttrIter::from(&REALM),
             tid: &TID,
         }.next();
 
@@ -2967,7 +2967,7 @@ mod attr {
     #[test]
     fn nonce_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&NONCE),
+            raw_iter: AttrIter::from(&NONCE),
             tid: &TID,
         }.next();
 
@@ -3010,7 +3010,7 @@ mod attr {
     #[test]
     fn xor_relayed_address_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&XOR_RELAYED_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&XOR_RELAYED_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
@@ -3020,7 +3020,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&XOR_RELAYED_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&XOR_RELAYED_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -3085,21 +3085,21 @@ mod attr {
     #[test]
     fn requested_address_family_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&REQUESTED_ADDRESS_FAMILY_IPv4),
+            raw_iter: AttrIter::from(&REQUESTED_ADDRESS_FAMILY_IPv4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::RequestedAddressFamily(AddressFamily::IPv4)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&REQUESTED_ADDRESS_FAMILY_IPv6),
+            raw_iter: AttrIter::from(&REQUESTED_ADDRESS_FAMILY_IPv6),
             tid: &TID,
         }.next();
 
         if let Some(Attr::RequestedAddressFamily(AddressFamily::IPv6)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&REQUESTED_ADDRESS_FAMILY_OTHER),
+            raw_iter: AttrIter::from(&REQUESTED_ADDRESS_FAMILY_OTHER),
             tid: &TID,
         }.next();
 
@@ -3151,14 +3151,14 @@ mod attr {
     #[test]
     fn even_port_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&EVEN_PORT_ODD),
+            raw_iter: AttrIter::from(&EVEN_PORT_ODD),
             tid: &TID,
         }.next();
 
         if let Some(Attr::EvenPort(false)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&EVEN_PORT_EVEN),
+            raw_iter: AttrIter::from(&EVEN_PORT_EVEN),
             tid: &TID,
         }.next();
 
@@ -3201,14 +3201,14 @@ mod attr {
     #[test]
     fn requested_transport_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&REQUEST_TRANSPORT_UDP),
+            raw_iter: AttrIter::from(&REQUEST_TRANSPORT_UDP),
             tid: &TID,
         }.next();
 
         if let Some(Attr::RequestedTransport(TransportProtocol::UDP)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&REQUEST_TRANSPORT_OTHER),
+            raw_iter: AttrIter::from(&REQUEST_TRANSPORT_OTHER),
             tid: &TID,
         }.next();
 
@@ -3243,7 +3243,7 @@ mod attr {
     #[test]
     fn dont_fragment_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&DONT_FRAGMENT),
+            raw_iter: AttrIter::from(&DONT_FRAGMENT),
             tid: &TID,
         }.next();
 
@@ -3278,7 +3278,7 @@ mod attr {
     #[test]
     fn access_token_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ACCESS_TOKEN),
+            raw_iter: AttrIter::from(&ACCESS_TOKEN),
             tid: &TID,
         }.next();
 
@@ -3327,7 +3327,7 @@ mod attr {
     #[test]
     fn message_integrity_sha256_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&MESSAGE_INTEGRITY_SHA256),
+            raw_iter: AttrIter::from(&MESSAGE_INTEGRITY_SHA256),
             tid: &TID,
         }.next();
 
@@ -3392,21 +3392,21 @@ mod attr {
     #[test]
     fn password_algorithm_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&PASSWORD_ALGORITHM_MD5),
+            raw_iter: AttrIter::from(&PASSWORD_ALGORITHM_MD5),
             tid: &TID,
         }.next();
 
         if let Some(Attr::PasswordAlgorithm(PasswordAlgorithm::Md5)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&PASSWORD_ALGORITHM_SHA256),
+            raw_iter: AttrIter::from(&PASSWORD_ALGORITHM_SHA256),
             tid: &TID,
         }.next();
 
         if let Some(Attr::PasswordAlgorithm(PasswordAlgorithm::Sha256)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&PASSWORD_ALGORITHM_OTHER),
+            raw_iter: AttrIter::from(&PASSWORD_ALGORITHM_OTHER),
             tid: &TID,
         }.next();
 
@@ -3461,7 +3461,7 @@ mod attr {
     #[test]
     fn userhash_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&USERHASH),
+            raw_iter: AttrIter::from(&USERHASH),
             tid: &TID,
         }.next();
 
@@ -3522,7 +3522,7 @@ mod attr {
     #[test]
     fn xor_mapped_address_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&XOR_MAPPED_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&XOR_MAPPED_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
@@ -3532,7 +3532,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&XOR_MAPPED_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&XOR_MAPPED_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -3584,7 +3584,7 @@ mod attr {
     #[test]
     fn reservation_token_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&RESERVATION_TOKEN),
+            raw_iter: AttrIter::from(&RESERVATION_TOKEN),
             tid: &TID,
         }.next();
 
@@ -3613,7 +3613,7 @@ mod attr {
     #[test]
     fn priority_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&PRIORITY),
+            raw_iter: AttrIter::from(&PRIORITY),
             tid: &TID,
         }.next();
 
@@ -3641,7 +3641,7 @@ mod attr {
     #[test]
     fn use_candidate_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&USE_CANDIDATE),
+            raw_iter: AttrIter::from(&USE_CANDIDATE),
             tid: &TID,
         }.next();
 
@@ -3670,7 +3670,7 @@ mod attr {
     #[test]
     fn padding_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&PADDING),
+            raw_iter: AttrIter::from(&PADDING),
             tid: &TID,
         }.next();
 
@@ -3700,7 +3700,7 @@ mod attr {
     #[test]
     fn response_port_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&RESPONSE_PORT),
+            raw_iter: AttrIter::from(&RESPONSE_PORT),
             tid: &TID,
         }.next();
 
@@ -3729,7 +3729,7 @@ mod attr {
     #[test]
     fn connection_id_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&CONNECTION_ID),
+            raw_iter: AttrIter::from(&CONNECTION_ID),
             tid: &TID,
         }.next();
 
@@ -3772,21 +3772,21 @@ mod attr {
     #[test]
     fn additional_address_family_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ADDITIONAL_ADDRESS_FAMILY_IPv4),
+            raw_iter: AttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_IPv4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::AdditionalAddressFamily(AddressFamily::IPv4)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ADDITIONAL_ADDRESS_FAMILY_IPv6),
+            raw_iter: AttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_IPv6),
             tid: &TID,
         }.next();
 
         if let Some(Attr::AdditionalAddressFamily(AddressFamily::IPv6)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ADDITIONAL_ADDRESS_FAMILY_OTHER),
+            raw_iter: AttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_OTHER),
             tid: &TID,
         }.next();
 
@@ -3830,7 +3830,7 @@ mod attr {
     #[test]
     fn address_error_code_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ADDRESS_ERROR_CODE),
+            raw_iter: AttrIter::from(&ADDRESS_ERROR_CODE),
             tid: &TID,
         }.next();
 
@@ -3872,7 +3872,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&buf),
+            raw_iter: AttrIter::from(&buf),
             tid: &TID,
         }.next();
 
@@ -3896,7 +3896,7 @@ mod attr {
     #[test]
     fn alternate_domain_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ALTERNATE_DOMAIN),
+            raw_iter: AttrIter::from(&ALTERNATE_DOMAIN),
             tid: &TID,
         }.next();
 
@@ -3929,7 +3929,7 @@ mod attr {
     #[test]
     fn icmp_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ICMP),
+            raw_iter: AttrIter::from(&ICMP),
             tid: &TID,
         }.next();
 
@@ -3973,14 +3973,14 @@ mod attr {
     #[test]
     fn opt_xor_mapped_address() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&OPT_XOR_MAPPED_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&OPT_XOR_MAPPED_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::OptXorMappedAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&OPT_XOR_MAPPED_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&OPT_XOR_MAPPED_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -4007,7 +4007,7 @@ mod attr {
     #[test]
     fn software_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&SOFTWARE),
+            raw_iter: AttrIter::from(&SOFTWARE),
             tid: &TID,
         }.next();
 
@@ -4051,7 +4051,7 @@ mod attr {
     #[test]
     fn alternate_server_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ALTERNATE_SERVER_IPv4),
+            raw_iter: AttrIter::from(&ALTERNATE_SERVER_IPv4),
             tid: &TID,
         }.next();
 
@@ -4061,7 +4061,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ALTERNATE_SERVER_IPv6),
+            raw_iter: AttrIter::from(&ALTERNATE_SERVER_IPv6),
             tid: &TID,
         }.next();
 
@@ -4113,7 +4113,7 @@ mod attr {
     #[test]
     fn transaction_transmit_counter_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&TRANSACTION_TRANSMIT_COUNTER),
+            raw_iter: AttrIter::from(&TRANSACTION_TRANSMIT_COUNTER),
             tid: &TID,
         }.next();
 
@@ -4143,7 +4143,7 @@ mod attr {
     #[test]
     fn cache_timeout_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&CACHE_TIMEOUT),
+            raw_iter: AttrIter::from(&CACHE_TIMEOUT),
             tid: &TID,
         }.next();
 
@@ -4178,7 +4178,7 @@ mod attr {
     #[test]
     fn fingerprint_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&FINGERPRINT),
+            raw_iter: AttrIter::from(&FINGERPRINT),
             tid: &TID,
         }.next();
 
@@ -4209,7 +4209,7 @@ mod attr {
     #[test]
     fn ice_controlled_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ICE_CONTROLLED),
+            raw_iter: AttrIter::from(&ICE_CONTROLLED),
             tid: &TID,
         }.next();
 
@@ -4240,7 +4240,7 @@ mod attr {
     #[test]
     fn ice_controlling_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ICE_CONTROLLING),
+            raw_iter: AttrIter::from(&ICE_CONTROLLING),
             tid: &TID,
         }.next();
 
@@ -4284,7 +4284,7 @@ mod attr {
     #[test]
     fn response_origin_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&RESPONSE_ORIGIN_IPv4),
+            raw_iter: AttrIter::from(&RESPONSE_ORIGIN_IPv4),
             tid: &TID,
         }.next();
 
@@ -4294,7 +4294,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&RESPONSE_ORIGIN_IPv6),
+            raw_iter: AttrIter::from(&RESPONSE_ORIGIN_IPv6),
             tid: &TID,
         }.next();
 
@@ -4358,7 +4358,7 @@ mod attr {
     #[test]
     fn other_address_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&OTHER_ADDRESS_IPv4),
+            raw_iter: AttrIter::from(&OTHER_ADDRESS_IPv4),
             tid: &TID,
         }.next();
 
@@ -4368,7 +4368,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: RawIter::from(&OTHER_ADDRESS_IPv6),
+            raw_iter: AttrIter::from(&OTHER_ADDRESS_IPv6),
             tid: &TID,
         }.next();
 
@@ -4419,7 +4419,7 @@ mod attr {
     #[test]
     fn ecn_check_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&ECN_CHECK),
+            raw_iter: AttrIter::from(&ECN_CHECK),
             tid: &TID,
         }.next();
 
@@ -4449,7 +4449,7 @@ mod attr {
     #[test]
     fn third_party_authorisation_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&THIRD_PARTY_AUTHORISATION),
+            raw_iter: AttrIter::from(&THIRD_PARTY_AUTHORISATION),
             tid: &TID,
         }.next();
 
@@ -4478,7 +4478,7 @@ mod attr {
     #[test]
     fn mobility_ticket_read() {
         let attr = AttrIter {
-            raw_iter: RawIter::from(&MOBILITY_TICKET),
+            raw_iter: AttrIter::from(&MOBILITY_TICKET),
             tid: &TID,
         }.next();
 

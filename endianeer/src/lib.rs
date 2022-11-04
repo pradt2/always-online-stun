@@ -17,7 +17,9 @@ mod lib {
 
     pub trait EndianOf<T, U> {
         fn of_be(buf: &U) -> T;
+        fn of_be_mut(buf: &mut U) -> T;
         fn of_le(buf: &U) -> T;
+        fn of_le_mut(buf: &mut U) -> T;
     }
 
     macro_rules! impl_endian_traits {
@@ -43,7 +45,13 @@ mod lib {
                 fn of_be(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { <$typ>::from_be_bytes(*buf) }
 
                 #[inline]
+                fn of_be_mut(buf: &mut [u8; core::mem::size_of::<$typ>()]) -> $typ { <$typ>::from_be_bytes(*buf) }
+
+                #[inline]
                 fn of_le(buf: &[u8; core::mem::size_of::<$typ>()]) -> $typ { <$typ>::from_be_bytes(*buf) }
+
+                #[inline]
+                fn of_le_mut(buf: &mut [u8; core::mem::size_of::<$typ>()]) -> $typ { <$typ>::from_be_bytes(*buf) }
             }
         };
     }
