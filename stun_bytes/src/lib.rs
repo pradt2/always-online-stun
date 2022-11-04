@@ -116,7 +116,7 @@ impl<'a> AttrMut<'a> {
     pub fn typ(&mut self) -> Option<&mut [u8; 2]> { self.buf.carve_mut(0..2) }
     pub fn len(&mut self) -> Option<&mut [u8; 2]> { self.buf.carve_mut(2..4) }
     pub fn val(&mut self) -> Option<&mut [u8]> {
-        let len: u16 = (self.len()?.to_be() + 3) & !3;
+        let len = (self.len().map(u16::of_be_mut)? + 3) & !3;
         let val = if self.buf.len() > (4 + len) as usize {
             self.buf.get_mut(4..4 + len as usize)
         } else {

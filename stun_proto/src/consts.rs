@@ -309,3 +309,12 @@ pub mod error_code {
     #[cfg(any(feature = "rfc3489"))]
     pub const GLOBAL_FAILURE: u16 = 600;
 }
+
+pub mod addr_family {
+    pub const IPv4: u8 = 1;
+    pub const IPv6: u8 = 2;
+}
+
+pub mod transport_proto {
+    pub const UDP: u8 = 17;
+}
