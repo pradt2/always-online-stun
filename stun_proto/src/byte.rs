@@ -1,14 +1,13 @@
 use endianeer::prelude::*;
-use stun_bytes::{Parser, AttrIter as ParserAttrIter};
 
 pub struct Msg<'a> {
-    reader: Parser<'a>,
+    reader: stun_bytes::ByteMsg<'a>,
 }
 
 impl<'a> Msg<'a> {
     pub fn from(buf: &'a [u8]) -> Self {
         Self {
-            reader: Parser::from(buf)
+            reader: stun_bytes::ByteMsg::from(buf)
         }
     }
 
@@ -970,7 +969,7 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             PASSWORD_ALGORITHMS => {
                 Self::PasswordAlgorithms(PasswordAlgorithmIter {
-                    raw_iter: ParserAttrIter::from(val),
+                    raw_iter: stun_bytes::ByteAttrIter::from(val),
                 })
             }
 
@@ -1159,7 +1158,7 @@ impl<'a> Attr<'a> {
     }
 
     fn read_password_algorithm(buf: &[u8]) -> Option<PasswordAlgorithm> {
-        PasswordAlgorithmIter { raw_iter: ParserAttrIter::from(&buf) }.next()
+        PasswordAlgorithmIter { raw_iter: stun_bytes::ByteAttrIter::from(buf) }.next()
     }
 
     fn read_address_error_code(buf: &'a [u8]) -> Option<(AddressFamily, ErrorCode, &'a str)> {
@@ -1786,7 +1785,7 @@ impl<'a> PasswordAlgorithm<'a> {
 #[cfg(any(feature = "rfc8489", feature = "iana"))]
 #[derive(Copy, Clone)]
 pub struct PasswordAlgorithmIter<'a> {
-    raw_iter: ParserAttrIter<'a>,
+    raw_iter: stun_bytes::ByteAttrIter<'a>,
 }
 
 #[cfg(feature = "fmt")]
@@ -1815,7 +1814,7 @@ impl<'a> Iterator for PasswordAlgorithmIter<'a> {
 }
 
 pub struct AttrIter<'a> {
-    raw_iter: ParserAttrIter<'a>,
+    raw_iter: stun_bytes::ByteAttrIter<'a>,
     tid: &'a [u8; 16],
 }
 
@@ -2220,7 +2219,7 @@ mod attr {
     #[test]
     fn mapped_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&MAPPED_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&MAPPED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -2230,7 +2229,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&MAPPED_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&MAPPED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2294,7 +2293,7 @@ mod attr {
     #[test]
     fn response_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&RESPONSE_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -2304,7 +2303,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&RESPONSE_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2361,14 +2360,14 @@ mod attr {
     #[test]
     fn change_request_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CHANGE_REQUEST_IP),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&CHANGE_REQUEST_IP),
             tid: &TID,
         }.next();
 
         if let Some(Attr::ChangeRequest { change_ip: true, change_port: false }) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CHANGE_REQUEST_PORT),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&CHANGE_REQUEST_PORT),
             tid: &TID,
         }.next();
 
@@ -2420,7 +2419,7 @@ mod attr {
     #[test]
     fn source_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&SOURCE_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&SOURCE_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -2430,7 +2429,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&SOURCE_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&SOURCE_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2494,7 +2493,7 @@ mod attr {
     #[test]
     fn changed_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CHANGED_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&CHANGED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -2504,7 +2503,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CHANGED_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&CHANGED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2555,7 +2554,7 @@ mod attr {
     #[test]
     fn username_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&USERNAME),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&USERNAME),
             tid: &TID,
         }.next();
 
@@ -2585,7 +2584,7 @@ mod attr {
     #[test]
     fn password_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&PASSWORD),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&PASSWORD),
             tid: &TID,
         }.next();
 
@@ -2618,7 +2617,7 @@ mod attr {
     #[test]
     fn message_integrity_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&MESSAGE_INTEGRITY),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&MESSAGE_INTEGRITY),
             tid: &TID,
         }.next();
 
@@ -2659,7 +2658,7 @@ mod attr {
     #[test]
     fn error_code_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ERROR_CODE),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ERROR_CODE),
             tid: &TID,
         }.next();
 
@@ -2689,7 +2688,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&buf),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&buf),
             tid: &TID,
         }.next();
 
@@ -2727,7 +2726,7 @@ mod attr {
     #[test]
     fn reflected_from_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REFLECTED_FROM_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&REFLECTED_FROM_IP4),
             tid: &TID,
         }.next();
 
@@ -2737,7 +2736,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REFLECTED_FROM_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&REFLECTED_FROM_IP6),
             tid: &TID,
         }.next();
 
@@ -2788,7 +2787,7 @@ mod attr {
     #[test]
     fn channel_number_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CHANNEL_NUMBER),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&CHANNEL_NUMBER),
             tid: &TID,
         }.next();
 
@@ -2818,7 +2817,7 @@ mod attr {
     #[test]
     fn lifetime_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&LIFETIME),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&LIFETIME),
             tid: &TID,
         }.next();
 
@@ -2864,14 +2863,14 @@ mod attr {
     #[test]
     fn xor_peer_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_PEER_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&XOR_PEER_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::XorPeerAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_PEER_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&XOR_PEER_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -2922,7 +2921,7 @@ mod attr {
     #[test]
     fn data_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&DATA),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&DATA),
             tid: &TID,
         }.next();
 
@@ -2952,7 +2951,7 @@ mod attr {
     #[test]
     fn realm_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REALM),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&REALM),
             tid: &TID,
         }.next();
 
@@ -2982,7 +2981,7 @@ mod attr {
     #[test]
     fn nonce_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&NONCE),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&NONCE),
             tid: &TID,
         }.next();
 
@@ -3025,7 +3024,7 @@ mod attr {
     #[test]
     fn xor_relayed_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_RELAYED_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&XOR_RELAYED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -3035,7 +3034,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_RELAYED_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&XOR_RELAYED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -3100,21 +3099,21 @@ mod attr {
     #[test]
     fn requested_address_family_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REQUESTED_ADDRESS_FAMILY_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&REQUESTED_ADDRESS_FAMILY_IP4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::RequestedAddressFamily(AddressFamily::IPv4)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REQUESTED_ADDRESS_FAMILY_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&REQUESTED_ADDRESS_FAMILY_IP6),
             tid: &TID,
         }.next();
 
         if let Some(Attr::RequestedAddressFamily(AddressFamily::IPv6)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REQUESTED_ADDRESS_FAMILY_OTHER),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&REQUESTED_ADDRESS_FAMILY_OTHER),
             tid: &TID,
         }.next();
 
@@ -3166,14 +3165,14 @@ mod attr {
     #[test]
     fn even_port_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&EVEN_PORT_ODD),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&EVEN_PORT_ODD),
             tid: &TID,
         }.next();
 
         if let Some(Attr::EvenPort(false)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&EVEN_PORT_EVEN),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&EVEN_PORT_EVEN),
             tid: &TID,
         }.next();
 
@@ -3216,14 +3215,14 @@ mod attr {
     #[test]
     fn requested_transport_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REQUEST_TRANSPORT_UDP),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&REQUEST_TRANSPORT_UDP),
             tid: &TID,
         }.next();
 
         if let Some(Attr::RequestedTransport(TransportProtocol::UDP)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&REQUEST_TRANSPORT_OTHER),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&REQUEST_TRANSPORT_OTHER),
             tid: &TID,
         }.next();
 
@@ -3258,7 +3257,7 @@ mod attr {
     #[test]
     fn dont_fragment_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&DONT_FRAGMENT),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&DONT_FRAGMENT),
             tid: &TID,
         }.next();
 
@@ -3293,7 +3292,7 @@ mod attr {
     #[test]
     fn access_token_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ACCESS_TOKEN),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ACCESS_TOKEN),
             tid: &TID,
         }.next();
 
@@ -3342,7 +3341,7 @@ mod attr {
     #[test]
     fn message_integrity_sha256_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&MESSAGE_INTEGRITY_SHA256),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&MESSAGE_INTEGRITY_SHA256),
             tid: &TID,
         }.next();
 
@@ -3407,21 +3406,21 @@ mod attr {
     #[test]
     fn password_algorithm_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&PASSWORD_ALGORITHM_MD5),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&PASSWORD_ALGORITHM_MD5),
             tid: &TID,
         }.next();
 
         if let Some(Attr::PasswordAlgorithm(PasswordAlgorithm::Md5)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&PASSWORD_ALGORITHM_SHA256),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&PASSWORD_ALGORITHM_SHA256),
             tid: &TID,
         }.next();
 
         if let Some(Attr::PasswordAlgorithm(PasswordAlgorithm::Sha256)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&PASSWORD_ALGORITHM_OTHER),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&PASSWORD_ALGORITHM_OTHER),
             tid: &TID,
         }.next();
 
@@ -3476,7 +3475,7 @@ mod attr {
     #[test]
     fn userhash_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&USERHASH),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&USERHASH),
             tid: &TID,
         }.next();
 
@@ -3537,7 +3536,7 @@ mod attr {
     #[test]
     fn xor_mapped_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_MAPPED_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&XOR_MAPPED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -3547,7 +3546,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&XOR_MAPPED_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&XOR_MAPPED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -3599,7 +3598,7 @@ mod attr {
     #[test]
     fn reservation_token_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESERVATION_TOKEN),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&RESERVATION_TOKEN),
             tid: &TID,
         }.next();
 
@@ -3628,7 +3627,7 @@ mod attr {
     #[test]
     fn priority_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&PRIORITY),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&PRIORITY),
             tid: &TID,
         }.next();
 
@@ -3656,7 +3655,7 @@ mod attr {
     #[test]
     fn use_candidate_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&USE_CANDIDATE),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&USE_CANDIDATE),
             tid: &TID,
         }.next();
 
@@ -3685,7 +3684,7 @@ mod attr {
     #[test]
     fn padding_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&PADDING),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&PADDING),
             tid: &TID,
         }.next();
 
@@ -3715,7 +3714,7 @@ mod attr {
     #[test]
     fn response_port_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_PORT),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&RESPONSE_PORT),
             tid: &TID,
         }.next();
 
@@ -3744,7 +3743,7 @@ mod attr {
     #[test]
     fn connection_id_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CONNECTION_ID),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&CONNECTION_ID),
             tid: &TID,
         }.next();
 
@@ -3787,21 +3786,21 @@ mod attr {
     #[test]
     fn additional_address_family_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ADDITIONAL_ADDRESS_FAMILY_IP4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::AdditionalAddressFamily(AddressFamily::IPv4)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ADDITIONAL_ADDRESS_FAMILY_IP6),
             tid: &TID,
         }.next();
 
         if let Some(Attr::AdditionalAddressFamily(AddressFamily::IPv6)) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ADDITIONAL_ADDRESS_FAMILY_OTHER),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ADDITIONAL_ADDRESS_FAMILY_OTHER),
             tid: &TID,
         }.next();
 
@@ -3845,7 +3844,7 @@ mod attr {
     #[test]
     fn address_error_code_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ADDRESS_ERROR_CODE),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ADDRESS_ERROR_CODE),
             tid: &TID,
         }.next();
 
@@ -3887,7 +3886,7 @@ mod attr {
         ];
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&buf),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&buf),
             tid: &TID,
         }.next();
 
@@ -3911,7 +3910,7 @@ mod attr {
     #[test]
     fn alternate_domain_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ALTERNATE_DOMAIN),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ALTERNATE_DOMAIN),
             tid: &TID,
         }.next();
 
@@ -3944,7 +3943,7 @@ mod attr {
     #[test]
     fn icmp_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ICMP),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ICMP),
             tid: &TID,
         }.next();
 
@@ -3988,14 +3987,14 @@ mod attr {
     #[test]
     fn opt_xor_mapped_address() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&OPT_XOR_MAPPED_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&OPT_XOR_MAPPED_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
         if let Some(Attr::OptXorMappedAddress(SocketAddr::V4([10, 11, 12, 13], 0x0102))) = attr {} else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&OPT_XOR_MAPPED_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&OPT_XOR_MAPPED_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -4022,7 +4021,7 @@ mod attr {
     #[test]
     fn software_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&SOFTWARE),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&SOFTWARE),
             tid: &TID,
         }.next();
 
@@ -4066,7 +4065,7 @@ mod attr {
     #[test]
     fn alternate_server_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ALTERNATE_SERVER_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ALTERNATE_SERVER_IP4),
             tid: &TID,
         }.next();
 
@@ -4076,7 +4075,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ALTERNATE_SERVER_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ALTERNATE_SERVER_IP6),
             tid: &TID,
         }.next();
 
@@ -4128,7 +4127,7 @@ mod attr {
     #[test]
     fn transaction_transmit_counter_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&TRANSACTION_TRANSMIT_COUNTER),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&TRANSACTION_TRANSMIT_COUNTER),
             tid: &TID,
         }.next();
 
@@ -4158,7 +4157,7 @@ mod attr {
     #[test]
     fn cache_timeout_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&CACHE_TIMEOUT),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&CACHE_TIMEOUT),
             tid: &TID,
         }.next();
 
@@ -4193,7 +4192,7 @@ mod attr {
     #[test]
     fn fingerprint_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&FINGERPRINT),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&FINGERPRINT),
             tid: &TID,
         }.next();
 
@@ -4224,7 +4223,7 @@ mod attr {
     #[test]
     fn ice_controlled_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ICE_CONTROLLED),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ICE_CONTROLLED),
             tid: &TID,
         }.next();
 
@@ -4255,7 +4254,7 @@ mod attr {
     #[test]
     fn ice_controlling_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ICE_CONTROLLING),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ICE_CONTROLLING),
             tid: &TID,
         }.next();
 
@@ -4299,7 +4298,7 @@ mod attr {
     #[test]
     fn response_origin_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_ORIGIN_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&RESPONSE_ORIGIN_IP4),
             tid: &TID,
         }.next();
 
@@ -4309,7 +4308,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&RESPONSE_ORIGIN_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&RESPONSE_ORIGIN_IP6),
             tid: &TID,
         }.next();
 
@@ -4373,7 +4372,7 @@ mod attr {
     #[test]
     fn other_address_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&OTHER_ADDRESS_IP4),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&OTHER_ADDRESS_IP4),
             tid: &TID,
         }.next();
 
@@ -4383,7 +4382,7 @@ mod attr {
         } else { assert!(false); }
 
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&OTHER_ADDRESS_IP6),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&OTHER_ADDRESS_IP6),
             tid: &TID,
         }.next();
 
@@ -4434,7 +4433,7 @@ mod attr {
     #[test]
     fn ecn_check_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&ECN_CHECK),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&ECN_CHECK),
             tid: &TID,
         }.next();
 
@@ -4464,7 +4463,7 @@ mod attr {
     #[test]
     fn third_party_authorisation_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&THIRD_PARTY_AUTHORISATION),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&THIRD_PARTY_AUTHORISATION),
             tid: &TID,
         }.next();
 
@@ -4493,7 +4492,7 @@ mod attr {
     #[test]
     fn mobility_ticket_read() {
         let attr = AttrIter {
-            raw_iter: ParserAttrIter::from(&MOBILITY_TICKET),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&MOBILITY_TICKET),
             tid: &TID,
         }.next();
 
