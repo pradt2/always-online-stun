@@ -30,7 +30,7 @@ impl<'a> ByteMsg<'a> {
         self.buf.get(20..20 + len)
     }
 
-    pub fn attr_iter(&self) -> ByteAttrIter {
+    pub fn attrs_iter(&self) -> ByteAttrIter {
         ByteAttrIter::from(self.attrs().unwrap_or(&[]))
     }
 
@@ -132,20 +132,13 @@ impl<'a> ByteMsgMut<'a> {
         self.buf.get_mut(20..20 + len)
     }
 
-    pub fn attr_iter(&mut self) -> ByteAttrIterMut {
+    pub fn attrs_iter(&mut self) -> ByteAttrIterMut {
         ByteAttrIterMut::from(self.attrs().unwrap_or(&mut []))
-    }
-
-    pub fn size(&mut self) -> usize {
-        self.len()
-            .map(u16::of_be_mut)
-            .map(|len| 20 + len as usize)
-            .unwrap_or(self.buf.len())
     }
 
     pub fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
         let curr_len = self.len().map(u16::of_be_mut)? as usize;
-        let (typ_buf, buf) = self.buf.get_mut(20+curr_len..)?.splice_mut()?;
+        let (typ_buf, buf) = self.buf.get_mut(20 + curr_len..)?.splice_mut()?;
         let (len_buf, buf) = buf.splice_mut()?;
         let val_buf = buf.get_mut(..val.len())?;
 
@@ -155,6 +148,28 @@ impl<'a> ByteMsgMut<'a> {
 
         self.len()?.set_be((curr_len + 4 + (val.len() + 3) & !3) as u16);
         Some(())
+    }
+
+    pub fn add_attr2<F: Fn(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> Option<usize>>(&mut self, callback: F) -> Option<()> {
+        let curr_len = self.len().map(u16::of_be_mut)? as usize;
+
+        let (typ_buf, buf) = self.buf.get_mut(20 + curr_len..)?.splice_mut()?;
+        let (len_buf, val_buf) = buf.splice_mut()?;
+
+        let size = callback(typ_buf, len_buf, val_buf)?;
+        self.len()?.set_be((curr_len + 4 + (size + 3) & !3) as u16);
+        Some(())
+    }
+
+    pub fn to_buf(mut self) -> &'a mut [u8] {
+        let len = self.len()
+            .map(u16::of_be_mut)
+            .unwrap_or(0) as usize;
+        if self.buf.len() < (len + 3) & !3 {
+            self.buf
+        } else {
+            self.buf.get_mut(0..20 + ((len as usize) + 3) & !3).unwrap_or(&mut [])
+        }
     }
 }
 
@@ -254,9 +269,9 @@ mod tests {
         assert_eq!(&MSG[2..4], msg.len().unwrap());
         assert_eq!(&MSG[4..20], msg.tid().unwrap());
         assert_eq!(&MSG[20..28], msg.attrs().unwrap());
-        assert_eq!(1, msg.attr_iter().count());
+        assert_eq!(1, msg.attrs_iter().count());
 
-        let attr = msg.attr_iter().next().unwrap();
+        let attr = msg.attrs_iter().next().unwrap();
 
         assert_eq!(&MSG[20..22], attr.typ().unwrap());
         assert_eq!(&MSG[22..24], attr.len().unwrap());
@@ -272,9 +287,9 @@ mod tests {
         assert_eq!(&MSG[2..4], msg.len().unwrap());
         assert_eq!(&MSG[4..20], msg.tid().unwrap());
         assert_eq!(&MSG[20..28], msg.attrs().unwrap());
-        assert_eq!(1, msg.attr_iter().count());
+        assert_eq!(1, msg.attrs_iter().count());
 
-        let mut attr = msg.attr_iter().next().unwrap();
+        let mut attr = msg.attrs_iter().next().unwrap();
 
         assert_eq!(&MSG[20..22], attr.typ().unwrap());
         assert_eq!(&MSG[22..24], attr.len().unwrap());
@@ -299,6 +314,24 @@ mod tests {
 
         let mut msg = ByteMsgMut::from_arr_mut(&mut buf);
         msg.len().unwrap().copy_from(MSG.carve(2..4).unwrap());
+        assert_eq!(&MSG, &buf);
+    }
+
+    #[test]
+    fn write2() {
+        let mut buf = [0u8; MSG.len()];
+        let mut msg = ByteMsgMut::from_arr_mut(&mut buf);
+
+        msg.typ().unwrap().copy_from(MSG.carve(0..2).unwrap());
+        // msg.len().unwrap().copy_from(MSG.carve(2..4).unwrap()); // length should be updated automatically
+        msg.tid().unwrap().copy_from(MSG.carve(4..20).unwrap());
+        msg.add_attr2(|typ, len, val| {
+            typ.copy_from(MSG.carve(20..22)?);
+            len.copy_from(MSG.carve(22..24)?);
+            val.get_mut(0..4)?.copy_from_slice(MSG.get(24..28)?);
+            Some(4)
+        });
+
         assert_eq!(&MSG, &buf);
     }
 }
