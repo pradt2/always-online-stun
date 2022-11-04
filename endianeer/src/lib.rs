@@ -194,6 +194,18 @@ mod lib {
         }
     }
 
+    #[cfg(feature = "arr-from")]
+    pub trait ArrFrom<'a, T: 'a, const N: usize, U: 'a> {
+        fn from_arr(_: &'a [T; N]) -> U;
+    }
+
+    #[cfg(feature = "arr-from")]
+    impl<'a, T: 'a, const N: usize, U: From<&'a [T]> + 'a> ArrFrom<'a, T, N, U> for U {
+        fn from_arr(buf: &'a [T; N]) -> U {
+            U::from(buf.as_slice())
+        }
+    }
+
     #[cfg(test)]
     mod tests {
         use super::*;
@@ -279,6 +291,24 @@ mod lib {
 
             buf.copy_from(&val1);
             assert_eq!(&buf, &val1);
+        }
+
+        #[cfg(feature = "arr-from")]
+        #[test]
+        fn arr_from() {
+            struct BufRef<'a> {
+                buf: &'a [u8],
+            }
+
+            impl<'a> From<&'a [u8]> for BufRef<'a> {
+                fn from(buf: &'a [u8]) -> Self {
+                    Self {
+                        buf
+                    }
+                }
+            }
+
+            let buf_ref = BufRef::from_arr(&[0u8; 2]);
         }
     }
 }

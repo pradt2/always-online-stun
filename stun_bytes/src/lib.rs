@@ -4,21 +4,33 @@ pub struct Parser<'a> {
     buf: &'a [u8],
 }
 
-impl<'a> Parser<'a> {
-    pub fn from(buf: &'a [u8]) -> Self {
-        let buf = buf.carve(2..4)
-            .map(u16::of_be)
-            .map(|len| buf.get(0..(20 + len) as usize))
-            .flatten()
-            .unwrap_or(buf);
-        Self { buf }
+impl<'a> From<&'a [u8]> for Parser<'a> {
+    fn from(buf: &'a [u8]) -> Self {
+        Self {
+            buf
+        }
     }
-    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.carve(0..2) }
-    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.carve(2..4) }
-    pub fn tid(&self) -> Option<&'a [u8; 16]> { self.buf.carve(4..20) }
-    pub fn attrs(&self) -> Option<&'a [u8]> { self.buf.get(20..) }
+}
+
+impl<'a> Parser<'a> {
+    pub fn typ(&self) -> Option<&'a [u8; 2]> {
+        self.buf.carve(0..2)
+    }
+
+    pub fn len(&self) -> Option<&'a [u8; 2]> {
+        self.buf.carve(2..4)
+    }
+
+    pub fn tid(&self) -> Option<&'a [u8; 16]> {
+        self.buf.carve(4..20)
+    }
+
+    pub fn attrs(&self) -> Option<&'a [u8]> {
+        self.buf.get(20..)
+    }
+
     pub fn attr_iter(&self) -> AttrIter {
-        AttrIter { buf: self.attrs().unwrap_or(&[]) }
+        AttrIter::from(self.attrs().unwrap_or(&[]))
     }
 }
 
@@ -26,10 +38,23 @@ pub struct Attr<'a> {
     buf: &'a [u8],
 }
 
+impl<'a> From<&'a [u8]> for Attr<'a> {
+    fn from(buf: &'a [u8]) -> Self {
+        Self {
+            buf
+        }
+    }
+}
+
 impl<'a> Attr<'a> {
-    pub fn from(buf: &'a [u8]) -> Self { Self { buf } }
-    pub fn typ(&self) -> Option<&'a [u8; 2]> { self.buf.carve(0..2) }
-    pub fn len(&self) -> Option<&'a [u8; 2]> { self.buf.carve(2..4) }
+    pub fn typ(&self) -> Option<&'a [u8; 2]> {
+        self.buf.carve(0..2)
+    }
+
+    pub fn len(&self) -> Option<&'a [u8; 2]> {
+        self.buf.carve(2..4)
+    }
+
     pub fn val(&self) -> Option<&'a [u8]> {
         self.len()
             .map(u16::of_be)
@@ -45,8 +70,8 @@ pub struct AttrIter<'a> {
     buf: &'a [u8],
 }
 
-impl<'a> AttrIter<'a> {
-    pub fn from(buf: &'a [u8]) -> Self {
+impl<'a> From<&'a [u8]> for AttrIter<'a> {
+    fn from(buf: &'a [u8]) -> Self {
         Self {
             buf
         }
@@ -73,25 +98,35 @@ pub struct ParserMut<'a> {
     buf: &'a mut [u8],
 }
 
-impl<'a> ParserMut<'a> {
-    pub fn from(buf: &'a mut [u8]) -> Self {
-        Self { buf }
+impl<'a> From<&'a mut [u8]> for ParserMut<'a> {
+    fn from(buf: &'a mut [u8]) -> Self {
+        Self {
+            buf
+        }
     }
+}
+
+impl<'a> ParserMut<'a> {
     pub fn typ(&mut self) -> Option<&mut [u8; 2]> {
         self.buf.carve_mut(0..2)
     }
+
     pub fn len(&mut self) -> Option<&mut [u8; 2]> {
         self.buf.carve_mut(2..4)
     }
+
     pub fn tid(&mut self) -> Option<&mut [u8; 16]> {
         self.buf.carve_mut(4..20)
     }
+
     pub fn attrs(&mut self) -> Option<&mut [u8]> {
         self.buf.get_mut(20..)
     }
+
     pub fn attr_iter(&mut self) -> AttrIterMut {
         AttrIterMut::from(self.attrs().unwrap_or(&mut []))
     }
+
     pub fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
         let curr_len = self.len().map(u16::of_be_mut)? as usize;
         let (typ_buf, buf) = self.attrs()?.get_mut(curr_len..)?.splice_mut()?;
@@ -111,8 +146,15 @@ pub struct AttrMut<'a> {
     buf: &'a mut [u8],
 }
 
+impl<'a> From<&'a mut [u8]> for AttrMut<'a> {
+    fn from(buf: &'a mut [u8]) -> Self {
+        Self {
+            buf
+        }
+    }
+}
+
 impl<'a> AttrMut<'a> {
-    pub fn from(buf: &'a mut [u8]) -> Self { Self { buf } }
     pub fn typ(&mut self) -> Option<&mut [u8; 2]> { self.buf.carve_mut(0..2) }
     pub fn len(&mut self) -> Option<&mut [u8; 2]> { self.buf.carve_mut(2..4) }
     pub fn val(&mut self) -> Option<&mut [u8]> {
@@ -130,10 +172,10 @@ pub struct AttrIterMut<'a> {
     buf: &'a mut [u8],
 }
 
-impl<'a> AttrIterMut<'a> {
-    pub fn from(buf: &'a mut [u8]) -> Self {
+impl<'a> From<&'a mut [u8]> for AttrIterMut<'a> {
+    fn from(buf: &'a mut [u8]) -> Self {
         Self {
-            buf,
+            buf
         }
     }
 }
@@ -219,6 +261,14 @@ mod tests {
         msg.tid().unwrap().copy_from(MSG.carve(4..20).unwrap());
         msg.add_attr(MSG.carve(20..22).unwrap(), MSG.carve(22..24).unwrap(), MSG.get(24..28).unwrap());
 
+        assert_eq!(&MSG, &buf);
+
+        let mut msg = ParserMut::from(&mut buf);
+        msg.len().unwrap().copy_from(&[0, 0]); // just to check that it works
+        assert_ne!(&MSG, &buf);
+
+        let mut msg = ParserMut::from(&mut buf);
+        msg.len().unwrap().copy_from(MSG.carve(2..4).unwrap());
         assert_eq!(&MSG, &buf);
     }
 }
