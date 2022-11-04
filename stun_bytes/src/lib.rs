@@ -26,11 +26,19 @@ impl<'a> ByteMsg<'a> {
     }
 
     pub fn attrs(&self) -> Option<&'a [u8]> {
-        self.buf.get(20..)
+        let len = self.len().map(u16::of_be)? as usize;
+        self.buf.get(20..20 + len)
     }
 
     pub fn attr_iter(&self) -> ByteAttrIter {
         ByteAttrIter::from(self.attrs().unwrap_or(&[]))
+    }
+
+    pub fn size(&self) -> usize {
+        self.len()
+            .map(u16::of_be)
+            .map(|len| 20 + len as usize)
+            .unwrap_or(self.buf.len())
     }
 }
 
@@ -120,16 +128,24 @@ impl<'a> ByteMsgMut<'a> {
     }
 
     pub fn attrs(&mut self) -> Option<&mut [u8]> {
-        self.buf.get_mut(20..)
+        let len = self.len().map(u16::of_be_mut)? as usize;
+        self.buf.get_mut(20..20 + len)
     }
 
     pub fn attr_iter(&mut self) -> ByteAttrIterMut {
         ByteAttrIterMut::from(self.attrs().unwrap_or(&mut []))
     }
 
+    pub fn size(&mut self) -> usize {
+        self.len()
+            .map(u16::of_be_mut)
+            .map(|len| 20 + len as usize)
+            .unwrap_or(self.buf.len())
+    }
+
     pub fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
         let curr_len = self.len().map(u16::of_be_mut)? as usize;
-        let (typ_buf, buf) = self.attrs()?.get_mut(curr_len..)?.splice_mut()?;
+        let (typ_buf, buf) = self.buf.get_mut(20+curr_len..)?.splice_mut()?;
         let (len_buf, buf) = buf.splice_mut()?;
         let val_buf = buf.get_mut(..val.len())?;
 
@@ -155,8 +171,14 @@ impl<'a> From<&'a mut [u8]> for ByteAttrMut<'a> {
 }
 
 impl<'a> ByteAttrMut<'a> {
-    pub fn typ(&mut self) -> Option<&mut [u8; 2]> { self.buf.carve_mut(0..2) }
-    pub fn len(&mut self) -> Option<&mut [u8; 2]> { self.buf.carve_mut(2..4) }
+    pub fn typ(&mut self) -> Option<&mut [u8; 2]> {
+        self.buf.carve_mut(0..2)
+    }
+
+    pub fn len(&mut self) -> Option<&mut [u8; 2]> {
+        self.buf.carve_mut(2..4)
+    }
+
     pub fn val(&mut self) -> Option<&mut [u8]> {
         let len = (self.len().map(u16::of_be_mut)? + 3) & !3;
         let val = if self.buf.len() > (4 + len) as usize {
@@ -185,15 +207,23 @@ impl<'a> Iterator for ByteAttrIterMut<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.is_empty() { return None; }
-        let mut tmp_attr: ByteAttrMut = unsafe { ByteAttrMut::from(core::mem::transmute::<&mut [u8], &mut [u8]>(self.buf)) };
+        let mut tmp_attr = unsafe {
+            ByteAttrMut::from(core::mem::transmute::<&mut [u8], &mut [u8]>(self.buf))
+        };
         let declared_val_size = tmp_attr.len().map(u16::of_be_mut)?;
         let total_attr_size = (4 + declared_val_size + 3) & !3;
         if self.buf.len() > total_attr_size as usize {
             let (head, tail) = self.buf.split_at_mut(total_attr_size as usize);
-            self.buf = unsafe { core::mem::transmute(tail) };
-            unsafe { core::mem::transmute(Some(ByteAttrMut::from(head))) }
+            self.buf = unsafe {
+                core::mem::transmute(tail)
+            };
+            unsafe {
+                core::mem::transmute(Some(ByteAttrMut::from(head)))
+            }
         } else {
-            let attr = unsafe { Some(ByteAttrMut::from(core::mem::transmute::<&mut [u8], &mut [u8]>(self.buf))) };
+            let attr = unsafe {
+                Some(ByteAttrMut::from(core::mem::transmute::<&mut [u8], &mut [u8]>(self.buf)))
+            };
             self.buf = &mut [];
             attr
         }
