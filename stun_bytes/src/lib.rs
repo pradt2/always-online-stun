@@ -161,7 +161,7 @@ impl<'a> ByteMsgMut<'a> {
         Some(())
     }
 
-    pub fn to_buf(mut self) -> &'a mut [u8] {
+    pub fn as_bytes(&mut self) -> &mut [u8] {
         let len = self.len()
             .map(u16::of_be_mut)
             .unwrap_or(0) as usize;

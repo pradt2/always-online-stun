@@ -77,8 +77,8 @@ impl<'a> MsgBuilder<'a> {
         })
     }
 
-    pub fn to_buf(self) -> &'a mut [u8] {
-        self.byte_msg.to_buf()
+    pub fn as_bytes(&mut self) -> &mut [u8] {
+        self.byte_msg.as_bytes()
     }
 }
 
