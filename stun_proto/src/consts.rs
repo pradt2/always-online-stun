@@ -318,3 +318,8 @@ pub mod addr_family {
 pub mod transport_proto {
     pub const UDP: u8 = 17;
 }
+
+pub mod password_alg {
+    pub const MD5: u16 = 1;
+    pub const SHA256: u16 = 2;
+}

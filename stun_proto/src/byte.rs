@@ -1795,18 +1795,22 @@ pub enum PasswordAlgorithm<'a> {
 
 impl<'a> PasswordAlgorithm<'a> {
     fn from_nums(typ: u16, params: &'a [u8]) -> Self {
+        use crate::consts::password_alg::*;
+
         match typ {
-            1 => PasswordAlgorithm::Md5,
-            2 => PasswordAlgorithm::Sha256,
+            MD5 => PasswordAlgorithm::Md5,
+            SHA256 => PasswordAlgorithm::Sha256,
             typ => PasswordAlgorithm::Other { typ, params },
         }
     }
 
     fn into_nums(&self) -> (u16, &'a [u8]) {
+        use crate::consts::password_alg::*;
+
         match self {
-            Self::Md5 => (1, &[]),
-            Self::Sha256 => (2, &[]),
-            Self::Other { typ, params } => (*typ, *params),   // TODO move to consts
+            Self::Md5 => (MD5, &[]),
+            Self::Sha256 => (SHA256, &[]),
+            Self::Other { typ, params } => (*typ, *params),
         }
     }
 }
