@@ -1474,7 +1474,13 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
             Self::PasswordAlgorithms(iter) => {
                 typ_buf.set_be(PASSWORD_ALGORITHMS);
-                todo!()
+                let mut val_size = 0;
+                for alg in iter.clone() {
+                    let size = Self::write_password_algorithm(&alg, val_buf.get_mut(val_size..)?)?;
+                    val_size += size;
+                }
+                len_buf.set_be(val_size as u16);
+                Some(val_size)
             }
 
             #[cfg(any(feature = "rfc8489", feature = "iana"))]
@@ -1793,6 +1799,7 @@ pub enum PasswordAlgorithm<'a> {
     Other { typ: u16, params: &'a [u8] },
 }
 
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
 impl<'a> PasswordAlgorithm<'a> {
     fn from_nums(typ: u16, params: &'a [u8]) -> Self {
         use crate::consts::password_alg::*;
@@ -1821,10 +1828,20 @@ pub struct PasswordAlgorithmIter<'a> {
     raw_iter: stun_bytes::ByteAttrIter<'a>,
 }
 
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
+impl<'a> From<&'a [u8]> for PasswordAlgorithmIter<'a> {
+    fn from(buf: &'a [u8]) -> Self {
+        Self {
+            raw_iter: stun_bytes::ByteAttrIter::from(buf)
+        }
+    }
+}
+
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
 #[cfg(feature = "fmt")]
 impl<'a> core::fmt::Debug for PasswordAlgorithmIter<'a> {
     fn fmt(&self, f: &mut core::fmt::Formatter<'_>) -> core::fmt::Result {
-        let iter = PasswordAlgorithmIter { raw_iter: self.raw_iter };
+        let iter = self.clone();
         f.write_str("[\n")?;
         for (idx, alg) in iter.enumerate() {
             f.write_fmt(format_args!("  ({}) {:?}\n", idx, alg))?;
@@ -1834,6 +1851,7 @@ impl<'a> core::fmt::Debug for PasswordAlgorithmIter<'a> {
     }
 }
 
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
 impl<'a> Iterator for PasswordAlgorithmIter<'a> {
     type Item = PasswordAlgorithm<'a>;
 
@@ -1843,6 +1861,62 @@ impl<'a> Iterator for PasswordAlgorithmIter<'a> {
         let len = attr.len().map(u16::of_be)?;
         let params = attr.val()?.get(0..len as usize)?;
         Some(PasswordAlgorithm::from_nums(typ, params))
+    }
+}
+
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
+pub struct PasswordAlgorithmsBuilder<'a> {
+    buf: &'a mut [u8],
+    idx: usize,
+}
+
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
+impl<'a> From<&'a mut [u8]> for PasswordAlgorithmsBuilder<'a> {
+    fn from(buf: &'a mut [u8]) -> Self {
+        Self {
+            buf,
+            idx: 0,
+        }
+    }
+}
+
+#[cfg(any(feature = "rfc8489", feature = "iana"))]
+impl<'a> PasswordAlgorithmsBuilder<'a> {
+    pub fn add_alg(&mut self, alg: &PasswordAlgorithm) -> Option<()> {
+        use crate::consts::password_alg::*;
+
+        let buf = self.buf.get_mut(self.idx..)?;
+        let (typ_buf, buf) = buf.splice_mut()?;
+        let (len_buf, val_buf) = buf.splice_mut()?;
+
+        match alg {
+            PasswordAlgorithm::Md5 => {
+                typ_buf.set_be(MD5);
+                len_buf.set_be(0u16);
+                self.idx += 4;
+                Some(())
+            },
+            PasswordAlgorithm::Sha256 => {
+                typ_buf.set_be(SHA256);
+                len_buf.set_be(0u16);
+                self.idx += 4;
+                Some(())
+            },
+            PasswordAlgorithm::Other {typ, params} => {
+                if val_buf.len() < (params.len() + 3) & !3 { return None; }
+
+                val_buf.get_mut(..params.len())?.copy_from_slice(params);
+                typ_buf.set_be(*typ);
+                len_buf.set_be(params.len() as u16);
+
+                self.idx += 4 + (params.len() + 3) & !3;
+                Some(())
+            }
+        }
+    }
+
+    pub fn to_buf(self) -> &'a [u8] {
+        return self.buf.get(0..self.idx).unwrap_or(&[]);
     }
 }
 
@@ -2742,7 +2816,6 @@ mod attr {
 
         Attr::UnknownAttributes(unknown_attrs.as_slice().into())
             .into_buf(typ, len, val, &TID);
-        ;
 
         assert_eq!(&UNKNOWN_ATTRIBUTES, &buf);
     }
@@ -3917,22 +3990,23 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc8489", feature = "iana"))]
-    #[test]
-    fn password_algorithms() {
-        let buf = [
-            0x80, 0x02,             // type: Password Algorithms
-            0x00, 0x10,             // len: 16
-            0x00, 0x01,             // typ: MD5
-            0x00, 0x00,             // param len: 0
-            0x00, 0x02,             // typ: SHA256
-            0x00, 0x00,             // param len: 0
-            0x00, 0x04,             // typ: Other(4)
-            0x00, 0x04,             // param len: 4
-            0x01, 0x02, 0x03, 0x04  // params
-        ];
+    const PASSWORD_ALGORITHMS: [u8; 20] = [
+        0x80, 0x02,             // type: Password Algorithms
+        0x00, 0x10,             // len: 16
+        0x00, 0x01,             // typ: MD5
+        0x00, 0x00,             // param len: 0
+        0x00, 0x02,             // typ: SHA256
+        0x00, 0x00,             // param len: 0
+        0x00, 0x04,             // typ: Other(4)
+        0x00, 0x04,             // param len: 4
+        0x01, 0x02, 0x03, 0x04  // params
+    ];
 
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn password_algorithms_read() {
         let attr = AttrIter {
-            raw_iter: stun_bytes::ByteAttrIter::from_arr(&buf),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&PASSWORD_ALGORITHMS),
             tid: &TID,
         }.next();
 
@@ -3942,6 +4016,24 @@ mod attr {
             if let Some(PasswordAlgorithm::Other { typ: 4, params: &[1, 2, 3, 4] }) = iter.next() {} else { assert!(false); }
             assert!(iter.next().is_none());
         } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn password_algorithms_write() {
+        let mut buf = [0u8; 16];
+        let mut builder = PasswordAlgorithmsBuilder::from_arr_mut(&mut buf);
+        builder.add_alg(&PasswordAlgorithm::Md5).unwrap();
+        builder.add_alg(&PasswordAlgorithm::Sha256).unwrap();
+        builder.add_alg(&PasswordAlgorithm::Other{ typ: 4, params: &[1, 2, 3, 4]}).unwrap();
+
+        let mut buf = [0u8; 20];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        Attr::PasswordAlgorithms(builder.to_buf().into())
+            .into_buf(typ, len, val, &TID);
+
+        assert_eq!(&PASSWORD_ALGORITHMS, &buf);
     }
 
     #[cfg(any(feature = "rfc8489", feature = "iana"))]
