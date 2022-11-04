@@ -185,7 +185,7 @@ impl<'a> Iterator for AttrIterMut<'a> {
 
     fn next(&mut self) -> Option<Self::Item> {
         if self.buf.is_empty() { return None; }
-        let mut tmp_attr = AttrMut::from(self.buf);
+        let mut tmp_attr: AttrMut = unsafe { AttrMut::from(core::mem::transmute::<&mut [u8], &mut [u8]>(self.buf)) };
         let declared_val_size = tmp_attr.len().map(u16::of_be_mut)?;
         let total_attr_size = (4 + declared_val_size + 3) & !3;
         if self.buf.len() > total_attr_size as usize {
@@ -193,9 +193,9 @@ impl<'a> Iterator for AttrIterMut<'a> {
             self.buf = unsafe { core::mem::transmute(tail) };
             unsafe { core::mem::transmute(Some(AttrMut::from(head))) }
         } else {
-            let attr = Some(AttrMut::from(self.buf));
+            let attr = unsafe { Some(AttrMut::from(core::mem::transmute::<&mut [u8], &mut [u8]>(self.buf))) };
             self.buf = &mut [];
-            unsafe { core::mem::transmute(attr) }
+            attr
         }
     }
 }
@@ -218,7 +218,7 @@ mod tests {
 
     #[test]
     fn read() {
-        let msg = Parser::from(&MSG);
+        let msg = Parser::from_arr(&MSG);
 
         assert_eq!(&MSG[0..2], msg.typ().unwrap());
         assert_eq!(&MSG[2..4], msg.len().unwrap());
@@ -236,7 +236,7 @@ mod tests {
     #[test]
     fn read_mut() {
         let mut buf = MSG.clone();
-        let mut msg = ParserMut::from(&mut buf);
+        let mut msg = ParserMut::from_arr_mut(&mut buf);
 
         assert_eq!(&MSG[0..2], msg.typ().unwrap());
         assert_eq!(&MSG[2..4], msg.len().unwrap());
@@ -254,7 +254,7 @@ mod tests {
     #[test]
     fn write() {
         let mut buf = [0u8; MSG.len()];
-        let mut msg = ParserMut::from(&mut buf);
+        let mut msg = ParserMut::from_arr_mut(&mut buf);
 
         msg.typ().unwrap().copy_from(MSG.carve(0..2).unwrap());
         // msg.len().unwrap().copy_from(MSG.carve(2..4).unwrap()); // length should be updated automatically
@@ -263,11 +263,11 @@ mod tests {
 
         assert_eq!(&MSG, &buf);
 
-        let mut msg = ParserMut::from(&mut buf);
-        msg.len().unwrap().copy_from(&[0, 0]); // just to check that it works
+        let mut msg = ParserMut::from_arr_mut(&mut buf);
+        msg.len().unwrap().copy_from(&[0, 0]); // just to double-check len() works
         assert_ne!(&MSG, &buf);
 
-        let mut msg = ParserMut::from(&mut buf);
+        let mut msg = ParserMut::from_arr_mut(&mut buf);
         msg.len().unwrap().copy_from(MSG.carve(2..4).unwrap());
         assert_eq!(&MSG, &buf);
     }

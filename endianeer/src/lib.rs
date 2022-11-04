@@ -201,8 +201,22 @@ mod lib {
 
     #[cfg(feature = "arr-from")]
     impl<'a, T: 'a, const N: usize, U: From<&'a [T]> + 'a> ArrFrom<'a, T, N, U> for U {
+        #[inline]
         fn from_arr(buf: &'a [T; N]) -> U {
             U::from(buf.as_slice())
+        }
+    }
+
+    #[cfg(feature = "arr-from")]
+    pub trait ArrFromMut<'a, T: 'a, const N: usize, U: 'a> {
+        fn from_arr_mut(_: &'a mut [T; N]) -> U;
+    }
+
+    #[cfg(feature = "arr-from")]
+    impl<'a, T: 'a, const N: usize, U: From<&'a mut [T]> + 'a> ArrFromMut<'a, T, N, U> for U {
+        #[inline]
+        fn from_arr_mut(buf: &'a mut [T; N]) -> U {
+            U::from(buf.as_mut_slice())
         }
     }
 
@@ -297,6 +311,7 @@ mod lib {
         #[test]
         fn arr_from() {
             struct BufRef<'a> {
+                #[allow(dead_code)]
                 buf: &'a [u8],
             }
 
@@ -308,7 +323,23 @@ mod lib {
                 }
             }
 
-            let buf_ref = BufRef::from_arr(&[0u8; 2]);
+            let _ = BufRef::from_arr(&[0u8; 2]);
+
+            struct BufRefMut<'a> {
+                #[allow(dead_code)]
+                buf: &'a mut [u8],
+            }
+
+            impl<'a> From<&'a mut [u8]> for BufRefMut<'a> {
+                fn from(buf: &'a mut [u8]) -> Self {
+                    Self {
+                        buf
+                    }
+                }
+            }
+
+            let mut buf = [0u8; 2];
+            let _ = BufRefMut::from_arr_mut(&mut buf);
         }
     }
 }
