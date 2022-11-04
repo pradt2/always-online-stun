@@ -1254,7 +1254,23 @@ impl<'a> Attr<'a> {
             #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
             Self::UnknownAttributes(iter) => {
                 typ_buf.set_be(UNKNOWN_ATTRIBUTES);
-                todo!()
+                let count = iter.clone().count();
+                let len_with_padding = (count * 2 + 3) & !3;
+                if val_buf.len() < len_with_padding { return None; }
+                let mut idx = 0;
+                for attr in iter.clone() {
+                    val_buf.carve_mut(idx..idx + 2)?.set_be(attr.to_be());
+                    idx += 2;
+                }
+                if count % 2 != 0 { // the padding should be one of the attrs (RFC 3489), or zero (RFC5389+)
+                    if cfg!(any(feature = "rfc5349", feature = "rfc8489", feature = "iana")) {
+                        val_buf.carve_mut(idx..idx + 2)?.set_be(0u16);
+                    } else {
+                        val_buf.carve_mut(idx..idx + 2)?.set_be(iter.clone().next().unwrap_or(0u16).to_be());
+                    }
+                }
+                len_buf.set_be((count * 2) as u16);
+                Some(count * 2)
             }
 
             #[cfg(feature = "rfc3489")]
@@ -1728,6 +1744,19 @@ impl<'a> Attr<'a> {
 #[derive(Copy, Clone)]
 pub struct UnknownAttrIter<'a> {
     buf: &'a [u8],
+}
+
+impl<'a> From<&'a [u16]> for UnknownAttrIter<'a> {
+    fn from(buf: &'a [u16]) -> Self {
+        let buf = unsafe {
+            let ptr = core::mem::transmute(buf.as_ptr());
+            let size = buf.len() * core::mem::size_of::<u16>() / core::mem::size_of::<u8>();
+            core::slice::from_raw_parts(ptr, size)
+        };
+        Self {
+            buf
+        }
+    }
 }
 
 #[cfg(feature = "fmt")]
@@ -2333,11 +2362,11 @@ mod attr {
         let (typ, len, val) = split_into_tlv(&mut buf);
 
         Attr::ResponseAddress(SocketAddr::V6([
-                                               0x00, 0x01, 0x02, 0x03,
-                                               0x04, 0x05, 0x06, 0x07,
-                                               0x08, 0x09, 0x0A, 0x0B,
-                                               0x0C, 0x0D, 0x0E, 0x0F,
-                                           ], 0x0102)).into_buf(typ, len, val, &TID);
+                                                 0x00, 0x01, 0x02, 0x03,
+                                                 0x04, 0x05, 0x06, 0x07,
+                                                 0x08, 0x09, 0x0A, 0x0B,
+                                                 0x0C, 0x0D, 0x0E, 0x0F,
+                                             ], 0x0102)).into_buf(typ, len, val, &TID);
 
         assert_eq!(&RESPONSE_ADDRESS_IP6, &buf);
     }
@@ -2380,7 +2409,7 @@ mod attr {
         let mut buf = [0u8; 8];
         let (typ, len, val) = split_into_tlv(&mut buf);
 
-        Attr::ChangeRequest{ change_ip: true, change_port: false }
+        Attr::ChangeRequest { change_ip: true, change_port: false }
             .into_buf(typ, len, val, &TID);
 
         assert_eq!(&CHANGE_REQUEST_IP, &buf);
@@ -2388,7 +2417,7 @@ mod attr {
         let mut buf = [0u8; 8];
         let (typ, len, val) = split_into_tlv(&mut buf);
 
-        Attr::ChangeRequest{ change_ip: false, change_port: true }
+        Attr::ChangeRequest { change_ip: false, change_port: true }
             .into_buf(typ, len, val, &TID);
 
         assert_eq!(&CHANGE_REQUEST_PORT, &buf);
@@ -2459,11 +2488,11 @@ mod attr {
         let (typ, len, val) = split_into_tlv(&mut buf);
 
         Attr::SourceAddress(SocketAddr::V6([
-                                                0x00, 0x01, 0x02, 0x03,
-                                                0x04, 0x05, 0x06, 0x07,
-                                                0x08, 0x09, 0x0A, 0x0B,
-                                                0x0C, 0x0D, 0x0E, 0x0F,
-                                            ], 0x0102)).into_buf(typ, len, val, &TID);
+                                               0x00, 0x01, 0x02, 0x03,
+                                               0x04, 0x05, 0x06, 0x07,
+                                               0x08, 0x09, 0x0A, 0x0B,
+                                               0x0C, 0x0D, 0x0E, 0x0F,
+                                           ], 0x0102)).into_buf(typ, len, val, &TID);
 
         assert_eq!(&SOURCE_ADDRESS_IP6, &buf);
     }
@@ -2533,11 +2562,11 @@ mod attr {
         let (typ, len, val) = split_into_tlv(&mut buf);
 
         Attr::ChangedAddress(SocketAddr::V6([
-                                               0x00, 0x01, 0x02, 0x03,
-                                               0x04, 0x05, 0x06, 0x07,
-                                               0x08, 0x09, 0x0A, 0x0B,
-                                               0x0C, 0x0D, 0x0E, 0x0F,
-                                           ], 0x0102)).into_buf(typ, len, val, &TID);
+                                                0x00, 0x01, 0x02, 0x03,
+                                                0x04, 0x05, 0x06, 0x07,
+                                                0x08, 0x09, 0x0A, 0x0B,
+                                                0x0C, 0x0D, 0x0E, 0x0F,
+                                            ], 0x0102)).into_buf(typ, len, val, &TID);
 
         assert_eq!(&CHANGED_ADDRESS_IP6, &buf);
     }
@@ -2626,7 +2655,7 @@ mod attr {
                 0x04, 0x05, 0x06, 0x07,
                 0x08, 0x09, 0x0A, 0x0B,
                 0x0C, 0x0D, 0x0E, 0x0F,
-                0x10, 0x11, 0x12, 0x13,], val.as_slice());
+                0x10, 0x11, 0x12, 0x13, ], val.as_slice());
         } else { assert!(false); }
     }
 
@@ -2640,7 +2669,7 @@ mod attr {
             0x04, 0x05, 0x06, 0x07,
             0x08, 0x09, 0x0A, 0x0B,
             0x0C, 0x0D, 0x0E, 0x0F,
-            0x10, 0x11, 0x12, 0x13,]).into_buf(typ, len, val, &TID);
+            0x10, 0x11, 0x12, 0x13, ]).into_buf(typ, len, val, &TID);
 
         assert_eq!(&MESSAGE_INTEGRITY, &buf);
     }
@@ -2678,27 +2707,40 @@ mod attr {
     }
 
     #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
-    #[test]
-    fn unknown_attrs() {
-        let buf = [
-            0x00, 0x0A, // type: Unknown Attributes
-            0x00, 0x02, // len: 2
-            0x01, 0x02, // unknown attr: 0x0102
-            0x00, 0x00, // padding
-        ];
+    const UNKNOWN_ATTRIBUTES: [u8; 8] = [
+        0x00, 0x0A, // type: Unknown Attributes
+        0x00, 0x02, // len: 2
+        0x01, 0x02, // unknown attr: 0x0102
+        0x00, 0x00, // padding
+    ];
 
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn unknown_attrs_read() {
         let attr = AttrIter {
-            raw_iter: stun_bytes::ByteAttrIter::from_arr(&buf),
+            raw_iter: stun_bytes::ByteAttrIter::from_arr(&UNKNOWN_ATTRIBUTES),
             tid: &TID,
         }.next();
 
         if let Some(Attr::UnknownAttributes(mut iter)) = attr {
-            if let Some(unknown_attr) = iter.next() {
-                assert_eq!(0x0102, unknown_attr);
-            } else { assert!(false); }
-
+            if let Some(0x0102) = iter.next() {} else { assert!(false); }
             assert!(iter.next().is_none());
         } else { assert!(false); }
+    }
+
+    #[cfg(any(feature = "rfc3489", feature = "rfc5389", feature = "rfc8489", feature = "iana"))]
+    #[test]
+    fn unknown_attrs_write() {
+        let mut buf = [0u8; 8];
+        let (typ, len, val) = split_into_tlv(&mut buf);
+
+        let unknown_attrs = [0x0102];
+
+        Attr::UnknownAttributes(unknown_attrs.as_slice().into())
+            .into_buf(typ, len, val, &TID);
+        ;
+
+        assert_eq!(&UNKNOWN_ATTRIBUTES, &buf);
     }
 
     #[cfg(feature = "rfc3489")]
@@ -2766,11 +2808,11 @@ mod attr {
         let (typ, len, val) = split_into_tlv(&mut buf);
 
         Attr::ReflectedFrom(SocketAddr::V6([
-                                                0x00, 0x01, 0x02, 0x03,
-                                                0x04, 0x05, 0x06, 0x07,
-                                                0x08, 0x09, 0x0A, 0x0B,
-                                                0x0C, 0x0D, 0x0E, 0x0F,
-                                            ], 0x0102)).into_buf(typ, len, val, &TID);
+                                               0x00, 0x01, 0x02, 0x03,
+                                               0x04, 0x05, 0x06, 0x07,
+                                               0x08, 0x09, 0x0A, 0x0B,
+                                               0x0C, 0x0D, 0x0E, 0x0F,
+                                           ], 0x0102)).into_buf(typ, len, val, &TID);
 
         assert_eq!(&REFLECTED_FROM_IP6, &buf);
     }
@@ -2900,11 +2942,11 @@ mod attr {
 
         let (typ, len, val) = split_into_tlv(&mut buf);
         Attr::XorPeerAddress(SocketAddr::V6([
-                                                   0x00, 0x01, 0x02, 0x03,
-                                                   0x04, 0x05, 0x06, 0x07,
-                                                   0x08, 0x09, 0x0A, 0x0B,
-                                                   0x0C, 0x0D, 0x0E, 0x0F,
-                                               ], 0x0102))
+                                                0x00, 0x01, 0x02, 0x03,
+                                                0x04, 0x05, 0x06, 0x07,
+                                                0x08, 0x09, 0x0A, 0x0B,
+                                                0x0C, 0x0D, 0x0E, 0x0F,
+                                            ], 0x0102))
             .into_buf(typ, len, val, &TID);
 
         assert_eq!(&XOR_PEER_ADDRESS_IP6, &buf);
@@ -3064,11 +3106,11 @@ mod attr {
 
         let (typ, len, val) = split_into_tlv(&mut buf);
         Attr::XorRelayedAddress(SocketAddr::V6([
-                                                  0x00, 0x01, 0x02, 0x03,
-                                                  0x04, 0x05, 0x06, 0x07,
-                                                  0x08, 0x09, 0x0A, 0x0B,
-                                                  0x0C, 0x0D, 0x0E, 0x0F,
-                                              ], 0x0102))
+                                                   0x00, 0x01, 0x02, 0x03,
+                                                   0x04, 0x05, 0x06, 0x07,
+                                                   0x08, 0x09, 0x0A, 0x0B,
+                                                   0x0C, 0x0D, 0x0E, 0x0F,
+                                               ], 0x0102))
             .into_buf(typ, len, val, &TID);
 
         assert_eq!(&XOR_RELAYED_ADDRESS_IP6, &buf);
@@ -3451,7 +3493,7 @@ mod attr {
         let mut buf = [0u8; 12];
         let (typ, len, val) = split_into_tlv(&mut buf);
 
-        Attr::PasswordAlgorithm(PasswordAlgorithm::Other {typ: 4, params: &[0x01, 0x02, 0x03, 0x04]})
+        Attr::PasswordAlgorithm(PasswordAlgorithm::Other { typ: 4, params: &[0x01, 0x02, 0x03, 0x04] })
             .into_buf(typ, len, val, &TID);
 
         assert_eq!(&PASSWORD_ALGORITHM_OTHER, &buf);
@@ -3864,7 +3906,7 @@ mod attr {
         Attr::AddressErrorCode {
             family: AddressFamily::IPv4,
             code: ErrorCode::Other(616),
-            desc: "string"
+            desc: "string",
         }.into_buf(typ, len, val, &TID);
 
         assert_eq!(&ADDRESS_ERROR_CODE, &buf);
@@ -4105,11 +4147,11 @@ mod attr {
         let (typ, len, val) = split_into_tlv(&mut buf);
 
         Attr::AlternateServer(SocketAddr::V6([
-                                                0x00, 0x01, 0x02, 0x03,
-                                                0x04, 0x05, 0x06, 0x07,
-                                                0x08, 0x09, 0x0A, 0x0B,
-                                                0x0C, 0x0D, 0x0E, 0x0F,
-                                            ], 0x0102)).into_buf(typ, len, val, &TID);
+                                                 0x00, 0x01, 0x02, 0x03,
+                                                 0x04, 0x05, 0x06, 0x07,
+                                                 0x08, 0x09, 0x0A, 0x0B,
+                                                 0x0C, 0x0D, 0x0E, 0x0F,
+                                             ], 0x0102)).into_buf(typ, len, val, &TID);
 
         assert_eq!(&ALTERNATE_SERVER_IP6, &buf);
     }
