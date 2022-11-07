@@ -4,7 +4,6 @@ use std::time::{Duration, Instant};
 use stun_proto::rfc5389::*;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
-use stun_client::print_stun_msg;
 use crate::utils::join_all_with_semaphore;
 use crate::StunServer;
 

@@ -16,15 +16,12 @@ name = "always-online-stun"
 version = "0.1.0"
 dependencies = [
  "async-trait",
- "endianeer",
  "futures",
  "log",
  "pretty_env_logger",
  "rand",
  "reqwest",
  "serde_json",
- "stun_client",
- "stun_proto",
  "tokio",
  "tokio-stream",
 ]
@@ -95,10 +92,6 @@ checksum = "9852635589dc9f9ea1b6fe9f05b50ef208c85c834a562f0c6abb1c475736ec2b"
 dependencies = [
  "cfg-if",
 ]
-
-[[package]]
-name = "endianeer"
-version = "1.0.0"
 
 [[package]]
 name = "env_logger"
@@ -737,25 +730,7 @@ checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 [[package]]
 name = "stun_bytes"
 version = "0.1.0"
-dependencies = [
- "endianeer",
-]
-
-[[package]]
-name = "stun_client"
-version = "0.1.0"
-dependencies = [
- "log",
- "stun_proto",
-]
-
-[[package]]
-name = "stun_proto"
-version = "0.1.0"
-dependencies = [
- "endianeer",
- "stun_bytes",
-]
+dependencies = []
 
 [[package]]
 name = "syn"

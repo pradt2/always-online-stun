@@ -23,5 +23,5 @@ fmt     = []
 default = ["rfc3489", "rfc5389", "rfc5245", "rfc5780", "rfc5766", "rfc8489", "rfc8445", "rfc8656", "rtf6679", "rfc7635", "rfc7982", "rfc8016", "rfc6062", "iana", "fmt"]
 
 [dependencies]
-endianeer = { path = "../endianeer", default-features = false, features = ["carve", "unsigned", "splice", "ref-from", "arr-from"] }
-stun_bytes = { path = "../stun_bytes" }
+r-ex = { version = "1.0.0", features = ["carve", "unsigned", "splice", "from-ref", "from-arr"] }
+stun-bytes = { path = "../stun-bytes" }

@@ -1,4 +1,4 @@
-use endianeer::prelude::*;
+use r-ex::prelude::*;
 
 pub struct Msg<'a> {
     byte_msg: stun_bytes::ByteMsg<'a>,

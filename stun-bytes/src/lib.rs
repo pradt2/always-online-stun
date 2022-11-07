@@ -1,4 +1,4 @@
-use endianeer::prelude::*;
+use r_ex::prelude::*;
 
 pub struct ByteMsg<'a> {
     buf: &'a [u8],
@@ -14,19 +14,19 @@ impl<'a> From<&'a [u8]> for ByteMsg<'a> {
 
 impl<'a> ByteMsg<'a> {
     pub fn typ(&self) -> Option<&'a [u8; 2]> {
-        self.buf.carve(0..2)
+        self.buf.carved()
     }
 
     pub fn len(&self) -> Option<&'a [u8; 2]> {
-        self.buf.carve(2..4)
+        self.buf.carve(2)
     }
 
     pub fn tid(&self) -> Option<&'a [u8; 16]> {
-        self.buf.carve(4..20)
+        self.buf.carve(4)
     }
 
     pub fn attrs(&self) -> Option<&'a [u8]> {
-        let len = self.len().map(u16::of_be)? as usize;
+        let len = self.len().map(u16::from_be_ref)? as usize;
         self.buf.get(20..20 + len)
     }
 
@@ -36,7 +36,7 @@ impl<'a> ByteMsg<'a> {
 
     pub fn size(&self) -> usize {
         self.len()
-            .map(u16::of_be)
+            .map(u16::from_be_ref)
             .map(|len| 20 + len as usize)
             .unwrap_or(self.buf.len())
     }
@@ -56,16 +56,16 @@ impl<'a> From<&'a [u8]> for ByteAttr<'a> {
 
 impl<'a> ByteAttr<'a> {
     pub fn typ(&self) -> Option<&'a [u8; 2]> {
-        self.buf.carve(0..2)
+        self.buf.carved()
     }
 
     pub fn len(&self) -> Option<&'a [u8; 2]> {
-        self.buf.carve(2..4)
+        self.buf.carve(2)
     }
 
     pub fn val(&self) -> Option<&'a [u8]> {
         self.len()
-            .map(u16::of_be)
+            .map(u16::from_be_ref)
             .map(|len| len + 3 & !3)
             .map(|len| self.buf.get(4..4 + len as usize))
             .flatten()
@@ -116,19 +116,19 @@ impl<'a> From<&'a mut [u8]> for ByteMsgMut<'a> {
 
 impl<'a> ByteMsgMut<'a> {
     pub fn typ(&mut self) -> Option<&mut [u8; 2]> {
-        self.buf.carve_mut(0..2)
+        self.buf.carved_mut()
     }
 
     pub fn len(&mut self) -> Option<&mut [u8; 2]> {
-        self.buf.carve_mut(2..4)
+        self.buf.carve_mut(2)
     }
 
     pub fn tid(&mut self) -> Option<&mut [u8; 16]> {
-        self.buf.carve_mut(4..20)
+        self.buf.carve_mut(4)
     }
 
     pub fn attrs(&mut self) -> Option<&mut [u8]> {
-        let len = self.len().map(u16::of_be_mut)? as usize;
+        let len = self.len().map(|r| u16::from_be_ref(r))? as usize;
         self.buf.get_mut(20..20 + len)
     }
 
@@ -137,7 +137,7 @@ impl<'a> ByteMsgMut<'a> {
     }
 
     pub fn add_attr(&mut self, typ: &[u8; 2], len: &[u8; 2], val: &[u8]) -> Option<()> {
-        let curr_len = self.len().map(u16::of_be_mut)? as usize;
+        let curr_len = self.len().map(|r| u16::from_be_ref(r))? as usize;
         let (typ_buf, buf) = self.buf.get_mut(20 + curr_len..)?.splice_mut()?;
         let (len_buf, buf) = buf.splice_mut()?;
         let val_buf = buf.get_mut(..val.len())?;
@@ -151,7 +151,7 @@ impl<'a> ByteMsgMut<'a> {
     }
 
     pub fn add_attr2<F: Fn(&mut [u8; 2], &mut [u8; 2], &mut [u8]) -> Option<usize>>(&mut self, callback: F) -> Option<()> {
-        let curr_len = self.len().map(u16::of_be_mut)? as usize;
+        let curr_len = self.len().map(|r| u16::from_be_ref(r))? as usize;
 
         let (typ_buf, buf) = self.buf.get_mut(20 + curr_len..)?.splice_mut()?;
         let (len_buf, val_buf) = buf.splice_mut()?;
@@ -163,7 +163,7 @@ impl<'a> ByteMsgMut<'a> {
 
     pub fn as_bytes(&mut self) -> &mut [u8] {
         let len = self.len()
-            .map(u16::of_be_mut)
+            .map(|r| u16::from_be_ref(r))
             .unwrap_or(0) as usize;
         if self.buf.len() < (len + 3) & !3 {
             self.buf
@@ -187,15 +187,15 @@ impl<'a> From<&'a mut [u8]> for ByteAttrMut<'a> {
 
 impl<'a> ByteAttrMut<'a> {
     pub fn typ(&mut self) -> Option<&mut [u8; 2]> {
-        self.buf.carve_mut(0..2)
+        self.buf.carved_mut()
     }
 
     pub fn len(&mut self) -> Option<&mut [u8; 2]> {
-        self.buf.carve_mut(2..4)
+        self.buf.carve_mut(2)
     }
 
     pub fn val(&mut self) -> Option<&mut [u8]> {
-        let len = (self.len().map(u16::of_be_mut)? + 3) & !3;
+        let len = (self.len().map(|r| u16::from_be_ref(r))? + 3) & !3;
         let val = if self.buf.len() > (4 + len) as usize {
             self.buf.get_mut(4..4 + len as usize)
         } else {
@@ -225,7 +225,7 @@ impl<'a> Iterator for ByteAttrIterMut<'a> {
         let mut tmp_attr = unsafe {
             ByteAttrMut::from(core::mem::transmute::<&mut [u8], &mut [u8]>(self.buf))
         };
-        let declared_val_size = tmp_attr.len().map(u16::of_be_mut)?;
+        let declared_val_size = tmp_attr.len().map(|r| u16::from_be_ref(r))?;
         let total_attr_size = (4 + declared_val_size + 3) & !3;
         if self.buf.len() > total_attr_size as usize {
             let (head, tail) = self.buf.split_at_mut(total_attr_size as usize);
@@ -301,10 +301,10 @@ mod tests {
         let mut buf = [0u8; MSG.len()];
         let mut msg = ByteMsgMut::from_arr_mut(&mut buf);
 
-        msg.typ().unwrap().copy_from(MSG.carve(0..2).unwrap());
+        msg.typ().unwrap().copy_from(MSG.carved().unwrap());
         // msg.len().unwrap().copy_from(MSG.carve(2..4).unwrap()); // length should be updated automatically
-        msg.tid().unwrap().copy_from(MSG.carve(4..20).unwrap());
-        msg.add_attr(MSG.carve(20..22).unwrap(), MSG.carve(22..24).unwrap(), MSG.get(24..28).unwrap());
+        msg.tid().unwrap().copy_from(MSG.carve(4).unwrap());
+        msg.add_attr(MSG.carve(20).unwrap(), MSG.carve(22).unwrap(), MSG.get(24..28).unwrap());
 
         assert_eq!(&MSG, &buf);
 
@@ -313,7 +313,7 @@ mod tests {
         assert_ne!(&MSG, &buf);
 
         let mut msg = ByteMsgMut::from_arr_mut(&mut buf);
-        msg.len().unwrap().copy_from(MSG.carve(2..4).unwrap());
+        msg.len().unwrap().copy_from(MSG.carve(2).unwrap());
         assert_eq!(&MSG, &buf);
     }
 
@@ -322,12 +322,12 @@ mod tests {
         let mut buf = [0u8; MSG.len()];
         let mut msg = ByteMsgMut::from_arr_mut(&mut buf);
 
-        msg.typ().unwrap().copy_from(MSG.carve(0..2).unwrap());
+        msg.typ().unwrap().copy_from(MSG.carved().unwrap());
         // msg.len().unwrap().copy_from(MSG.carve(2..4).unwrap()); // length should be updated automatically
-        msg.tid().unwrap().copy_from(MSG.carve(4..20).unwrap());
+        msg.tid().unwrap().copy_from(MSG.carve(4).unwrap());
         msg.add_attr2(|typ, len, val| {
-            typ.copy_from(MSG.carve(20..22)?);
-            len.copy_from(MSG.carve(22..24)?);
+            typ.copy_from(MSG.carve(20)?);
+            len.copy_from(MSG.carve(22)?);
             val.get_mut(0..4)?.copy_from_slice(MSG.get(24..28)?);
             Some(4)
         });
