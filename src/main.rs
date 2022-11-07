@@ -19,7 +19,7 @@ mod utils;
 mod outputs;
 mod geoip;
 
-const CONCURRENT_SOCKETS_USED_LIMIT: usize = 1;
+const CONCURRENT_SOCKETS_USED_LIMIT: usize = 64;
 
 #[tokio::main(flavor = "current_thread")]
 async fn main() -> io::Result<()> {
