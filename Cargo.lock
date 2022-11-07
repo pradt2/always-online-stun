@@ -22,6 +22,7 @@ dependencies = [
  "rand",
  "reqwest",
  "serde_json",
+ "stun-format",
  "tokio",
  "tokio-stream",
 ]
@@ -530,6 +531,12 @@ dependencies = [
 ]
 
 [[package]]
+name = "r-ex"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "42776a943a4f890410259860d4c308d32792ecbeaca4932a2b94b04f6d27bb9a"
+
+[[package]]
 name = "rand"
 version = "0.8.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -728,9 +735,23 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "6e63cff320ae2c57904679ba7cb63280a3dc4613885beafb148ee7bf9aa9042d"
 
 [[package]]
-name = "stun_bytes"
-version = "0.1.0"
-dependencies = []
+name = "stun-bytes"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "3bebd666814c8af1e06e4d489f9c3d03a4aef20bae651550c52e6e95e09f3f12"
+dependencies = [
+ "r-ex",
+]
+
+[[package]]
+name = "stun-format"
+version = "1.0.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "c6ad3c54fde6dfd6fe5048a71515b392d22c29730533663b5300e1b511d78df5"
+dependencies = [
+ "r-ex",
+ "stun-bytes",
+]
 
 [[package]]
 name = "syn"

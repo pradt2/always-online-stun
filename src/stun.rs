@@ -1,7 +1,6 @@
 use std::io;
 use std::net::{IpAddr, SocketAddr};
 use std::time::{Duration, Instant};
-use stun_proto::rfc5389::*;
 use tokio::io::{AsyncReadExt, AsyncWriteExt};
 use tokio::net::{TcpStream, UdpSocket};
 use crate::utils::join_all_with_semaphore;
@@ -413,39 +412,38 @@ async fn query_stun_server_udp(
     server_addr: SocketAddr,
     timeout: Duration,
 ) -> io::Result<Option<SocketAddr>> {
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 256];
 
-    let mut writer = Writer::new(&mut buf);
-    writer.set_message_type(MessageType::BindingRequest).unwrap();
-    writer.set_transaction_id(0x10203040).unwrap();
-    let bytes_written = writer.finish().unwrap();
+    let mut msg = stun_format::MsgBuilder::from(buf.as_mut_slice());
+    msg.typ(stun_format::MsgType::BindingRequest);
+    msg.tid(1);
 
-    local_socket.send_to(&buf[0..bytes_written as usize], server_addr).await?;
+    local_socket.send_to(msg.as_bytes(), server_addr).await?;
 
     let bytes_read = tokio::time::timeout(timeout, local_socket.recv(&mut buf)).await??;
 
-    let reader = Reader::new(&buf[0..bytes_read]);
+    let msg = stun_format::Msg::from(&buf[0..bytes_read]);
 
-    print_stun_msg(&buf[0..bytes_read]);
+    debug!("{:?}", msg);
 
-    if let Ok(MessageType::BindingResponse) = reader.get_message_type() {
-        let external_addr = reader.get_attributes()
+    if let Some(stun_format::MsgType::BindingResponse) = msg.typ() {
+        let external_addr = msg.attrs_iter()
             .map(|attr| {
                 match attr {
-                    Ok(ReaderAttribute::MappedAddress(addr)) => Some(addr.get_address().unwrap()),
-                    Ok(ReaderAttribute::XorMappedAddress(addr)) => Some(addr.get_address().unwrap()),
+                    stun_format::Attr::MappedAddress(addr) => Some(addr),
+                    stun_format::Attr::XorMappedAddress(addr) => Some(addr),
                     _ => None,
                 }
             })
             .filter(|opt| opt.is_some())
             .map(|opt| opt.unwrap())
             .map(|external_addr| match external_addr {
-                stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
-                    SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                stun_format::SocketAddr::V4(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip), port)
                 },
-                stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
-                    SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-                },
+                stun_format::SocketAddr::V6(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip), port)
+                }
             })
             .next();
 
@@ -459,37 +457,36 @@ async fn query_stun_server_tcp(
     local_socket: &mut TcpStream,
     timeout: Duration,
 ) -> io::Result<Option<SocketAddr>> {
-    let mut buf = [0u8; 32];
+    let mut buf = [0u8; 256];
 
-    let mut writer = Writer::new(&mut buf);
-    writer.set_message_type(MessageType::BindingRequest).unwrap();
-    writer.set_transaction_id(1).unwrap();
-    let bytes_written = writer.finish().unwrap();
+    let mut msg = stun_format::MsgBuilder::from(buf.as_mut_slice());
+    msg.typ(stun_format::MsgType::BindingRequest);
+    msg.tid(1);
 
-    tokio::time::timeout(timeout, local_socket.write_all(&buf[0..bytes_written as usize])).await??;
+    tokio::time::timeout(timeout, local_socket.write_all(msg.as_bytes())).await??;
 
     let bytes_read = tokio::time::timeout(timeout, local_socket.read(&mut buf)).await??;
 
-    let reader = Reader::new(&buf[0..bytes_read]);
-    if let Ok(MessageType::BindingResponse) = reader.get_message_type() {
-        assert_eq!(1u128, reader.get_transaction_id().unwrap());
-        let external_addr = reader.get_attributes()
+    let msg = stun_format::Msg::from(&buf[0..bytes_read]);
+
+    if let Some(stun_format::MsgType::BindingResponse) = msg.typ() {
+        let external_addr = msg.attrs_iter()
             .map(|attr| {
                 match attr {
-                    Ok(ReaderAttribute::MappedAddress(addr)) => Some(addr.get_address().unwrap()),
-                    Ok(ReaderAttribute::XorMappedAddress(addr)) => Some(addr.get_address().unwrap()),
+                    stun_format::Attr::MappedAddress(addr) => Some(addr),
+                    stun_format::Attr::XorMappedAddress(addr) => Some(addr),
                     _ => None,
                 }
             })
             .filter(|opt| opt.is_some())
             .map(|opt| opt.unwrap())
             .map(|external_addr| match external_addr {
-                stun_proto::rfc5389::SocketAddr::V4(ip, port) => {
-                    SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
+                stun_format::SocketAddr::V4(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip), port)
                 },
-                stun_proto::rfc5389::SocketAddr::V6(ip, port) => {
-                    SocketAddr::new(std::net::IpAddr::from(ip.to_be_bytes()), port)
-                },
+                stun_format::SocketAddr::V6(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip), port)
+                }
             })
             .next();
 
