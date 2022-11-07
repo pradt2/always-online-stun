@@ -303,7 +303,7 @@ async fn test_socket_addr_against_trusted_party_tcp(
             request_duration,
             hostname,
             stream.local_addr().unwrap(),
-            stream.peer_addr().unwrap(), // doesn't matter since the STUN server didn't return a valid address
+            stream.peer_addr().unwrap_or(std::net::SocketAddr::new(IpAddr::from([0; 4]), 0)), // doesn't matter since the STUN server didn't return a valid address
             stream.peer_addr().ok(),
             deadline,
         )
