@@ -34,7 +34,7 @@ This can be a problem if you need a server with full RFC5389/5780 NAT testing (e
 If you need a list of servers that support RFC5389/5780 NAT testing, open an issue.
 
 ### What IP versions and transport protocols are tested?
-IP versions 4 and 6. UDP only. If you need a list of TCP servers, open an issue.
+IP versions 4 and 6. UDP and TCP.
 
 ### I noticed that the lists are shuffled on each check. Why?
 Lazy/inconsiderate devs will tend to just grab the top-most link from the list (and TBF, can we blame them?).
