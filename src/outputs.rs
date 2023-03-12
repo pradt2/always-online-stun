@@ -1,3 +1,4 @@
+use std::collections::HashSet;
 use std::io;
 use rand::prelude::SliceRandom;
 use rand::thread_rng;
@@ -75,6 +76,8 @@ impl ValidIpV4s<'_> {
                     .map(|socket_test| format!("{}\n", socket_test.socket));
                 ipv4s
             })
+            .collect::<HashSet<_>>()
+            .into_iter()
             .collect::<Vec<_>>();
         output.shuffle(&mut thread_rng());
 
