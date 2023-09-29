@@ -12,6 +12,22 @@ Hardcode this link [valid_hosts.txt](https://raw.githubusercontent.com/pradt2/al
 
 Or, if you don't want to rely on DNS resolution, use [valid_ipv4s.txt](https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_ipv4s.txt) for IPv4, and [valid_ipv6s.txt](https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_ipv6s.txt) for IPv6 addresses.
 
+### JS example with Geolocation
+
+```javascript
+const GEO_LOC_URL = "https://raw.githubusercontent.com/pradt2/always-online-stun/master/geoip_cache.txt";
+const IPV4_URL = "https://raw.githubusercontent.com/pradt2/always-online-stun/master/valid_ipv4s.txt";
+const GEO_USER_URL = "https://geolocation-db.com/json/";
+const geoLocs = await(await fetch(GEO_LOC_URL)).json();
+const { latitude, longitude } = await(await fetch(GEO_USER_URL)).json();
+const closestAddr = (await(await fetch(IPV4_URL)).text()).trim().split('\n')
+    .map(addr => {
+        const [stunLat, stunLon] = geoLocs[addr.split(':')[0]];
+        const dist = ((latitude - stunLat) ** 2 + (longitude - stunLon) ** 2 ) ** .5;
+        return [addr, dist];
+    }).reduce(([addrA, distA], [addrB, distB]) => distA <= distB ? [addrA, distA] : [addrB, distB])[0];
+```
+
 ## FAQ
 
 ### But hard-coding of links is baaaad?!
