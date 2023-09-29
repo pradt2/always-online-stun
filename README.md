@@ -26,6 +26,7 @@ const closestAddr = (await(await fetch(IPV4_URL)).text()).trim().split('\n')
         const dist = ((latitude - stunLat) ** 2 + (longitude - stunLon) ** 2 ) ** .5;
         return [addr, dist];
     }).reduce(([addrA, distA], [addrB, distB]) => distA <= distB ? [addrA, distA] : [addrB, distB])[0];
+console.log(closestAddr); // prints the STUN server IP:PORT of the closes server
 ```
 
 ## FAQ
