@@ -163,6 +163,7 @@ stun.files.fm:3478
 stun.finsterwalder.com:3478
 stun.fitauto.ru:3478
 stun.fixup.net:3478
+stun.flashdance.cx:3478
 stun.fmo.de:3478
 stun.foad.me.uk:3478
 stun.fondazioneroccochinnici.it:3478
