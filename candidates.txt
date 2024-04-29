@@ -246,7 +246,7 @@ stun.kanojo.de:3478
 stun.kaseya.com:3478
 stun.katholischekirche-ruegen.de:3478
 stun.kaznpu.kz:3478
-stun.kedr.io:3478
+# stun.kedr.io:3478 - SEE ISSUE #16
 stun.kiesler.at:3478
 stun.kitamaebune.com:3478
 stun.kiwilink.co.nz:3478
