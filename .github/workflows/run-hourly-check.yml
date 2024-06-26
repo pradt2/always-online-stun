@@ -1,6 +1,7 @@
 name: Hourly check
 
 on:
+  workflow_dispatch:
   schedule:
     # Minute zero of every hour
     - cron: '0 * * * *'
