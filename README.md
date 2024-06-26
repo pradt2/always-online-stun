@@ -41,14 +41,22 @@ Feel free to open an issue and let's discuss your specific needs.
 ### How often are the lists refreshed?
 Hourly, you can see the timestamp of the last check in the commit message.
 
-### What RFC spec do the servers conform to? 
-As long as the server correctly responds to an RFC5389 `BINDING` request, it is judged as healthy. 
-This is enough to establish the NAT mapping of a given socket. 
+### What RFC specs do the servers conform to? 
 
-_Noteworthy_: the server does not need to respond with an alternate IP address to be judged as healthy.
-This can be a problem if you need a server with full RFC5389/5780 NAT testing (endpoint mapping and filtering modes) capability.
+The `valid_nat_testing_*` lists contain servers that should be capable of both NAT detection and behaviour testing. These capabilities
+roughly correspond to RFC5780 (and, implicitly, to RFC5389).
 
-If you need a list of servers that support RFC5389/5780 NAT testing, open an issue.
+To qualify for these lists, a server has to correctly respond to a RFC5389 `BINDING` request and provide the `OTHER-ADDRESS` attribute in the response.
+The presence of the `OTHER-ADDRESS` attribute is the spec-compliant way to advertise that a STUN server can be used for NAT behaviour tests.
+
+_At the moment, no actual verification of the NAT behaviour testing capabilities is carried out. 
+We rely on the STUN server maintainers to set the `OTHER-ADDRESS` attribute only if their server supports NAT behaviour testing.
+If that's a problem for you (i.e. you need a stronger guarantee), please open an issue._
+
+The other `valid_*` lists contain servers that are capable of NAT detection only. These are much bigger lists as only a small fraction 
+of servers is configured to provide the full NAT testing capabilities.
+
+To qualify for these lists, a server has to correctly respond to a RFC5389 `BINDING` request.
 
 ### What IP versions and transport protocols are tested?
 IP versions 4 and 6. UDP and TCP.
