@@ -62,7 +62,7 @@ stun.bau-ha.us:3478
 stun.bcs2005.net:3478
 stun.bearstech.com:3478
 stun.beebeetle.com:3478
-stun.bergophor.de:3478
+# stun.bergophor.de:3478 - SEE ISSUE #18
 stun.bernardoprovenzano.net:3478
 stun.bernies-bergwelt.com:3478
 stun.bethesda.net:3478
@@ -538,7 +538,7 @@ stun.ukh.de:3478
 stun.uls.co.za:3478
 stun.unseen.is:3478
 stun.url.net.au:3478
-stun.usfamily.net:3478
+# stun.usfamily.net:3478 - SEE ISSUE #18
 stun.vadacom.co.nz:3478
 stun.var6.cn:3478
 stun.vavadating.com:3478
