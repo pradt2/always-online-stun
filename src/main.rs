@@ -56,6 +56,10 @@ async fn test_udp_servers() -> io::Result<()> {
     ValidIpV4s::udp(&stun_server_test_results).save().await?;
     ValidIpV6s::udp(&stun_server_test_results).save().await?;
 
+    ValidHosts::udp_with_nat_testing(&stun_server_test_results).save().await?;
+    ValidIpV4s::udp_with_nat_testing(&stun_server_test_results).save().await?;
+    ValidIpV6s::udp_with_nat_testing(&stun_server_test_results).save().await?;
+
     write_stun_server_summary(stun_servers_count, &stun_server_test_results,timestamp.elapsed());
 
     futures::stream::iter(stun_server_test_results.iter())
@@ -102,6 +106,10 @@ async fn test_tcp_servers() -> io::Result<()> {
     ValidHosts::tcp(&stun_server_test_results).save().await?;
     ValidIpV4s::tcp(&stun_server_test_results).save().await?;
     ValidIpV6s::tcp(&stun_server_test_results).save().await?;
+
+    ValidHosts::tcp_with_nat_testing(&stun_server_test_results).save().await?;
+    ValidIpV4s::tcp_with_nat_testing(&stun_server_test_results).save().await?;
+    ValidIpV6s::tcp_with_nat_testing(&stun_server_test_results).save().await?;
 
     write_stun_server_summary(stun_servers_count, &stun_server_test_results,timestamp.elapsed());
 

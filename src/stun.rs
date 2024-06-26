@@ -22,6 +22,11 @@ impl StunServerTestResult {
             .all(StunSocketTestResult::is_ok)
     }
 
+    pub(crate) fn is_nat_testing_supported(&self) -> bool {
+        self.socket_tests.iter()
+            .all(StunSocketTestResult::is_nat_testing_supported)
+    }
+
     pub(crate) fn is_partial_timeout(&self) -> bool {
         self.is_resolvable()
             && self.is_any_healthy()
@@ -81,11 +86,15 @@ impl StunSocketTestResult {
     pub(crate) fn is_ok(&self) -> bool {
         self.result.is_ok()
     }
+
+    pub(crate) fn is_nat_testing_supported(&self) -> bool {
+        self.result.is_nat_testing_supported()
+    }
 }
 
 #[derive(Clone, Debug)]
 pub(crate) enum StunSocketResponse {
-    HealthyResponse { rtt: Duration },
+    HealthyResponse { rtt: Duration, supports_nat_testing: bool },
     InvalidMappingResponse { expected: SocketAddr, actual: SocketAddr, rtt: Duration },
     Timeout { deadline: Duration },
     UnexpectedError { err: String },
@@ -95,6 +104,13 @@ impl StunSocketResponse {
     fn is_ok(&self) -> bool {
         match &self {
             StunSocketResponse::HealthyResponse { .. } => true,
+            _ => false
+        }
+    }
+
+    fn is_nat_testing_supported(&self) -> bool {
+        match &self {
+            StunSocketResponse::HealthyResponse { supports_nat_testing: true, .. } => true,
             _ => false
         }
     }
@@ -243,13 +259,13 @@ async fn test_socket_addr_against_trusted_party_udp(
                 SocketAddr::V4(_) => None,
                 SocketAddr::V6(_) => Some(resolved_addr)
             }
-        }).expect("Trusted party must provide IPv4 and v6 connectivity");
+        }).expect("Trusted party must provide IP v4 and v6 connectivity");
 
     let mut local_socket_mapping = None;
     for _ in 0..3 {
-        match query_stun_server_udp(&local_socket, trusted_party_addr, Duration::from_secs(5)).await.ok().flatten() {
-            Some(addr) => {local_socket_mapping = Some(addr); break},
-            None => continue
+        match query_stun_server_udp(&local_socket, trusted_party_addr, Duration::from_secs(5)).await.ok() {
+            Some(QueryStunServerResult{mapped_addr: Some(mapped_addr), ..}) => {local_socket_mapping = Some(mapped_addr); break},
+            _ => continue
         }
     };
 
@@ -287,13 +303,13 @@ async fn test_socket_addr_against_trusted_party_tcp(
 
     let request_duration = Instant::now() - start;
 
-    if let Ok(Some(return_addr)) = result {
+    if let Ok(QueryStunServerResult{mapped_addr: Some(mapped_addr), ..}) = result {
         process_result(
             result,
             request_duration,
             hostname,
             stream.local_addr().unwrap(),
-            return_addr,
+            mapped_addr,
             stream.peer_addr().ok(),
             deadline,
         )
@@ -358,7 +374,7 @@ async fn test_socket_tcp(hostname: &str,
 }
 
 fn process_result(
-    result: io::Result<Option<SocketAddr>>,
+    result: io::Result<QueryStunServerResult>,
     request_duration: Duration,
     hostname: &str,
     local_addr: SocketAddr,
@@ -369,26 +385,28 @@ fn process_result(
     let stun_server_addr = stun_server_addr.unwrap_or(SocketAddr::new(IpAddr::from([0,0,0,0]), 0));
 
     return match result {
-        Ok(Some(return_addr)) => if return_addr.port() == expected_addr.port() {
+        Ok(QueryStunServerResult{mapped_addr: Some(mapped_addr), other_addr}) => if mapped_addr.port() == expected_addr.port() {
             debug!("{:<25} -> Socket {:<21} returned a healthy response", hostname, &stun_server_addr);
+            // other address cannot be the same as the IP address we're already using for the query
+            let is_valid_other_addr = other_addr.map(|arg0: SocketAddr| SocketAddr::ip(&arg0)).map(|ip| ip != mapped_addr.ip()).unwrap_or(false);
             StunSocketTestResult {
                 socket: stun_server_addr,
-                result: StunSocketResponse::HealthyResponse { rtt: request_duration },
+                result: StunSocketResponse::HealthyResponse { rtt: request_duration, supports_nat_testing: is_valid_other_addr },
             }
         } else {
-            debug!("{:<25} -> Socket {:<21} returned an invalid mapping: expected={}, actual={}", hostname, &stun_server_addr, expected_addr, return_addr);
+            debug!("{:<25} -> Socket {:<21} returned an invalid mapping: expected={}, actual={}", hostname, &stun_server_addr, expected_addr, mapped_addr);
             StunSocketTestResult {
                 socket: stun_server_addr,
-                result: StunSocketResponse::InvalidMappingResponse { expected: local_addr, actual: return_addr, rtt: request_duration },
+                result: StunSocketResponse::InvalidMappingResponse { expected: local_addr, actual: mapped_addr, rtt: request_duration },
             }
         },
-        Ok(None) => {
+        Ok(QueryStunServerResult{mapped_addr: None, other_addr: _}) => {
             debug!("{:<25} -> Socket {:<21} returned an a response but no mapping: expected={}", hostname, &stun_server_addr, expected_addr);
             StunSocketTestResult {
                 socket: stun_server_addr,
                 result: StunSocketResponse::InvalidMappingResponse { expected: local_addr, actual: SocketAddr::new(IpAddr::from([0,0,0,0]), 0), rtt: request_duration },
             }
-        }
+        },
         Err(err) => {
             if err.to_string() == "Timed out waiting for STUN server reply" {
                 debug!("{:<25} -> Socket {:<21} timed out after {:?}", hostname, &stun_server_addr, deadline);
@@ -407,11 +425,16 @@ fn process_result(
     };
 }
 
+struct QueryStunServerResult {
+    mapped_addr: Option<SocketAddr>,    // address of the client as determined by the STUN server
+    other_addr: Option<SocketAddr>,     // the OTHER-ADDRESS reported by the STUN server if the server supports NAT testing
+}
+
 async fn query_stun_server_udp(
     local_socket: &UdpSocket,
     server_addr: SocketAddr,
     timeout: Duration,
-) -> io::Result<Option<SocketAddr>> {
+) -> io::Result<QueryStunServerResult> {
     let mut buf = [0u8; 256];
 
     let mut msg = stun_format::MsgBuilder::from(buf.as_mut_slice());
@@ -426,8 +449,8 @@ async fn query_stun_server_udp(
 
     debug!("{:?}", msg);
 
-    if let Some(stun_format::MsgType::BindingResponse) = msg.typ() {
-        let external_addr = msg.attrs_iter()
+    let mapped_addr = if let Some(stun_format::MsgType::BindingResponse) = msg.typ() {
+        let addr = msg.attrs_iter()
             .map(|attr| {
                 match attr {
                     stun_format::Attr::MappedAddress(addr) => Some(addr),
@@ -447,16 +470,43 @@ async fn query_stun_server_udp(
             })
             .next();
 
-        return Ok(external_addr);
-    }
+        addr
+    } else {
+        None
+    };
 
-    return Ok(None);
+    let other_addr = if let Some(stun_format::MsgType::BindingResponse) = msg.typ() {
+        let addr = msg.attrs_iter()
+            .map(|attr| {
+                match attr {
+                    stun_format::Attr::OtherAddress(addr) => Some(addr),
+                    _ => None,
+                }
+            })
+            .filter(|opt| opt.is_some())
+            .map(|opt| opt.unwrap())
+            .map(|external_addr| match external_addr {
+                stun_format::SocketAddr::V4(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip), port)
+                },
+                stun_format::SocketAddr::V6(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip), port)
+                }
+            })
+            .next();
+
+        addr
+    } else {
+        None
+    };
+
+    return Ok(QueryStunServerResult{ mapped_addr, other_addr });
 }
 
 async fn query_stun_server_tcp(
     local_socket: &mut TcpStream,
     timeout: Duration,
-) -> io::Result<Option<SocketAddr>> {
+) -> io::Result<QueryStunServerResult> {
     let mut buf = [0u8; 256];
 
     let mut msg = stun_format::MsgBuilder::from(buf.as_mut_slice());
@@ -469,8 +519,8 @@ async fn query_stun_server_tcp(
 
     let msg = stun_format::Msg::from(&buf[0..bytes_read]);
 
-    if let Some(stun_format::MsgType::BindingResponse) = msg.typ() {
-        let external_addr = msg.attrs_iter()
+    let mapped_addr = if let Some(stun_format::MsgType::BindingResponse) = msg.typ() {
+        let addr = msg.attrs_iter()
             .map(|attr| {
                 match attr {
                     stun_format::Attr::MappedAddress(addr) => Some(addr),
@@ -490,8 +540,35 @@ async fn query_stun_server_tcp(
             })
             .next();
 
-        return Ok(external_addr);
-    }
+        addr
+    } else {
+        None
+    };
 
-    return Ok(None);
+    let other_addr = if let Some(stun_format::MsgType::BindingResponse) = msg.typ() {
+        let addr = msg.attrs_iter()
+            .map(|attr| {
+                match attr {
+                    stun_format::Attr::OtherAddress(addr) => Some(addr),
+                    _ => None,
+                }
+            })
+            .filter(|opt| opt.is_some())
+            .map(|opt| opt.unwrap())
+            .map(|external_addr| match external_addr {
+                stun_format::SocketAddr::V4(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip), port)
+                },
+                stun_format::SocketAddr::V6(ip, port) => {
+                    SocketAddr::new(std::net::IpAddr::from(ip), port)
+                }
+            })
+            .next();
+
+        addr
+    } else {
+        None
+    };
+
+    return Ok(QueryStunServerResult{ mapped_addr, other_addr });
 }
