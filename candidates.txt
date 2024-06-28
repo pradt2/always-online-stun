@@ -481,7 +481,7 @@ stun.streamix.live:3478
 stun.streamnow.ch:3478
 stun.studio-link.de:3478
 stun.studio71.it:3478
-stun.stunprotocol.org:3478
+stunserver2024.stunprotocol.org:3478
 stun.stunserver.org:3478
 stun.surjaring.it:3478
 stun.surrealnetworks.com:3478
