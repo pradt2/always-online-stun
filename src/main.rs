@@ -1,8 +1,10 @@
 use std::cell::RefCell;
 use std::io;
+use std::net::SocketAddr;
 use std::rc::Rc;
 use std::time::Duration;
 use futures::StreamExt;
+use tokio::net::{TcpStream, UdpSocket};
 use tokio::time::Instant;
 use crate::geoip::GeolocationDbClient;
 use crate::utils::join_all_with_semaphore;
@@ -34,6 +36,48 @@ async fn test_udp_servers() -> io::Result<()> {
         .parse()
         .expect("IS_BEHIND_NAT must be true or false");
 
+    let ref_socket_addrs = tokio::net::lookup_host("stun2.l.google.com:19302").await;
+    if ref_socket_addrs.is_err() {
+        error!("Reference STUN error: host not found!");
+    }
+
+    let ref_socket_addrs: Vec<_> = ref_socket_addrs.unwrap().collect();
+
+    let ref_socket_addr_v4 = ref_socket_addrs.iter().find_map(|addr| match addr {
+        SocketAddr::V4(v4_addr) => Some(v4_addr.clone()),
+        SocketAddr::V6(_) => None,
+    }).unwrap();
+
+    let deadline = Duration::from_secs(1);
+    let local_socket = UdpSocket::bind("0.0.0.0:0").await.unwrap();
+
+    let resV4 = stun::query_stun_server_udp(&local_socket, SocketAddr::from(ref_socket_addr_v4), deadline).await;
+    if resV4.is_err() {
+        error!("Reference STUN error: failed to obtain reference V4 mapping!")
+    }
+
+    let mut resV4 = resV4.unwrap().mapped_addr.unwrap();
+    resV4.set_port(0);
+    let expected_addr_v4 = if is_behind_nat { Some(resV4) } else { None };
+
+    let ref_socket_addr_v6 = ref_socket_addrs.iter().find_map(|addr| match addr {
+        SocketAddr::V4(_) => None,
+        SocketAddr::V6(v6_addr) => Some(v6_addr.clone()),
+    }).unwrap();
+
+    let deadline = Duration::from_secs(1);
+    let local_socket = UdpSocket::bind("[::]:0").await.unwrap();
+
+    let resV6 = stun::query_stun_server_udp(&local_socket, SocketAddr::from(ref_socket_addr_v6), deadline).await;
+    if resV6.is_err() {
+        error!("Reference STUN error: failed to obtain reference V6 mapping!")
+    }
+
+    let mut resV6 = resV6.unwrap().mapped_addr.unwrap();
+    resV6.set_port(0);
+
+    let expected_addr_v6 = if is_behind_nat { Some(resV6) } else { None };
+
     let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::<GeolocationDbClient>::default().await?));
 
     let stun_servers = servers::get_stun_servers().await?;
@@ -43,7 +87,7 @@ async fn test_udp_servers() -> io::Result<()> {
 
     let stun_server_test_results = stun_servers.into_iter()
         .map(|candidate| async move {
-            let test_result = stun::test_udp_stun_server(candidate, is_behind_nat).await;
+            let test_result = stun::test_udp_stun_server(candidate, expected_addr_v4, expected_addr_v6).await;
             print_stun_server_status(&test_result);
             test_result
         })
@@ -85,6 +129,60 @@ async fn test_tcp_servers() -> io::Result<()> {
         .parse()
         .expect("IS_BEHIND_NAT must be true or false");
 
+    let ref_socket_addrs = tokio::net::lookup_host("stun2.l.google.com:19302").await;
+    if ref_socket_addrs.is_err() {
+        error!("Reference STUN error: host not found!");
+    }
+
+    let ref_socket_addrs: Vec<_> = ref_socket_addrs.unwrap().collect();
+
+    let ref_socket_addr_v4 = ref_socket_addrs.iter().find_map(|addr| match addr {
+        SocketAddr::V4(v4_addr) => Some(v4_addr.clone()),
+        SocketAddr::V6(_) => None,
+    }).unwrap();
+
+    let deadline = Duration::from_secs(1);
+    let local_socket = tokio::time::timeout(deadline, TcpStream::connect(ref_socket_addr_v4)).await;
+
+    if local_socket.is_err() {
+        error!("Reference STUN error: failed to connect V4");
+    }
+
+    let mut local_socket = local_socket.unwrap().unwrap();
+
+    let resV4 = stun::query_stun_server_tcp(&mut local_socket, deadline).await;
+    if resV4.is_err() {
+        error!("Reference STUN error: failed to obtain reference V4 mapping!")
+    }
+
+    let mut resV4 = resV4.unwrap().mapped_addr.unwrap();
+    resV4.set_port(0);
+    let expected_addr_v4 = if is_behind_nat { Some(resV4) } else { None };
+
+    let ref_socket_addr_v6 = ref_socket_addrs.iter().find_map(|addr| match addr {
+        SocketAddr::V4(_) => None,
+        SocketAddr::V6(v6_addr) => Some(v6_addr.clone()),
+    }).unwrap();
+
+    let deadline = Duration::from_secs(1);
+    let local_socket = tokio::time::timeout(deadline, TcpStream::connect(ref_socket_addr_v6)).await;
+
+    if local_socket.is_err() {
+        error!("Reference STUN error: failed to connect V6");
+    }
+
+    let mut local_socket = local_socket.unwrap().unwrap();
+
+    let resV6 = stun::query_stun_server_tcp(&mut local_socket, deadline).await;
+    if resV6.is_err() {
+        error!("Reference STUN error: failed to obtain reference V6 mapping!")
+    }
+
+    let mut resV6 = resV6.unwrap().mapped_addr.unwrap();
+    resV6.set_port(0);
+
+    let expected_addr_v6 = if is_behind_nat { Some(resV6) } else { None };
+
     let client = Rc::new(RefCell::new(geoip::CachedIpGeolocationIpClient::<GeolocationDbClient>::default().await?));
 
     let stun_servers = servers::get_stun_servers().await?;
@@ -94,7 +192,7 @@ async fn test_tcp_servers() -> io::Result<()> {
 
     let stun_server_test_results = stun_servers.into_iter()
         .map(|candidate| async move {
-            let test_result = stun::test_tcp_stun_server(candidate, is_behind_nat).await;
+            let test_result = stun::test_tcp_stun_server(candidate, expected_addr_v4, expected_addr_v6).await;
             print_stun_server_status(&test_result);
             test_result
         })
