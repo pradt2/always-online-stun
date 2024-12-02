@@ -36,7 +36,7 @@ async fn test_udp_servers() -> io::Result<()> {
         .parse()
         .expect("IS_BEHIND_NAT must be true or false");
 
-    let ref_socket_addrs = tokio::net::lookup_host("stun2.l.google.com:19302").await;
+    let ref_socket_addrs = tokio::net::lookup_host("stun.bethesda.net:3478").await;
     if ref_socket_addrs.is_err() {
         error!("Reference STUN error: host not found!");
     }
@@ -131,7 +131,7 @@ async fn test_tcp_servers() -> io::Result<()> {
         .parse()
         .expect("IS_BEHIND_NAT must be true or false");
 
-    let ref_socket_addrs = tokio::net::lookup_host("stun2.l.google.com:19302").await;
+    let ref_socket_addrs = tokio::net::lookup_host("stun.bethesda.net:3478").await;
     if ref_socket_addrs.is_err() {
         error!("Reference STUN error: host not found!");
     }
