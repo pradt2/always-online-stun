@@ -114,7 +114,9 @@ async fn test_udp_servers() -> io::Result<()> {
         .for_each(|socket| {
             let client = client.clone();
             async move {
-                client.borrow_mut().get_ip_geoip_info(socket.ip()).await.expect("GeoIP IP info must be available");
+                // GEO IP data provider no longer exists
+                // TODO find a new data provider and point to it
+                // client.borrow_mut().get_ip_geoip_info(socket.ip()).await.expect("GeoIP IP info must be available");
             }
         }).await;
 
