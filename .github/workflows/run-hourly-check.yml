@@ -51,7 +51,7 @@ jobs:
         echo "AllowedIPs = $WG_PEER_ALLOWED_IPS" >> /tmp/wg0.conf
         sudo wg-quick up /tmp/wg0.conf
     - name: Ensure IPv4 and IPv6 connectivity
-      run: ping -c 4 google.com && ping6 -c 4 google.com
+      run: ping -4 -c 4 google.com && ping -6 -c 4 google.com
     - name: Run executable
       run: cargo run
     - name: Create timestamp
