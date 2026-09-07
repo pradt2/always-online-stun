@@ -148,7 +148,7 @@ pub(crate) async fn test_udp_stun_server(
                     IpAddr::V6(_) => expected_addr_v6,
                 };
 
-                test_socket_addr_tcp(hostname, expected_addr, stun_socket).await
+                test_socket_addr_udp(hostname, stun_socket, expected_addr).await
             }
         })
         .collect::<Vec<_>>();
