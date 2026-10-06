@@ -19,17 +19,8 @@ jobs:
     steps:
       - name: Git checkout
         uses: actions/checkout@v6
-
-      - name: Enable build cache
-        uses: actions/cache@v5
         with:
-          path: |
-            ~/.cargo/bin/
-            ~/.cargo/registry/index/
-            ~/.cargo/registry/cache/
-            ~/.cargo/git/db/
-            target/
-          key: ${{ runner.os }}-cargo-${{ hashFiles('**/Cargo.lock') }}
+          fetch-depth: 1
 
       - name: Build executable
         run: cargo build
